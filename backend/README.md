@@ -20,8 +20,8 @@ Fiscal Hub Backend is a Spring Boot application that provides RESTful endpoints 
 
 ## Technology Stack
 
-- **Java 17**
-- **Spring Boot 3.1.5**
+- **Java 25**
+- **Spring Boot 3.5.6**
 - **Spring Security** - Authentication and authorization
 - **Spring Data JPA** - Data persistence
 - **PostgreSQL** - Primary database
@@ -32,7 +32,7 @@ Fiscal Hub Backend is a Spring Boot application that provides RESTful endpoints 
 
 ## Prerequisites
 
-- Java 17 or higher
+- Java 25 or higher
 - Maven 3.6+
 - PostgreSQL 12+
 
