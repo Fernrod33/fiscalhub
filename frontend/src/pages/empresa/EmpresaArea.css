@@ -1,0 +1,147 @@
+.empresa-area {
+  width: 100%;
+}
+
+/* Header da empresa */
+.empresa-header {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.empresa-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.empresa-header-nome {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.empresa-header-cnpj {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* Tabs de navegação */
+.empresa-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.empresa-tab {
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.empresa-tab:hover {
+  color: var(--text-h);
+}
+
+.empresa-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Seção de conteúdo */
+.empresa-section {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.empresa-section h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Grade de campos */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.info-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.info-field span {
+  display: block;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+/* Área de documento stub */
+.stub-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.stub-future {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.stub-future ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 8px 0 0;
+  text-align: left;
+  display: inline-block;
+}
+
+.stub-future li {
+  margin: 4px 0;
+}
+
+.btn-stub {
+  margin-top: 16px;
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Erro de carregamento */
+.empresa-error {
+  padding: 40px;
+  text-align: center;
+  color: var(--danger);
+  font-size: 15px;
+}

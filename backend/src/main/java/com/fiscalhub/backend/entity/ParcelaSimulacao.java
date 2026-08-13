@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -40,6 +41,7 @@ public class ParcelaSimulacao {
     @Column(name = "saldo_restante", nullable = false, precision = 15, scale = 2)
     private BigDecimal saldoRestante;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "simulacao_id", nullable = false)
     private SimulacaoParcelamento simulacao;

@@ -2,6 +2,7 @@ package com.fiscalhub.backend.entity;
 
 import com.fiscalhub.backend.entity.enums.StatusDeclaracao;
 import com.fiscalhub.backend.entity.enums.TipoTributo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -76,14 +77,17 @@ public class Declaracao {
     @Column(name = "data_atualizacao")
     private LocalDateTime dataAtualizacao;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "empresa_id", nullable = false)
     private Empresa empresa;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "declaracao", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<SimulacaoParcelamento> simulacoes = new HashSet<>();
 }

@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -77,10 +78,12 @@ public class Empresa {
     @Column(name = "data_atualizacao")
     private LocalDateTime dataAtualizacao;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Declaracao> declaracoes = new HashSet<>();
 }

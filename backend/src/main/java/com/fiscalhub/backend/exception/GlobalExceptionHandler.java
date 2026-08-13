@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.AuthenticationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -38,6 +39,15 @@ public class GlobalExceptionHandler {
         response.put("errors", errors);
         response.put("status", HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("message", "Credenciais inválidas");
+        response.put("status", HttpStatus.UNAUTHORIZED.value());
+        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(Exception.class)
@@ -83,6 +93,15 @@ public class GlobalExceptionHandler {
         response.put("message", "Validation failed");
         response.put("status", HttpStatus.BAD_REQUEST.value());
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbiddenException(ForbiddenException ex) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("message", ex.getMessage());
+        response.put("status", HttpStatus.FORBIDDEN.value());
+        return new ResponseEntity<>(response, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoReceita;
 import jakarta.persistence.*;
@@ -124,10 +125,12 @@ public class SimulacaoParcelamento {
     @Column(name = "data_atualizacao")
     private LocalDateTime dataAtualizacao;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "declaracao_id", nullable = false)
     private Declaracao declaracao;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "simulacao", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ParcelaSimulacao> parcelas = new ArrayList<>();
 }

@@ -1,10 +1,12 @@
 package com.fiscalhub.backend.config;
 
 import com.fiscalhub.backend.entity.IndiceMonetario;
+import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fiscalhub.backend.repository.UsuarioRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -22,13 +24,36 @@ import java.util.List;
 @Component
 public class DataInitializer implements CommandLineRunner {
 
-    @Autowired
-    private IndiceMonetarioRepository indiceMonetarioRepository;
+    private final IndiceMonetarioRepository indiceMonetarioRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public DataInitializer(
+            IndiceMonetarioRepository indiceMonetarioRepository,
+            UsuarioRepository usuarioRepository,
+            PasswordEncoder passwordEncoder) {
+        this.indiceMonetarioRepository = indiceMonetarioRepository;
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public void run(String... args) {
+        seedUsuarioAdmin();
         seedSelic();
         seedUfpr();
+    }
+
+    private void seedUsuarioAdmin() {
+        if (usuarioRepository.existsByEmail("admin@fiscalhub.com")) {
+            return;
+        }
+        Usuario admin = new Usuario();
+        admin.setNome("Administrador");
+        admin.setEmail("admin@fiscalhub.com");
+        admin.setSenha(passwordEncoder.encode("Admin@123"));
+        admin.setAtivo(true);
+        usuarioRepository.save(admin);
     }
 
     // ------------------------------------------------------------------
@@ -156,18 +181,25 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void inserirIndices(TipoIndice tipo, List<Object[]> dados) {
+        List<IndiceMonetario> toSave = new ArrayList<>();
+
         for (Object[] d : dados) {
             int ano = (int) d[0];
             int mes = (int) d[1];
-            BigDecimal valor = new BigDecimal((String) d[2]);
-            if (!indiceMonetarioRepository.existsByTipoAndAnoAndMes(tipo, ano, mes)) {
+
+            boolean existe = indiceMonetarioRepository.existsByTipoAndAnoAndMes(tipo, ano, mes);
+            if (!existe) {
                 IndiceMonetario indice = new IndiceMonetario();
                 indice.setTipo(tipo);
                 indice.setAno(ano);
                 indice.setMes(mes);
-                indice.setValor(valor);
-                indiceMonetarioRepository.save(indice);
+                indice.setValor(new BigDecimal((String) d[2]));
+                toSave.add(indice);
             }
+        }
+
+        if (!toSave.isEmpty()) {
+            indiceMonetarioRepository.saveAll(toSave);
         }
     }
 }
