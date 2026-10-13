@@ -23,8 +23,8 @@ public class SimulacaoResultDTO {
     private OrgaoReceita orgao;
     private ModalidadeParcelamento modalidade;
     private TipoTributo tributo;
-    private String empresaRazaoSocial;
-    private String empresaCnpj;
+    private String clienteRazaoSocial;
+    private String clienteCnpj;
 
     // --- Débito base ---
     private BigDecimal valorOriginal;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
-import { getEmpresa } from '../../api/empresas';
-import type { Empresa } from '../../types';
+import { getCliente } from '../../api/clientes';
+import type { Cliente } from '../../types';
 import '../Dashboard.css';
 import './EmpresaArea.css';
 
@@ -14,12 +14,12 @@ const TABS = [
   { path: 'simulacoes', label: 'Simulações' },
 ];
 
-export type EmpresaAreaOutletContext = { empresa: Empresa; reload: () => void };
+export type EmpresaAreaOutletContext = { empresa: Cliente; reload: () => void };
 
 export default function EmpresaArea() {
   const { empresaId } = useParams<{ empresaId: string }>();
   const navigate = useNavigate();
-  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [empresa, setEmpresa] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -28,12 +28,12 @@ export default function EmpresaArea() {
     setLoading(true);
     setLoadError('');
     try {
-      const data = await getEmpresa(Number(empresaId));
+      const data = await getCliente(Number(empresaId));
       setEmpresa(data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404) {
-        setLoadError('Empresa não encontrada.');
+        setLoadError('Cliente não encontrada.');
       } else if (status === 403) {
         setLoadError('Você não tem permissão para acessar esta empresa.');
       } else {

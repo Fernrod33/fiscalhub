@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getMinhasEmpresas, createEmpresa, updateEmpresa, deleteEmpresa } from '../api/empresas';
-import type { Empresa } from '../types';
+import { getClientes, createCliente, updateCliente, deleteCliente } from '../api/clientes';
+import type { Cliente } from '../types';
 import './Dashboard.css';
 import './Empresas.css';
 import { mensagemErro } from '../api/client';
@@ -23,7 +23,7 @@ type FormState = typeof EMPTY_FORM;
 export default function Empresas() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresas, setEmpresas] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -35,7 +35,7 @@ export default function Empresas() {
   async function fetchEmpresas() {
     if (!user) return;
     try {
-      const data = await getMinhasEmpresas();
+      const data = await getClientes();
       setEmpresas(data);
     } catch {
       // ignore
@@ -72,7 +72,7 @@ export default function Empresas() {
     setShowModal(true);
   }
 
-  function openEdit(emp: Empresa) {
+  function openEdit(emp: Cliente) {
     setEditingId(emp.id);
     setForm({
       razaoSocial: emp.razaoSocial ?? '',
@@ -154,11 +154,11 @@ export default function Empresas() {
     setSaving(true);
     try {
       if (editingId !== null) {
-        await updateEmpresa(editingId, payload);
-        setSuccessMsg('Empresa atualizada com sucesso!');
+        await updateCliente(editingId, payload);
+        setSuccessMsg('Cliente atualizada com sucesso!');
       } else {
-        await createEmpresa(payload);
-        setSuccessMsg('Empresa cadastrada com sucesso!');
+        await createCliente(payload);
+        setSuccessMsg('Cliente cadastrada com sucesso!');
       }
       setShowModal(false);
       setForm(EMPTY_FORM);
@@ -175,7 +175,7 @@ export default function Empresas() {
   async function handleDelete(id: number) {
     if (!confirm('Deseja remover esta empresa?')) return;
     try {
-      await deleteEmpresa(id);
+      await deleteCliente(id);
       setEmpresas((prev) => prev.filter((e) => e.id !== id));
     } catch {
       alert('Erro ao remover empresa.');
@@ -189,7 +189,7 @@ export default function Empresas() {
           <h1>Minhas Empresas</h1>
           <p className="page-subtitle">Gerencie as empresas vinculadas à sua conta.</p>
         </div>
-        <button className="btn-primary" onClick={openCreate}>+ Nova Empresa</button>
+        <button className="btn-primary" onClick={openCreate}>+ Nova Cliente</button>
       </div>
 
       {successMsg && <div className="alert alert-success">{successMsg}</div>}
@@ -224,7 +224,7 @@ export default function Empresas() {
                   className="btn-primary btn-sm"
                   onClick={() => navigate(`/empresas/${emp.id}`)}
                 >
-                  Acessar Empresa
+                  Acessar Cliente
                 </button>
                 <button
                   className="btn-secondary btn-sm"
@@ -249,7 +249,7 @@ export default function Empresas() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingId !== null ? 'Editar Empresa' : 'Nova Empresa'}</h2>
+              <h2>{editingId !== null ? 'Editar Cliente' : 'Nova Cliente'}</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
 
@@ -335,7 +335,7 @@ export default function Empresas() {
 
               <label className="checkbox-label">
                 <input type="checkbox" name="ativa" checked={form.ativa} onChange={handleChange} />
-                Empresa ativa
+                Cliente ativa
               </label>
 
               <div className="modal-footer">

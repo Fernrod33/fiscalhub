@@ -84,8 +84,8 @@ public class Declaracao {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "empresa_id", nullable = false)
-    private Empresa empresa;
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
 
     @JsonIgnore
     @OneToMany(mappedBy = "declaracao", cascade = CascadeType.ALL, orphanRemoval = true)

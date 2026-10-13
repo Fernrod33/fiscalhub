@@ -1,17 +1,17 @@
 import client from './client';
 import type { Declaracao } from '../types';
 
-export async function getDeclaracoesByEmpresa(empresaId: number): Promise<Declaracao[]> {
-  const res = await client.get<Declaracao[]>(`/api/declaracoes/empresa/${empresaId}`);
+export async function getDeclaracoesByCliente(clienteId: number): Promise<Declaracao[]> {
+  const res = await client.get<Declaracao[]>(`/api/declaracoes/cliente/${clienteId}`);
   return res.data;
 }
 
 export async function createDeclaracao(
-  empresaId: number,
+  clienteId: number,
   data: Omit<Declaracao, 'id' | 'dataCriacao' | 'dataAtualizacao'>
 ): Promise<Declaracao> {
   const res = await client.post<Declaracao>(
-    `/api/declaracoes?empresaId=${empresaId}`,
+    `/api/declaracoes?clienteId=${clienteId}`,
     data
   );
   return res.data;

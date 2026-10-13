@@ -8,7 +8,8 @@ import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -27,14 +28,14 @@ public class SimulacaoParcelamentoController {
     // ---------------------------------------------------------------
 
     @GetMapping("/{id}")
-    public ResponseEntity<SimulacaoParcelamento> getSimulacaoById(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findById(id, authentication.getName()));
+    public ResponseEntity<SimulacaoParcelamento> getSimulacaoById(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.findById(id, ua));
     }
 
     @GetMapping("/declaracao/{declaracaoId}")
     public ResponseEntity<List<SimulacaoParcelamento>> getByDeclaracao(@PathVariable Long declaracaoId,
-                                                                       Authentication authentication) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findByDeclaracaoId(declaracaoId, authentication.getName()));
+                                                                       @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.findByDeclaracaoId(declaracaoId, ua));
     }
 
     // ---------------------------------------------------------------
@@ -49,8 +50,8 @@ public class SimulacaoParcelamentoController {
      */
     @PostMapping("/calcular")
     public ResponseEntity<SimulacaoResultDTO> calcular(@Valid @RequestBody SimulacaoRequestDTO request,
-                                                       Authentication authentication) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.calcular(request, authentication.getName()));
+                                                       @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.calcular(request, ua));
     }
 
     /**
@@ -61,8 +62,8 @@ public class SimulacaoParcelamentoController {
     @PostMapping("/calcular/salvar")
     @ConsultorOuAdmin
     public ResponseEntity<SimulacaoResultDTO> calcularESalvar(@Valid @RequestBody SimulacaoRequestDTO request,
-                                                              Authentication authentication) {
-        SimulacaoResultDTO result = simulacaoParcelamentoService.calcularESalvar(request, authentication.getName());
+                                                              @AuthenticationPrincipal UsuarioAutenticado ua) {
+        SimulacaoResultDTO result = simulacaoParcelamentoService.calcularESalvar(request, ua);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -77,14 +78,14 @@ public class SimulacaoParcelamentoController {
      */
     @PatchMapping("/{id}/aprovar")
     @ConsultorOuAdmin
-    public ResponseEntity<SimulacaoParcelamento> aprovar(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.aprovar(id, authentication.getName()));
+    public ResponseEntity<SimulacaoParcelamento> aprovar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.aprovar(id, ua));
     }
 
     @DeleteMapping("/{id}")
     @ConsultorOuAdmin
-    public ResponseEntity<Void> deleteSimulacao(@PathVariable Long id, Authentication authentication) {
-        simulacaoParcelamentoService.delete(id, authentication.getName());
+    public ResponseEntity<Void> deleteSimulacao(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        simulacaoParcelamentoService.delete(id, ua);
         return ResponseEntity.noContent().build();
     }
 }

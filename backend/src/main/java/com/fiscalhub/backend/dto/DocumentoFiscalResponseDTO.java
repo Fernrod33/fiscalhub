@@ -15,7 +15,7 @@ import java.util.Set;
 @Data
 public class DocumentoFiscalResponseDTO {
     private Long id;
-    private Long empresaId;
+    private Long clienteId;
     private Long usuarioId;
     private DocumentoTipo tipo;
     private DocumentoEsfera esfera;
@@ -37,7 +37,7 @@ public class DocumentoFiscalResponseDTO {
     public static DocumentoFiscalResponseDTO fromEntity(DocumentoFiscal documento) {
         DocumentoFiscalResponseDTO dto = new DocumentoFiscalResponseDTO();
         dto.setId(documento.getId());
-        dto.setEmpresaId(documento.getEmpresa() != null ? documento.getEmpresa().getId() : null);
+        dto.setClienteId(documento.getCliente() != null ? documento.getCliente().getId() : null);
         dto.setUsuarioId(documento.getUsuario() != null ? documento.getUsuario().getId() : null);
         dto.setTipo(documento.getTipo());
         dto.setEsfera(documento.getEsfera());

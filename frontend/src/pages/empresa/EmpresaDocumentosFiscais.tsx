@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { downloadDocumentoArquivo, getDocumentosEmpresa, importarDocumento } from '../../api/documentos';
+import { downloadDocumentoArquivo, getDocumentosCliente, importarDocumento } from '../../api/documentos';
 import type { EmpresaAreaOutletContext } from './EmpresaArea';
 import './EmpresaArea.css';
 import { mensagemErro } from '../../api/client';
@@ -42,7 +42,7 @@ export default function EmpresaDocumentosFiscais() {
     setLoading(true);
     setError('');
     try {
-      const data = await getDocumentosEmpresa(empresa.id);
+      const data = await getDocumentosCliente(empresa.id);
       setDocumentos(data);
     } catch (err) {
       setError(mensagemErro(err, 'Erro ao carregar documentos.'));

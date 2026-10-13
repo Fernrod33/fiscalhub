@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getMinhasEmpresas } from '../api/empresas';
-import { getDeclaracoesByEmpresa } from '../api/declaracoes';
-import type { Empresa, Declaracao } from '../types';
+import { getClientes } from '../api/clientes';
+import { getDeclaracoesByCliente } from '../api/declaracoes';
+import type { Cliente, Declaracao } from '../types';
 import './Dashboard.css';
 
 interface Stats {
@@ -22,7 +22,7 @@ export default function Dashboard() {
     valorTotalImposto: 0,
   });
   const [recentDeclaracoes, setRecentDeclaracoes] = useState<Declaracao[]>([]);
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresas, setEmpresas] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,14 +30,14 @@ export default function Dashboard() {
 
     async function fetchData() {
       try {
-        const emps = await getMinhasEmpresas();
+        const emps = await getClientes();
         setEmpresas(emps);
 
         const allDeclaracoes: Declaracao[] = [];
         await Promise.all(
           emps.map(async (emp) => {
             try {
-              const decls = await getDeclaracoesByEmpresa(emp.id);
+              const decls = await getDeclaracoesByCliente(emp.id);
               allDeclaracoes.push(...decls);
             } catch {
               // empresa pode não ter declarações
@@ -92,7 +92,7 @@ export default function Dashboard() {
           </p>
         </div>
         <Link to="/empresas" className="btn-primary">
-          + Nova Empresa
+          + Nova Cliente
         </Link>
       </div>
 

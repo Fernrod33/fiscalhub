@@ -15,11 +15,11 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "empresa")
+@Table(name = "cliente")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Empresa {
+public class Cliente {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +36,7 @@ public class Empresa {
 
     @NotBlank
     @Size(max = 18)
-    @Column(nullable = false, unique = true, length = 18)
+    @Column(nullable = false, length = 18)
     private String cnpj;
 
     @Size(max = 20)
@@ -79,11 +79,17 @@ public class Empresa {
     private LocalDateTime dataAtualizacao;
 
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "usuario_id", nullable = false)
-    private Usuario usuario;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "escritorio_id", nullable = false)
+    private Escritorio escritorio;
+
+    /** Quem cadastrou (só registro): o cliente pertence ao escritório. */
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "criado_por_id", nullable = false)
+    private Usuario criadoPor;
 
     @JsonIgnore
-    @OneToMany(mappedBy = "empresa", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Declaracao> declaracoes = new HashSet<>();
 }

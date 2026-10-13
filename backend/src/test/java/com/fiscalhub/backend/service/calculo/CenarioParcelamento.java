@@ -3,7 +3,7 @@ package com.fiscalhub.backend.service.calculo;
 import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
 import com.fiscalhub.backend.entity.Declaracao;
-import com.fiscalhub.backend.entity.Empresa;
+import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.IndiceMonetario;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
@@ -118,14 +118,14 @@ final class CenarioParcelamento {
     }
 
     private Declaracao declaracao() {
-        Empresa empresa = new Empresa();
-        empresa.setRazaoSocial("Empresa Teste Ltda");
-        empresa.setCnpj("11222333000181");
+        Cliente cliente = new Cliente();
+        cliente.setRazaoSocial("Cliente Teste Ltda");
+        cliente.setCnpj("11222333000181");
         Declaracao d = new Declaracao();
         d.setId(1L);
         d.setValorTotal(valor);
         d.setDataVencimento(VENCIMENTO);
-        d.setEmpresa(empresa);
+        d.setCliente(cliente);
         return d;
     }
 

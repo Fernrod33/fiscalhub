@@ -11,6 +11,7 @@ import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.service.calculo.CalculoParcelamentoStrategy;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,12 +42,12 @@ public class SimulacaoParcelamentoService {
     // Consultas
     // ---------------------------------------------------------------
 
-    public SimulacaoParcelamento findById(Long id, String username) {
-        return acessoRecursoService.simulacao(id, username);
+    public SimulacaoParcelamento findById(Long id, UsuarioAutenticado ua) {
+        return acessoRecursoService.simulacao(id, ua);
     }
 
-    public List<SimulacaoParcelamento> findByDeclaracaoId(Long declaracaoId, String username) {
-        acessoRecursoService.declaracao(declaracaoId, username);
+    public List<SimulacaoParcelamento> findByDeclaracaoId(Long declaracaoId, UsuarioAutenticado ua) {
+        acessoRecursoService.declaracao(declaracaoId, ua);
         return simulacaoParcelamentoRepository.findByDeclaracaoId(declaracaoId);
     }
 
@@ -58,8 +59,8 @@ public class SimulacaoParcelamentoService {
      * Executa o cálculo de parcelamento sem persistir — apenas retorna o resultado.
      */
     @Transactional(readOnly = true)
-    public SimulacaoResultDTO calcular(SimulacaoRequestDTO request, String username) {
-        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), username);
+    public SimulacaoResultDTO calcular(SimulacaoRequestDTO request, UsuarioAutenticado ua) {
+        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), ua);
         CalculoParcelamentoStrategy strategy = resolverStrategy(request);
         return strategy.calcular(declaracao, request);
     }
@@ -67,8 +68,8 @@ public class SimulacaoParcelamentoService {
     /**
      * Executa o cálculo e persiste a simulação (incluindo parcelas) no banco.
      */
-    public SimulacaoResultDTO calcularESalvar(SimulacaoRequestDTO request, String username) {
-        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), username);
+    public SimulacaoResultDTO calcularESalvar(SimulacaoRequestDTO request, UsuarioAutenticado ua) {
+        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), ua);
         CalculoParcelamentoStrategy strategy = resolverStrategy(request);
         SimulacaoResultDTO result = strategy.calcular(declaracao, request);
 
@@ -82,14 +83,14 @@ public class SimulacaoParcelamentoService {
     /**
      * Aprova uma simulação salva, alterando sua flag aprovada para true.
      */
-    public SimulacaoParcelamento aprovar(Long id, String username) {
-        SimulacaoParcelamento simulacao = acessoRecursoService.simulacao(id, username);
+    public SimulacaoParcelamento aprovar(Long id, UsuarioAutenticado ua) {
+        SimulacaoParcelamento simulacao = acessoRecursoService.simulacao(id, ua);
         simulacao.setAprovada(true);
         return simulacaoParcelamentoRepository.save(simulacao);
     }
 
-    public void delete(Long id, String username) {
-        simulacaoParcelamentoRepository.delete(acessoRecursoService.simulacao(id, username));
+    public void delete(Long id, UsuarioAutenticado ua) {
+        simulacaoParcelamentoRepository.delete(acessoRecursoService.simulacao(id, ua));
     }
 
     // ---------------------------------------------------------------

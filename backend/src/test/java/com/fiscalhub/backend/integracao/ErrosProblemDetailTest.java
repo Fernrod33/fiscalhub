@@ -38,7 +38,7 @@ class ErrosProblemDetailTest {
 
     @Test
     void validacaoResponde400ComCampos() throws Exception {
-        mvc.perform(post("/api/empresas").header(AUTHORIZATION, token)
+        mvc.perform(post("/api/clientes").header(AUTHORIZATION, token)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"cnpj\":\"123\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
@@ -49,7 +49,7 @@ class ErrosProblemDetailTest {
 
     @Test
     void recursoNaoEncontradoResponde404ComDetalhe() throws Exception {
-        mvc.perform(get("/api/empresas/999999").header(AUTHORIZATION, token))
+        mvc.perform(get("/api/clientes/999999").header(AUTHORIZATION, token))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.detail").exists());
@@ -57,7 +57,7 @@ class ErrosProblemDetailTest {
 
     @Test
     void semTokenResponde401EmProblemDetail() throws Exception {
-        mvc.perform(get("/api/empresas/minhas"))
+        mvc.perform(get("/api/clientes/minhas"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(401));

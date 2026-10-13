@@ -3,13 +3,15 @@ package com.fiscalhub.backend.service;
 import com.fiscalhub.backend.dto.DocumentoFiscalRequestDTO;
 import com.fiscalhub.backend.dto.DocumentoFiscalResponseDTO;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
-import com.fiscalhub.backend.entity.Empresa;
+import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.fiscalhub.backend.util.DocumentoFiscalClassificationResolver;
 import org.springframework.beans.factory.annotation.Value;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
+import com.fiscalhub.backend.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +40,7 @@ public class DocumentoFiscalService {
 
     private final DocumentoFiscalRepository documentoFiscalRepository;
     private final AcessoRecursoService acessoRecursoService;
+    private final UsuarioRepository usuarioRepository;
 
     @Value("${fiscalhub.upload.max-size-bytes:5242880}")
     private long maxUploadSizeBytes;
@@ -46,29 +49,31 @@ public class DocumentoFiscalService {
     private String uploadDirectory;
 
     public DocumentoFiscalService(DocumentoFiscalRepository documentoFiscalRepository,
-                                 AcessoRecursoService acessoRecursoService) {
+                                 AcessoRecursoService acessoRecursoService,
+                                  UsuarioRepository usuarioRepository) {
         this.documentoFiscalRepository = documentoFiscalRepository;
         this.acessoRecursoService = acessoRecursoService;
+        this.usuarioRepository = usuarioRepository;
     }
 
-    public List<DocumentoFiscalResponseDTO> listarPorEmpresa(Long empresaId, String username) {
-        acessoRecursoService.empresa(empresaId, username);
-        return documentoFiscalRepository.findByEmpresaIdOrderByDataImportacaoDesc(empresaId)
+    public List<DocumentoFiscalResponseDTO> listarPorCliente(Long clienteId, UsuarioAutenticado ua) {
+        acessoRecursoService.cliente(clienteId, ua);
+        return documentoFiscalRepository.findByClienteIdOrderByDataImportacaoDesc(clienteId)
                 .stream()
                 .map(DocumentoFiscalResponseDTO::fromEntity)
                 .toList();
     }
 
-    public DocumentoFiscalResponseDTO consultarPorId(Long empresaId, Long documentoId, String username) {
-        return DocumentoFiscalResponseDTO.fromEntity(acessoRecursoService.documento(empresaId, documentoId, username));
+    public DocumentoFiscalResponseDTO consultarPorId(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
+        return DocumentoFiscalResponseDTO.fromEntity(acessoRecursoService.documento(clienteId, documentoId, ua));
     }
 
-    public DocumentoFiscalResponseDTO importar(Long empresaId, MultipartFile arquivo, DocumentoFiscalRequestDTO dto, String username) {
+    public DocumentoFiscalResponseDTO importar(Long clienteId, MultipartFile arquivo, DocumentoFiscalRequestDTO dto, UsuarioAutenticado ua) {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new BusinessRuleException("Arquivo é obrigatório.");
         }
 
-        Empresa empresa = acessoRecursoService.empresa(empresaId, username);
+        Cliente cliente = acessoRecursoService.cliente(clienteId, ua);
         validarArquivo(arquivo);
         validarMetadados(dto);
 
@@ -85,8 +90,8 @@ public class DocumentoFiscalService {
         }
 
         DocumentoFiscal documento = new DocumentoFiscal();
-        documento.setEmpresa(empresa);
-        documento.setUsuario(empresa.getUsuario());
+        documento.setCliente(cliente);
+        documento.setUsuario(usuarioRepository.getReferenceById(ua.id()));
         documento.setTipo(dto.getTipo());
         documento.setEsfera(dto.getEsfera() != null ? dto.getEsfera()
                 : DocumentoFiscalClassificationResolver.classificarEsfera(dto.getTributos()));
@@ -108,8 +113,8 @@ public class DocumentoFiscalService {
         return DocumentoFiscalResponseDTO.fromEntity(documentoFiscalRepository.save(documento));
     }
 
-    public byte[] downloadArquivo(Long empresaId, Long documentoId, String username) {
-        DocumentoFiscal documento = acessoRecursoService.documento(empresaId, documentoId, username);
+    public byte[] downloadArquivo(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
 
         Path path = Paths.get(documento.getCaminhoArquivo());
         if (!Files.exists(path)) {

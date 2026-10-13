@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { updateEmpresa } from '../../api/empresas';
+import { updateCliente } from '../../api/clientes';
 import type { EmpresaAreaOutletContext } from './EmpresaArea';
 import './EmpresaArea.css';
 import { mensagemErro } from '../../api/client';
@@ -107,7 +107,7 @@ export default function EmpresaDados() {
         cnpj: String(form.cnpj ?? '').replace(/\D/g, ''),
         cep: String(form.cep ?? '').replace(/\D/g, ''),
       };
-      await updateEmpresa(empresa.id, payload);
+      await updateCliente(empresa.id, payload);
       setSuccess('Dados atualizados com sucesso!');
       setEditing(false);
       reload();
@@ -210,7 +210,7 @@ export default function EmpresaDados() {
             </div>
             <label className="checkbox-label" style={{ marginBottom: 16 }}>
               <input type="checkbox" name="ativa" checked={form.ativa ?? true} onChange={handleChange} />
-              Empresa ativa
+              Cliente ativa
             </label>
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <button type="button" className="btn-secondary" onClick={cancelEdit}>Cancelar</button>

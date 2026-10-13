@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface DocumentoFiscalRepository extends JpaRepository<DocumentoFiscal, Long> {
-    List<DocumentoFiscal> findByEmpresaIdOrderByDataImportacaoDesc(Long empresaId);
+    List<DocumentoFiscal> findByClienteIdOrderByDataImportacaoDesc(Long clienteId);
 
-    Optional<DocumentoFiscal> findByIdAndEmpresaIdAndEmpresaUsuarioEmail(Long id, Long empresaId, String email);
+    Optional<DocumentoFiscal> findByIdAndClienteIdAndClienteEscritorioId(Long id, Long clienteId, Long escritorioId);
 }

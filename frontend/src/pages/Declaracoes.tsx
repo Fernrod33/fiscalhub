@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getMinhasEmpresas } from '../api/empresas';
+import { getClientes } from '../api/clientes';
 import {
-  getDeclaracoesByEmpresa,
+  getDeclaracoesByCliente,
   createDeclaracao,
   updateDeclaracao,
   deleteDeclaracao,
 } from '../api/declaracoes';
-import type { Empresa, Declaracao, TipoDeclaracao, StatusDeclaracao } from '../types';
+import type { Cliente, Declaracao, TipoDeclaracao, StatusDeclaracao } from '../types';
 import './Dashboard.css';
 import './Declaracoes.css';
 import { mensagemErro } from '../api/client';
@@ -29,7 +29,7 @@ const EMPTY_FORM = {
 
 export default function Declaracoes() {
   const { user } = useAuth();
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresas, setEmpresas] = useState<Cliente[]>([]);
   const [selectedEmpresaId, setSelectedEmpresaId] = useState<number | null>(null);
   const [declaracoes, setDeclaracoes] = useState<Declaracao[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +42,7 @@ export default function Declaracoes() {
 
   useEffect(() => {
     if (!user) return;
-    getMinhasEmpresas()
+    getClientes()
       .then((emps) => {
         setEmpresas(emps);
         if (emps.length > 0) setSelectedEmpresaId(emps[0].id);
@@ -54,7 +54,7 @@ export default function Declaracoes() {
   useEffect(() => {
     if (!selectedEmpresaId) { setDeclaracoes([]); return; }
     setLoading(true);
-    getDeclaracoesByEmpresa(selectedEmpresaId)
+    getDeclaracoesByCliente(selectedEmpresaId)
       .then(setDeclaracoes)
       .catch(() => setDeclaracoes([]))
       .finally(() => setLoading(false));

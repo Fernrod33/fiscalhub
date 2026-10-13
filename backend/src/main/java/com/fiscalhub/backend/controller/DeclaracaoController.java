@@ -6,7 +6,8 @@ import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,22 +23,22 @@ public class DeclaracaoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Declaracao> getDeclaracaoById(@PathVariable Long id, Authentication authentication) {
-        return ResponseEntity.ok(declaracaoService.findById(id, authentication.getName()));
+    public ResponseEntity<Declaracao> getDeclaracaoById(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(declaracaoService.findById(id, ua));
     }
 
-    @GetMapping("/empresa/{empresaId}")
-    public ResponseEntity<List<Declaracao>> getDeclaracoesByEmpresa(@PathVariable Long empresaId,
-                                                                    Authentication authentication) {
-        return ResponseEntity.ok(declaracaoService.findByEmpresaId(empresaId, authentication.getName()));
+    @GetMapping("/cliente/{clienteId}")
+    public ResponseEntity<List<Declaracao>> getDeclaracoesByCliente(@PathVariable Long clienteId,
+                                                                    @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(declaracaoService.findByClienteId(clienteId, ua));
     }
 
     @PostMapping
     @ConsultorOuAdmin
     public ResponseEntity<Declaracao> createDeclaracao(@Valid @RequestBody Declaracao declaracao,
-                                                       @RequestParam Long empresaId,
-                                                       Authentication authentication) {
-        Declaracao created = declaracaoService.create(declaracao, empresaId, authentication.getName());
+                                                       @RequestParam Long clienteId,
+                                                       @AuthenticationPrincipal UsuarioAutenticado ua) {
+        Declaracao created = declaracaoService.create(declaracao, clienteId, ua);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -45,14 +46,14 @@ public class DeclaracaoController {
     @ConsultorOuAdmin
     public ResponseEntity<Declaracao> updateDeclaracao(@PathVariable Long id,
                                                        @Valid @RequestBody Declaracao declaracao,
-                                                       Authentication authentication) {
-        return ResponseEntity.ok(declaracaoService.update(id, declaracao, authentication.getName()));
+                                                       @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(declaracaoService.update(id, declaracao, ua));
     }
 
     @DeleteMapping("/{id}")
     @ConsultorOuAdmin
-    public ResponseEntity<Void> deleteDeclaracao(@PathVariable Long id, Authentication authentication) {
-        declaracaoService.delete(id, authentication.getName());
+    public ResponseEntity<Void> deleteDeclaracao(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        declaracaoService.delete(id, ua);
         return ResponseEntity.noContent().build();
     }
 }

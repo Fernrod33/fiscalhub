@@ -191,8 +191,8 @@ public class CalculadoraReceitaFederalService implements CalculoParcelamentoStra
         result.setOrgao(OrgaoReceita.RECEITA_FEDERAL);
         result.setModalidade(request.getModalidade());
         result.setTributo(declaracao.getTributo());
-        result.setEmpresaRazaoSocial(declaracao.getEmpresa().getRazaoSocial());
-        result.setEmpresaCnpj(declaracao.getEmpresa().getCnpj());
+        result.setClienteRazaoSocial(declaracao.getCliente().getRazaoSocial());
+        result.setClienteCnpj(declaracao.getCliente().getCnpj());
         result.setValorOriginal(valorOriginal);
         result.setDataVencimentoOriginal(dataVencimento);
         result.setDataCalculo(dataCalculo);

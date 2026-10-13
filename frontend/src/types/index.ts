@@ -11,7 +11,7 @@ export interface Usuario {
   dataCriacao: string;
 }
 
-export interface Empresa {
+export interface Cliente {
   id: number;
   razaoSocial: string;
   nomeFantasia: string;
@@ -78,7 +78,7 @@ export type TributoTipo = 'IRPJ' | 'CSLL' | 'PIS' | 'COFINS' | 'IPI' | 'ICMS' | 
 
 export interface DocumentoFiscal {
   id: number;
-  empresaId: number;
+  clienteId: number;
   usuarioId: number;
   tipo: DocumentoTipo;
   esfera: DocumentoEsfera;

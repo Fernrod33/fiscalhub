@@ -10,17 +10,17 @@ import java.util.Optional;
 
 public interface DeclaracaoRepository extends JpaRepository<Declaracao, Long> {
 
-    List<Declaracao> findByEmpresaId(Long empresaId);
+    List<Declaracao> findByClienteId(Long clienteId);
 
-    Optional<Declaracao> findByIdAndUsuarioEmail(Long id, String email);
+    Optional<Declaracao> findByIdAndClienteEscritorioId(Long id, Long escritorioId);
 
     @Query("SELECT CASE WHEN COUNT(d) > 0 THEN true ELSE false END " +
-           "FROM Declaracao d WHERE d.empresa.id = :empresaId " +
+           "FROM Declaracao d WHERE d.cliente.id = :clienteId " +
            "AND d.tipo = :tipo " +
            "AND d.periodoInicio = :periodoInicio " +
            "AND d.periodoFim = :periodoFim")
-    boolean existsByEmpresaAndTipoAndPeriodo(
-            @Param("empresaId") Long empresaId,
+    boolean existsByClienteAndTipoAndPeriodo(
+            @Param("clienteId") Long clienteId,
             @Param("tipo") String tipo,
             @Param("periodoInicio") LocalDate periodoInicio,
             @Param("periodoFim") LocalDate periodoFim);

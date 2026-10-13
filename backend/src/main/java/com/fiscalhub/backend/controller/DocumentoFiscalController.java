@@ -8,14 +8,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/empresas/{empresaId}/documentos")
+@RequestMapping("/api/clientes/{clienteId}/documentos")
 public class DocumentoFiscalController {
 
     private final DocumentoFiscalService documentoFiscalService;
@@ -26,33 +27,33 @@ public class DocumentoFiscalController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentoFiscalResponseDTO> importarDocumento(
-            @PathVariable Long empresaId,
+            @PathVariable Long clienteId,
             @RequestPart("arquivo") MultipartFile arquivo,
             @RequestPart("documento") @Valid DocumentoFiscalRequestDTO documento,
-            Authentication authentication) {
-        DocumentoFiscalResponseDTO saved = documentoFiscalService.importar(empresaId, arquivo, documento, authentication.getName());
+            @AuthenticationPrincipal UsuarioAutenticado ua) {
+        DocumentoFiscalResponseDTO saved = documentoFiscalService.importar(clienteId, arquivo, documento, ua);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @GetMapping
-    public ResponseEntity<List<DocumentoFiscalResponseDTO>> listarDocumentos(@PathVariable Long empresaId,
-                                                                          Authentication authentication) {
-        return ResponseEntity.ok(documentoFiscalService.listarPorEmpresa(empresaId, authentication.getName()));
+    public ResponseEntity<List<DocumentoFiscalResponseDTO>> listarDocumentos(@PathVariable Long clienteId,
+                                                                          @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(documentoFiscalService.listarPorCliente(clienteId, ua));
     }
 
     @GetMapping("/{documentoId}")
-    public ResponseEntity<DocumentoFiscalResponseDTO> consultarDocumento(@PathVariable Long empresaId,
+    public ResponseEntity<DocumentoFiscalResponseDTO> consultarDocumento(@PathVariable Long clienteId,
                                                                        @PathVariable Long documentoId,
-                                                                       Authentication authentication) {
-        return ResponseEntity.ok(documentoFiscalService.consultarPorId(empresaId, documentoId, authentication.getName()));
+                                                                       @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.ok(documentoFiscalService.consultarPorId(clienteId, documentoId, ua));
     }
 
     @GetMapping("/{documentoId}/arquivo")
-    public ResponseEntity<byte[]> downloadArquivo(@PathVariable Long empresaId,
+    public ResponseEntity<byte[]> downloadArquivo(@PathVariable Long clienteId,
                                                 @PathVariable Long documentoId,
-                                                Authentication authentication) {
-        DocumentoFiscalResponseDTO documento = documentoFiscalService.consultarPorId(empresaId, documentoId, authentication.getName());
-        byte[] bytes = documentoFiscalService.downloadArquivo(empresaId, documentoId, authentication.getName());
+                                                @AuthenticationPrincipal UsuarioAutenticado ua) {
+        DocumentoFiscalResponseDTO documento = documentoFiscalService.consultarPorId(clienteId, documentoId, ua);
+        byte[] bytes = documentoFiscalService.downloadArquivo(clienteId, documentoId, ua);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType(documento.getMimeType() != null ? documento.getMimeType() : "application/octet-stream"));

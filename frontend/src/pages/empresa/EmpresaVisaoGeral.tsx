@@ -10,7 +10,7 @@ export default function EmpresaVisaoGeral() {
   return (
     <div>
       <div className="empresa-section">
-        <h2>Dados da Empresa</h2>
+        <h2>Dados da Cliente</h2>
         <div className="info-grid">
           <div className="info-field">
             <label>Razão Social</label>
