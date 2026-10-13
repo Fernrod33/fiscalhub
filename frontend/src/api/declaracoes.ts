@@ -12,12 +12,11 @@ export async function getDeclaracao(id: number): Promise<Declaracao> {
 }
 
 export async function createDeclaracao(
-  usuarioId: number,
   empresaId: number,
   data: Omit<Declaracao, 'id' | 'dataCriacao' | 'dataAtualizacao'>
 ): Promise<Declaracao> {
   const res = await client.post<Declaracao>(
-    `/api/declaracoes?usuarioId=${usuarioId}&empresaId=${empresaId}`,
+    `/api/declaracoes?empresaId=${empresaId}`,
     data
   );
   return res.data;

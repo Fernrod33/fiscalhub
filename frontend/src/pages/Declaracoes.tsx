@@ -112,7 +112,7 @@ export default function Declaracoes() {
         setDeclaracoes((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
         setSuccessMsg('Declaração atualizada!');
       } else {
-        const created = await createDeclaracao(user.id, selectedEmpresaId, payload as Omit<Declaracao, 'id' | 'dataCriacao' | 'dataAtualizacao'>);
+        const created = await createDeclaracao(selectedEmpresaId, payload as Omit<Declaracao, 'id' | 'dataCriacao' | 'dataAtualizacao'>);
         setDeclaracoes((prev) => [created, ...prev]);
         setSuccessMsg('Declaração criada com sucesso!');
       }

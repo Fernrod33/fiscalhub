@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
-    Optional<Empresa> findByCnpj(String cnpj);
     List<Empresa> findByUsuarioId(Long usuarioId);
+    Optional<Empresa> findByIdAndUsuarioEmail(Long id, String email);
     Boolean existsByCnpjAndUsuarioId(String cnpj, Long usuarioId);
 }

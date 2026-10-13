@@ -6,8 +6,6 @@ import com.fiscalhub.backend.entity.Empresa;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
-import com.fiscalhub.backend.exception.ForbiddenException;
-import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.EmpresaRepository;
 import com.fiscalhub.backend.util.CnpjValidationUtils;
 import org.springframework.stereotype.Service;
@@ -22,16 +20,13 @@ public class EmpresaService {
 
     private final EmpresaRepository empresaRepository;
     private final UsuarioService usuarioService;
+    private final AcessoRecursoService acessoRecursoService;
 
-    public EmpresaService(EmpresaRepository empresaRepository, UsuarioService usuarioService) {
+    public EmpresaService(EmpresaRepository empresaRepository, UsuarioService usuarioService,
+                          AcessoRecursoService acessoRecursoService) {
         this.empresaRepository = empresaRepository;
         this.usuarioService = usuarioService;
-    }
-
-    /** Used internally by other services that need the Empresa entity. */
-    public Empresa findById(Long id) {
-        return empresaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com a ID: " + id));
+        this.acessoRecursoService = acessoRecursoService;
     }
 
     public List<EmpresaResponseDTO> findAllByOwner(String username) {
@@ -43,10 +38,7 @@ public class EmpresaService {
     }
 
     public EmpresaResponseDTO findByIdAndOwner(Long id, String username) {
-        Empresa empresa = empresaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com a ID: " + id));
-        checkOwnership(empresa, username);
-        return EmpresaResponseDTO.fromEntity(empresa);
+        return EmpresaResponseDTO.fromEntity(acessoRecursoService.empresa(id, username));
     }
 
     public EmpresaResponseDTO create(EmpresaRequestDTO dto, String username) {
@@ -63,24 +55,13 @@ public class EmpresaService {
 
     public EmpresaResponseDTO update(Long id, EmpresaRequestDTO dto, String username) {
         validarCamposEmpresa(dto);
-        Empresa empresa = empresaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com a ID: " + id));
-        checkOwnership(empresa, username);
+        Empresa empresa = acessoRecursoService.empresa(id, username);
         mapDtoToEntity(dto, empresa);
         return EmpresaResponseDTO.fromEntity(empresaRepository.save(empresa));
     }
 
     public void delete(Long id, String username) {
-        Empresa empresa = empresaRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Empresa não encontrada com a ID: " + id));
-        checkOwnership(empresa, username);
-        empresaRepository.delete(empresa);
-    }
-
-    private void checkOwnership(Empresa empresa, String username) {
-        if (!empresa.getUsuario().getEmail().equals(username)) {
-            throw new ForbiddenException("Acesso negado: você não possui acesso a esta empresa.");
-        }
+        empresaRepository.delete(acessoRecursoService.empresa(id, username));
     }
 
     private void validarCamposEmpresa(EmpresaRequestDTO dto) {

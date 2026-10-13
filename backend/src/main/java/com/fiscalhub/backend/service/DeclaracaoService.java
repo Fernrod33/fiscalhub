@@ -2,10 +2,7 @@ package com.fiscalhub.backend.service;
 
 import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.Empresa;
-import com.fiscalhub.backend.entity.Usuario;
-import com.fiscalhub.backend.entity.enums.StatusDeclaracao;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
-import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.DeclaracaoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,43 +14,27 @@ import java.util.List;
 public class DeclaracaoService {
 
     private final DeclaracaoRepository declaracaoRepository;
-    private final UsuarioService usuarioService;
-    private final EmpresaService empresaService;
+    private final AcessoRecursoService acessoRecursoService;
 
     public DeclaracaoService(DeclaracaoRepository declaracaoRepository,
-                             UsuarioService usuarioService,
-                             EmpresaService empresaService) {
+                             AcessoRecursoService acessoRecursoService) {
         this.declaracaoRepository = declaracaoRepository;
-        this.usuarioService = usuarioService;
-        this.empresaService = empresaService;
+        this.acessoRecursoService = acessoRecursoService;
     }
 
-    public List<Declaracao> findAll() {
-        return declaracaoRepository.findAll();
+    public Declaracao findById(Long id, String username) {
+        return acessoRecursoService.declaracao(id, username);
     }
 
-    public Declaracao findById(Long id) {
-        return declaracaoRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Declaração não encontrada com id: " + id));
-    }
-
-    public List<Declaracao> findByUsuarioId(Long usuarioId) {
-        return declaracaoRepository.findByUsuarioId(usuarioId);
-    }
-
-    public List<Declaracao> findByEmpresaId(Long empresaId) {
+    public List<Declaracao> findByEmpresaId(Long empresaId, String username) {
+        acessoRecursoService.empresa(empresaId, username);
         return declaracaoRepository.findByEmpresaId(empresaId);
     }
 
-    public List<Declaracao> findByStatus(StatusDeclaracao status) {
-        return declaracaoRepository.findByStatus(status);
-    }
+    public Declaracao create(Declaracao declaracao, Long empresaId, String username) {
+        Empresa empresa = acessoRecursoService.empresa(empresaId, username);
 
-    public Declaracao create(Declaracao declaracao, Long usuarioId, Long empresaId) {
-        Usuario usuario = usuarioService.findById(usuarioId);
-        Empresa empresa = empresaService.findById(empresaId);
-
-        declaracao.setUsuario(usuario);
+        declaracao.setUsuario(empresa.getUsuario());
         declaracao.setEmpresa(empresa);
 
         boolean exists = declaracaoRepository.existsByEmpresaAndTipoAndPeriodo(
@@ -70,8 +51,8 @@ public class DeclaracaoService {
         return declaracaoRepository.save(declaracao);
     }
 
-    public Declaracao update(Long id, Declaracao declaracaoDetails) {
-        Declaracao declaracao = findById(id);
+    public Declaracao update(Long id, Declaracao declaracaoDetails, String username) {
+        Declaracao declaracao = acessoRecursoService.declaracao(id, username);
 
         declaracao.setTipo(declaracaoDetails.getTipo());
         declaracao.setTributo(declaracaoDetails.getTributo());
@@ -87,8 +68,7 @@ public class DeclaracaoService {
         return declaracaoRepository.save(declaracao);
     }
 
-    public void delete(Long id) {
-        Declaracao declaracao = findById(id);
-        declaracaoRepository.delete(declaracao);
+    public void delete(Long id, String username) {
+        declaracaoRepository.delete(acessoRecursoService.declaracao(id, username));
     }
 }

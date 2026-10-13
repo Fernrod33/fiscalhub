@@ -1,15 +1,16 @@
 package com.fiscalhub.backend.controller;
 
-import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.dto.UsuarioResponseDTO;
+import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
 import com.fiscalhub.backend.service.UsuarioService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 
+/** Cada usuário só enxerga e altera o próprio cadastro. */
 @RestController
-@RequestMapping("/api/usuarios")
+@RequestMapping("/api/usuarios/me")
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
@@ -19,38 +20,19 @@ public class UsuarioController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Usuario>> getAllUsuarios() {
-        List<Usuario> usuarios = usuarioService.findAll();
-        return ResponseEntity.ok(usuarios);
+    public ResponseEntity<UsuarioResponseDTO> getMe(Authentication authentication) {
+        return ResponseEntity.ok(UsuarioResponseDTO.fromEntity(usuarioService.findByEmail(authentication.getName())));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Usuario> getUsuarioById(@PathVariable Long id) {
-        Usuario usuario = usuarioService.findById(id);
-        return ResponseEntity.ok(usuario);
+    @PutMapping
+    public ResponseEntity<UsuarioResponseDTO> updateMe(@Valid @RequestBody UsuarioUpdateDTO dto,
+                                                       Authentication authentication) {
+        return ResponseEntity.ok(UsuarioResponseDTO.fromEntity(usuarioService.update(authentication.getName(), dto)));
     }
 
-    @GetMapping("/email/{email}")
-    public ResponseEntity<Usuario> getUsuarioByEmail(@PathVariable String email) {
-        Usuario usuario = usuarioService.findByEmail(email);
-        return ResponseEntity.ok(usuario);
-    }
-
-    @PostMapping
-    public ResponseEntity<Usuario> createUsuario(@Valid @RequestBody Usuario usuario) {
-        Usuario createdUsuario = usuarioService.create(usuario);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUsuario);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Usuario> updateUsuario(@PathVariable Long id, @Valid @RequestBody Usuario usuario) {
-        Usuario updatedUsuario = usuarioService.update(id, usuario);
-        return ResponseEntity.ok(updatedUsuario);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUsuario(@PathVariable Long id) {
-        usuarioService.delete(id);
+    @DeleteMapping
+    public ResponseEntity<Void> deleteMe(Authentication authentication) {
+        usuarioService.delete(authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }

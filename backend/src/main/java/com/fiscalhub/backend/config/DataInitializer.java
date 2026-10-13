@@ -1,12 +1,10 @@
 package com.fiscalhub.backend.config;
 
 import com.fiscalhub.backend.entity.IndiceMonetario;
-import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
-import com.fiscalhub.backend.repository.UsuarioRepository;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -14,46 +12,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Inicializa a base de índices monetários (SELIC e UFPR) ao subir a aplicação.
- * Só insere registros que ainda não existem no banco.
+ * Carga de índices monetários (SELIC e UFPR) para DESENVOLVIMENTO (perfil dev).
+ * Só insere registros que ainda não existem no banco. Valores aproximados: não usar em produção.
  *
  * Fontes:
  * - SELIC: Banco Central do Brasil (https://www.bcb.gov.br)
  * - UFPR: SEFA-PR / Portal da Transparência do Paraná
  */
 @Component
+@Profile("dev")
 public class DataInitializer implements CommandLineRunner {
 
     private final IndiceMonetarioRepository indiceMonetarioRepository;
-    private final UsuarioRepository usuarioRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public DataInitializer(
-            IndiceMonetarioRepository indiceMonetarioRepository,
-            UsuarioRepository usuarioRepository,
-            PasswordEncoder passwordEncoder) {
+    public DataInitializer(IndiceMonetarioRepository indiceMonetarioRepository) {
         this.indiceMonetarioRepository = indiceMonetarioRepository;
-        this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
     public void run(String... args) {
-        seedUsuarioAdmin();
         seedSelic();
         seedUfpr();
-    }
-
-    private void seedUsuarioAdmin() {
-        if (usuarioRepository.existsByEmail("admin@fiscalhub.com")) {
-            return;
-        }
-        Usuario admin = new Usuario();
-        admin.setNome("Administrador");
-        admin.setEmail("admin@fiscalhub.com");
-        admin.setSenha(passwordEncoder.encode("Admin@123"));
-        admin.setAtivo(true);
-        usuarioRepository.save(admin);
     }
 
     // ------------------------------------------------------------------

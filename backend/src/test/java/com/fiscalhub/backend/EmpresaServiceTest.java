@@ -6,9 +6,9 @@ import com.fiscalhub.backend.entity.Empresa;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
-import com.fiscalhub.backend.exception.ForbiddenException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.EmpresaRepository;
+import com.fiscalhub.backend.service.AcessoRecursoService;
 import com.fiscalhub.backend.service.EmpresaService;
 import com.fiscalhub.backend.service.UsuarioService;
 import com.fiscalhub.backend.util.CnpjValidationUtils;
@@ -20,7 +20,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -33,6 +32,9 @@ class EmpresaServiceTest {
 
     @Mock
     private UsuarioService usuarioService;
+
+    @Mock
+    private AcessoRecursoService acessoRecursoService;
 
     @InjectMocks
     private EmpresaService empresaService;
@@ -72,7 +74,7 @@ class EmpresaServiceTest {
 
     @Test
     void findByIdAndOwner_retornaEmpresaDoProprioUsuario() {
-        when(empresaRepository.findById(10L)).thenReturn(Optional.of(empresaA));
+        when(acessoRecursoService.empresa(10L, "usuario-a@test.com")).thenReturn(empresaA);
 
         EmpresaResponseDTO dto = empresaService.findByIdAndOwner(10L, "usuario-a@test.com");
 
@@ -80,18 +82,11 @@ class EmpresaServiceTest {
     }
 
     @Test
-    void findByIdAndOwner_lancaForbiddenParaOutroUsuario() {
-        when(empresaRepository.findById(10L)).thenReturn(Optional.of(empresaA));
+    void findByIdAndOwner_propagaNotFoundDoControleDeAcesso() {
+        when(acessoRecursoService.empresa(10L, "usuario-b@test.com"))
+                .thenThrow(new ResourceNotFoundException("Empresa não encontrado(a) com a ID: 10"));
 
         assertThatThrownBy(() -> empresaService.findByIdAndOwner(10L, "usuario-b@test.com"))
-                .isInstanceOf(ForbiddenException.class);
-    }
-
-    @Test
-    void findByIdAndOwner_lancaNotFoundParaEmpresaInexistente() {
-        when(empresaRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> empresaService.findByIdAndOwner(99L, "usuario-a@test.com"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
@@ -159,7 +154,7 @@ class EmpresaServiceTest {
     void update_atualizaEmpresaDoProprioUsuario() {
         EmpresaRequestDTO dto = buildRequestDTO("12345678000195");
         dto.setRazaoSocial("Empresa A Atualizada");
-        when(empresaRepository.findById(10L)).thenReturn(Optional.of(empresaA));
+        when(acessoRecursoService.empresa(10L, "usuario-a@test.com")).thenReturn(empresaA);
         when(empresaRepository.save(any(Empresa.class))).thenAnswer(inv -> inv.getArgument(0));
 
         EmpresaResponseDTO result = empresaService.update(10L, dto, "usuario-a@test.com");
@@ -168,30 +163,12 @@ class EmpresaServiceTest {
     }
 
     @Test
-    void update_lancaForbiddenParaOutroUsuario() {
-        EmpresaRequestDTO dto = buildRequestDTO("12345678000195");
-        when(empresaRepository.findById(10L)).thenReturn(Optional.of(empresaA));
-
-        assertThatThrownBy(() -> empresaService.update(10L, dto, "usuario-b@test.com"))
-                .isInstanceOf(ForbiddenException.class);
-    }
-
-    @Test
     void delete_removeEmpresaDoProprioUsuario() {
-        when(empresaRepository.findById(10L)).thenReturn(Optional.of(empresaA));
+        when(acessoRecursoService.empresa(10L, "usuario-a@test.com")).thenReturn(empresaA);
 
         empresaService.delete(10L, "usuario-a@test.com");
 
         verify(empresaRepository).delete(empresaA);
-    }
-
-    @Test
-    void delete_lancaForbiddenParaOutroUsuario() {
-        when(empresaRepository.findById(10L)).thenReturn(Optional.of(empresaA));
-
-        assertThatThrownBy(() -> empresaService.delete(10L, "usuario-b@test.com"))
-                .isInstanceOf(ForbiddenException.class);
-        verify(empresaRepository, never()).delete(any());
     }
 
     private EmpresaRequestDTO buildRequestDTO(String cnpj) {

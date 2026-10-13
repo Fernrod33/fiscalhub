@@ -1,11 +1,11 @@
 package com.fiscalhub.backend.controller;
 
 import com.fiscalhub.backend.entity.Declaracao;
-import com.fiscalhub.backend.entity.enums.StatusDeclaracao;
 import com.fiscalhub.backend.service.DeclaracaoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,48 +20,35 @@ public class DeclaracaoController {
         this.declaracaoService = declaracaoService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<Declaracao>> getAllDeclaracoes() {
-        return ResponseEntity.ok(declaracaoService.findAll());
-    }
-
     @GetMapping("/{id}")
-    public ResponseEntity<Declaracao> getDeclaracaoById(@PathVariable Long id) {
-        return ResponseEntity.ok(declaracaoService.findById(id));
-    }
-
-    @GetMapping("/usuario/{usuarioId}")
-    public ResponseEntity<List<Declaracao>> getDeclaracoesByUsuario(@PathVariable Long usuarioId) {
-        return ResponseEntity.ok(declaracaoService.findByUsuarioId(usuarioId));
+    public ResponseEntity<Declaracao> getDeclaracaoById(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(declaracaoService.findById(id, authentication.getName()));
     }
 
     @GetMapping("/empresa/{empresaId}")
-    public ResponseEntity<List<Declaracao>> getDeclaracoesByEmpresa(@PathVariable Long empresaId) {
-        return ResponseEntity.ok(declaracaoService.findByEmpresaId(empresaId));
-    }
-
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<Declaracao>> getDeclaracoesByStatus(@PathVariable StatusDeclaracao status) {
-        return ResponseEntity.ok(declaracaoService.findByStatus(status));
+    public ResponseEntity<List<Declaracao>> getDeclaracoesByEmpresa(@PathVariable Long empresaId,
+                                                                    Authentication authentication) {
+        return ResponseEntity.ok(declaracaoService.findByEmpresaId(empresaId, authentication.getName()));
     }
 
     @PostMapping
     public ResponseEntity<Declaracao> createDeclaracao(@Valid @RequestBody Declaracao declaracao,
-                                                        @RequestParam Long usuarioId,
-                                                        @RequestParam Long empresaId) {
-        Declaracao created = declaracaoService.create(declaracao, usuarioId, empresaId);
+                                                       @RequestParam Long empresaId,
+                                                       Authentication authentication) {
+        Declaracao created = declaracaoService.create(declaracao, empresaId, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Declaracao> updateDeclaracao(@PathVariable Long id,
-                                                        @Valid @RequestBody Declaracao declaracao) {
-        return ResponseEntity.ok(declaracaoService.update(id, declaracao));
+                                                       @Valid @RequestBody Declaracao declaracao,
+                                                       Authentication authentication) {
+        return ResponseEntity.ok(declaracaoService.update(id, declaracao, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteDeclaracao(@PathVariable Long id) {
-        declaracaoService.delete(id);
+    public ResponseEntity<Void> deleteDeclaracao(@PathVariable Long id, Authentication authentication) {
+        declaracaoService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }

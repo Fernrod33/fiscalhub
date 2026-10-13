@@ -9,7 +9,6 @@ import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.ParcelaSimulacao;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.exception.BusinessRuleException;
-import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.service.calculo.CalculoParcelamentoStrategy;
 import org.springframework.stereotype.Service;
@@ -23,17 +22,17 @@ import java.util.List;
 public class SimulacaoParcelamentoService {
 
     private final SimulacaoParcelamentoRepository simulacaoParcelamentoRepository;
-    private final DeclaracaoService declaracaoService;
+    private final AcessoRecursoService acessoRecursoService;
     private final List<CalculoParcelamentoStrategy> strategies;
     private final ObjectMapper objectMapper;
 
     public SimulacaoParcelamentoService(
             SimulacaoParcelamentoRepository simulacaoParcelamentoRepository,
-            DeclaracaoService declaracaoService,
+            AcessoRecursoService acessoRecursoService,
             List<CalculoParcelamentoStrategy> strategies,
             ObjectMapper objectMapper) {
         this.simulacaoParcelamentoRepository = simulacaoParcelamentoRepository;
-        this.declaracaoService = declaracaoService;
+        this.acessoRecursoService = acessoRecursoService;
         this.strategies = strategies;
         this.objectMapper = objectMapper;
     }
@@ -42,22 +41,13 @@ public class SimulacaoParcelamentoService {
     // Consultas
     // ---------------------------------------------------------------
 
-    public List<SimulacaoParcelamento> findAll() {
-        return simulacaoParcelamentoRepository.findAll();
+    public SimulacaoParcelamento findById(Long id, String username) {
+        return acessoRecursoService.simulacao(id, username);
     }
 
-    public SimulacaoParcelamento findById(Long id) {
-        return simulacaoParcelamentoRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Simulação de parcelamento não encontrada com a ID: " + id));
-    }
-
-    public List<SimulacaoParcelamento> findByDeclaracaoId(Long declaracaoId) {
+    public List<SimulacaoParcelamento> findByDeclaracaoId(Long declaracaoId, String username) {
+        acessoRecursoService.declaracao(declaracaoId, username);
         return simulacaoParcelamentoRepository.findByDeclaracaoId(declaracaoId);
-    }
-
-    public List<SimulacaoParcelamento> findByAprovada(Boolean aprovada) {
-        return simulacaoParcelamentoRepository.findByAprovada(aprovada);
     }
 
     // ---------------------------------------------------------------
@@ -68,8 +58,8 @@ public class SimulacaoParcelamentoService {
      * Executa o cálculo de parcelamento sem persistir — apenas retorna o resultado.
      */
     @Transactional(readOnly = true)
-    public SimulacaoResultDTO calcular(SimulacaoRequestDTO request) {
-        Declaracao declaracao = declaracaoService.findById(request.getDeclaracaoId());
+    public SimulacaoResultDTO calcular(SimulacaoRequestDTO request, String username) {
+        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), username);
         CalculoParcelamentoStrategy strategy = resolverStrategy(request);
         return strategy.calcular(declaracao, request);
     }
@@ -77,8 +67,8 @@ public class SimulacaoParcelamentoService {
     /**
      * Executa o cálculo e persiste a simulação (incluindo parcelas) no banco.
      */
-    public SimulacaoResultDTO calcularESalvar(SimulacaoRequestDTO request) {
-        Declaracao declaracao = declaracaoService.findById(request.getDeclaracaoId());
+    public SimulacaoResultDTO calcularESalvar(SimulacaoRequestDTO request, String username) {
+        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), username);
         CalculoParcelamentoStrategy strategy = resolverStrategy(request);
         SimulacaoResultDTO result = strategy.calcular(declaracao, request);
 
@@ -92,15 +82,14 @@ public class SimulacaoParcelamentoService {
     /**
      * Aprova uma simulação salva, alterando sua flag aprovada para true.
      */
-    public SimulacaoParcelamento aprovar(Long id) {
-        SimulacaoParcelamento simulacao = findById(id);
+    public SimulacaoParcelamento aprovar(Long id, String username) {
+        SimulacaoParcelamento simulacao = acessoRecursoService.simulacao(id, username);
         simulacao.setAprovada(true);
         return simulacaoParcelamentoRepository.save(simulacao);
     }
 
-    public void delete(Long id) {
-        SimulacaoParcelamento simulacao = findById(id);
-        simulacaoParcelamentoRepository.delete(simulacao);
+    public void delete(Long id, String username) {
+        simulacaoParcelamentoRepository.delete(acessoRecursoService.simulacao(id, username));
     }
 
     // ---------------------------------------------------------------

@@ -1,3 +1,4 @@
+/** Resposta de GET /api/usuarios/me (nunca inclui senha). */
 export interface Usuario {
   id: number;
   nome: string;
@@ -6,7 +7,6 @@ export interface Usuario {
   telefone: string;
   ativo: boolean;
   dataCriacao: string;
-  dataAtualizacao: string;
 }
 
 export interface Empresa {

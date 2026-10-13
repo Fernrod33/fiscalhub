@@ -7,6 +7,7 @@ import com.fiscalhub.backend.service.SimulacaoParcelamentoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -24,24 +25,15 @@ public class SimulacaoParcelamentoController {
     // Leitura de simulações salvas
     // ---------------------------------------------------------------
 
-    @GetMapping
-    public ResponseEntity<List<SimulacaoParcelamento>> getAllSimulacoes() {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findAll());
-    }
-
     @GetMapping("/{id}")
-    public ResponseEntity<SimulacaoParcelamento> getSimulacaoById(@PathVariable Long id) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findById(id));
+    public ResponseEntity<SimulacaoParcelamento> getSimulacaoById(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.findById(id, authentication.getName()));
     }
 
     @GetMapping("/declaracao/{declaracaoId}")
-    public ResponseEntity<List<SimulacaoParcelamento>> getByDeclaracao(@PathVariable Long declaracaoId) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findByDeclaracaoId(declaracaoId));
-    }
-
-    @GetMapping("/aprovadas/{aprovada}")
-    public ResponseEntity<List<SimulacaoParcelamento>> getByAprovada(@PathVariable Boolean aprovada) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findByAprovada(aprovada));
+    public ResponseEntity<List<SimulacaoParcelamento>> getByDeclaracao(@PathVariable Long declaracaoId,
+                                                                       Authentication authentication) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.findByDeclaracaoId(declaracaoId, authentication.getName()));
     }
 
     // ---------------------------------------------------------------
@@ -55,9 +47,9 @@ public class SimulacaoParcelamentoController {
      * POST /api/simulacoes/calcular
      */
     @PostMapping("/calcular")
-    public ResponseEntity<SimulacaoResultDTO> calcular(@Valid @RequestBody SimulacaoRequestDTO request) {
-        SimulacaoResultDTO result = simulacaoParcelamentoService.calcular(request);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<SimulacaoResultDTO> calcular(@Valid @RequestBody SimulacaoRequestDTO request,
+                                                       Authentication authentication) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.calcular(request, authentication.getName()));
     }
 
     /**
@@ -66,8 +58,9 @@ public class SimulacaoParcelamentoController {
      * POST /api/simulacoes/calcular/salvar
      */
     @PostMapping("/calcular/salvar")
-    public ResponseEntity<SimulacaoResultDTO> calcularESalvar(@Valid @RequestBody SimulacaoRequestDTO request) {
-        SimulacaoResultDTO result = simulacaoParcelamentoService.calcularESalvar(request);
+    public ResponseEntity<SimulacaoResultDTO> calcularESalvar(@Valid @RequestBody SimulacaoRequestDTO request,
+                                                              Authentication authentication) {
+        SimulacaoResultDTO result = simulacaoParcelamentoService.calcularESalvar(request, authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
@@ -81,13 +74,13 @@ public class SimulacaoParcelamentoController {
      * PATCH /api/simulacoes/{id}/aprovar
      */
     @PatchMapping("/{id}/aprovar")
-    public ResponseEntity<SimulacaoParcelamento> aprovar(@PathVariable Long id) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.aprovar(id));
+    public ResponseEntity<SimulacaoParcelamento> aprovar(@PathVariable Long id, Authentication authentication) {
+        return ResponseEntity.ok(simulacaoParcelamentoService.aprovar(id, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteSimulacao(@PathVariable Long id) {
-        simulacaoParcelamentoService.delete(id);
+    public ResponseEntity<Void> deleteSimulacao(@PathVariable Long id, Authentication authentication) {
+        simulacaoParcelamentoService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }
