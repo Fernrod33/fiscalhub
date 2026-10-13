@@ -34,6 +34,7 @@ public class DeclaracaoService {
     public Declaracao create(Declaracao declaracao, Long empresaId, String username) {
         Empresa empresa = acessoRecursoService.empresa(empresaId, username);
 
+        declaracao.setId(null); // id vindo do corpo faria o save() virar merge sobre registro alheio
         declaracao.setUsuario(empresa.getUsuario());
         declaracao.setEmpresa(empresa);
 

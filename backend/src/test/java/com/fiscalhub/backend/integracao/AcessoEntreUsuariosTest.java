@@ -80,7 +80,7 @@ class AcessoEntreUsuariosTest {
     void setUp() {
         usuarioA = usuario("a@test.com");
         Usuario usuarioB = usuario("b@test.com");
-        empresaB = empresa(usuarioB);
+        empresaB = empresa(usuarioB, "11222333000181");
         declaracaoB = declaracao(empresaB);
         simulacaoB = simulacao(declaracaoB);
         documentoB = documento(empresaB);
@@ -102,6 +102,22 @@ class AcessoEntreUsuariosTest {
         assertThat(simulacaoRepository.findById(simulacaoB.getId())).get()
                 .extracting(SimulacaoParcelamento::getAprovada).isEqualTo(false);
         assertThat(documentoRepository.findById(documentoB.getId())).isPresent();
+    }
+
+    /** "id" no corpo do POST não pode transformar a criação em update de um registro de outro usuário. */
+    @Test
+    void criarDeclaracaoComIdDeOutroUsuarioNaoSobrescreveORegistroDele() throws Exception {
+        Empresa empresaA = empresa(usuarioA, "12345678000195");
+        String corpo = DECLARACAO_JSON.replace("{", "{\"id\":" + declaracaoB.getId() + ",");
+
+        mvc.perform(post("/api/declaracoes").param("empresaId", empresaA.getId().toString())
+                        .header(AUTHORIZATION, tokenA).contentType(APPLICATION_JSON).content(corpo))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(declaracaoB.getId().intValue())));
+
+        Declaracao intacta = declaracaoRepository.findById(declaracaoB.getId()).orElseThrow();
+        assertThat(intacta.getEmpresa().getId()).isEqualTo(empresaB.getId());
+        assertThat(intacta.getValorTotal()).isEqualByComparingTo("1000.00");
     }
 
     /** Controle positivo: os mesmos recursos existem e o dono os enxerga, então o 404 acima é do controle de acesso. */
@@ -180,10 +196,10 @@ class AcessoEntreUsuariosTest {
         return usuarioRepository.save(u);
     }
 
-    private Empresa empresa(Usuario dono) {
+    private Empresa empresa(Usuario dono, String cnpj) {
         Empresa e = new Empresa();
         e.setRazaoSocial("Empresa de " + dono.getEmail());
-        e.setCnpj("11222333000181");
+        e.setCnpj(cnpj);
         e.setUsuario(dono);
         return empresaRepository.save(e);
     }
