@@ -1,18 +1,21 @@
 package com.fiscalhub.backend.security;
 
-import io.jsonwebtoken.*;
+import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.entity.enums.Papel;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Optional;
 
 @Component
 public class JwtUtils {
@@ -28,35 +31,28 @@ public class JwtUtils {
         this.jwtExpirationMs = jwtExpirationMs;
     }
 
-    public String generateJwtToken(Authentication authentication) {
-        return generateTokenFromUsername(((UserDetails) authentication.getPrincipal()).getUsername());
-    }
-
-    public String generateTokenFromUsername(String username) {
+    public String gerarToken(Usuario usuario) {
+        Date agora = new Date();
         return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
+                .setSubject(usuario.getEmail())
+                .claim("uid", usuario.getId())
+                .claim("escritorioId", usuario.getEscritorio().getId())
+                .claim("papel", usuario.getPapel().name())
+                .setIssuedAt(agora)
+                .setExpiration(new Date(agora.getTime() + jwtExpirationMs))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String getUserNameFromJwtToken(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(signingKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
-    }
-
-    public boolean validateJwtToken(String authToken) {
+    /** Token válido => usuário das claims; inválido, expirado ou sem as claims => vazio. */
+    public Optional<UsuarioAutenticado> autenticar(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(authToken);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
+            Claims c = Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
+            return Optional.of(new UsuarioAutenticado(c.get("uid", Long.class), c.getSubject(),
+                    c.get("escritorioId", Long.class), Papel.valueOf(c.get("papel", String.class))));
+        } catch (JwtException | IllegalArgumentException | NullPointerException e) {
             logger.warn("Token JWT rejeitado: {}", e.getMessage());
-            return false;
+            return Optional.empty();
         }
     }
 }

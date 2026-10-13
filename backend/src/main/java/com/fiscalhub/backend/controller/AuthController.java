@@ -12,7 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -36,25 +35,13 @@ public class AuthController {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getSenha()));
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
-
-        Usuario usuario = usuarioService.findByEmail(loginRequest.getEmail());
-
-        return ResponseEntity.ok(new JwtResponse(jwt, usuario.getId(), usuario.getEmail(), usuario.getNome()));
+        Usuario usuario = usuarioService.findByEmail(authentication.getName());
+        return ResponseEntity.ok(JwtResponse.de(jwtUtils.gerarToken(usuario), usuario));
     }
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        Usuario usuario = new Usuario();
-        usuario.setNome(signUpRequest.getNome());
-        usuario.setEmail(signUpRequest.getEmail());
-        usuario.setSenha(signUpRequest.getSenha());
-        usuario.setCpf(signUpRequest.getCpf());
-        usuario.setTelefone(signUpRequest.getTelefone());
-        usuario.setAtivo(true);
-
-        usuarioService.create(usuario);
+        usuarioService.registrarEscritorio(signUpRequest);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }

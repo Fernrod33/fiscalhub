@@ -2,6 +2,7 @@ package com.fiscalhub.backend.controller;
 
 import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.service.DeclaracaoService;
+import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,7 @@ public class DeclaracaoController {
     }
 
     @PostMapping
+    @ConsultorOuAdmin
     public ResponseEntity<Declaracao> createDeclaracao(@Valid @RequestBody Declaracao declaracao,
                                                        @RequestParam Long empresaId,
                                                        Authentication authentication) {
@@ -40,6 +42,7 @@ public class DeclaracaoController {
     }
 
     @PutMapping("/{id}")
+    @ConsultorOuAdmin
     public ResponseEntity<Declaracao> updateDeclaracao(@PathVariable Long id,
                                                        @Valid @RequestBody Declaracao declaracao,
                                                        Authentication authentication) {
@@ -47,6 +50,7 @@ public class DeclaracaoController {
     }
 
     @DeleteMapping("/{id}")
+    @ConsultorOuAdmin
     public ResponseEntity<Void> deleteDeclaracao(@PathVariable Long id, Authentication authentication) {
         declaracaoService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();

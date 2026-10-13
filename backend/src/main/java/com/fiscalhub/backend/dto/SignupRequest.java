@@ -25,4 +25,12 @@ public class SignupRequest {
 
     @Size(max = 20)
     private String telefone;
+
+    @NotBlank
+    @Size(max = 150)
+    private String nomeEscritorio;
+
+    /** CNPJ ou CPF do escritório (opcional). */
+    @Size(max = 18)
+    private String documentoEscritorio;
 }

@@ -1,16 +1,10 @@
 package com.fiscalhub.backend.integracao;
 
-import com.fiscalhub.backend.entity.Usuario;
-import com.fiscalhub.backend.repository.UsuarioRepository;
-import com.fiscalhub.backend.security.JwtUtils;
+import com.fiscalhub.backend.entity.enums.Papel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,27 +14,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** Erros saem como ProblemDetail (RFC 9457). */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Import(PostgresTestcontainer.class)
+@TesteIntegracao
 @Transactional
 class ErrosProblemDetailTest {
 
     @Autowired MockMvc mvc;
-    @Autowired JwtUtils jwtUtils;
-    @Autowired UsuarioRepository usuarioRepository;
+    @Autowired DadosTeste dados;
 
     private String token;
 
     @BeforeEach
     void setUp() {
-        Usuario u = new Usuario();
-        u.setNome("Erro");
-        u.setEmail("erro@test.com");
-        u.setSenha("x");
-        usuarioRepository.save(u);
-        token = "Bearer " + jwtUtils.generateTokenFromUsername(u.getEmail());
+        token = dados.token(dados.usuario(dados.escritorio("Erros"), "erro@test.com", Papel.ADMIN));
     }
 
     @Test

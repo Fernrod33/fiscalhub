@@ -1,21 +1,13 @@
 package com.fiscalhub.backend.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.entity.enums.Papel;
 
-@Data
-@AllArgsConstructor
-public class JwtResponse {
-    private String token;
-    private String type = "Bearer";
-    private Long id;
-    private String email;
-    private String nome;
+public record JwtResponse(String token, String type, Long id, String email, String nome,
+                          Long escritorioId, Papel papel, Boolean trocarSenhaNoProximoLogin) {
 
-    public JwtResponse(String token, Long id, String email, String nome) {
-        this.token = token;
-        this.id = id;
-        this.email = email;
-        this.nome = nome;
+    public static JwtResponse de(String token, Usuario u) {
+        return new JwtResponse(token, "Bearer", u.getId(), u.getEmail(), u.getNome(),
+                u.getEscritorio().getId(), u.getPapel(), u.getTrocarSenhaNoProximoLogin());
     }
 }

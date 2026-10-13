@@ -10,22 +10,17 @@ import com.fiscalhub.backend.entity.enums.DocumentoJuridicao;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoReceita;
+import com.fiscalhub.backend.entity.enums.Papel;
 import com.fiscalhub.backend.entity.enums.TipoTributo;
 import com.fiscalhub.backend.repository.DeclaracaoRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.fiscalhub.backend.repository.EmpresaRepository;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
-import com.fiscalhub.backend.repository.UsuarioRepository;
-import com.fiscalhub.backend.security.JwtUtils;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,10 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Prova que o usuário A não lê, edita nem exclui recursos do usuário B (sempre 404),
  * que /api/usuarios nunca devolve a senha e que sem token a resposta é 401.
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-@Import(PostgresTestcontainer.class)
+@TesteIntegracao
 @Transactional
 class AcessoEntreUsuariosTest {
 
@@ -61,8 +53,7 @@ class AcessoEntreUsuariosTest {
             {"razaoSocial":"Invasora Ltda","cnpj":"12345678000195"}""";
 
     @Autowired MockMvc mvc;
-    @Autowired JwtUtils jwtUtils;
-    @Autowired UsuarioRepository usuarioRepository;
+    @Autowired DadosTeste dados;
     @Autowired EmpresaRepository empresaRepository;
     @Autowired DeclaracaoRepository declaracaoRepository;
     @Autowired SimulacaoParcelamentoRepository simulacaoRepository;
@@ -78,14 +69,14 @@ class AcessoEntreUsuariosTest {
 
     @BeforeEach
     void setUp() {
-        usuarioA = usuario("a@test.com");
-        Usuario usuarioB = usuario("b@test.com");
+        usuarioA = dados.usuario(dados.escritorio("Escritorio A"), "a@test.com", Papel.ADMIN);
+        Usuario usuarioB = dados.usuario(dados.escritorio("Escritorio B"), "b@test.com", Papel.ADMIN);
         empresaB = empresa(usuarioB, "11222333000181");
         declaracaoB = declaracao(empresaB);
         simulacaoB = simulacao(declaracaoB);
         documentoB = documento(empresaB);
-        tokenA = "Bearer " + jwtUtils.generateTokenFromUsername(usuarioA.getEmail());
-        tokenB = "Bearer " + jwtUtils.generateTokenFromUsername(usuarioB.getEmail());
+        tokenA = dados.token(usuarioA);
+        tokenB = dados.token(usuarioB);
     }
 
     @Test
@@ -186,14 +177,6 @@ class AcessoEntreUsuariosTest {
                         .file(new MockMultipartFile("documento", "", "application/json",
                                 "{\"tipo\":\"OUTRO\",\"tributos\":[\"IRPJ\"],\"periodoInicio\":\"2024-01-01\",\"periodoFim\":\"2024-01-31\"}".getBytes())))
         );
-    }
-
-    private Usuario usuario(String email) {
-        Usuario u = new Usuario();
-        u.setNome(email);
-        u.setEmail(email);
-        u.setSenha("$2a$10$hashDeTesteQueNuncaPodeAparecerNaResposta");
-        return usuarioRepository.save(u);
     }
 
     private Empresa empresa(Usuario dono, String cnpj) {

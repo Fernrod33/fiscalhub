@@ -1,6 +1,7 @@
 package com.fiscalhub.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fiscalhub.backend.entity.enums.Papel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -53,6 +54,18 @@ public class Usuario {
 
     @Column(nullable = false)
     private Boolean ativo = true;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "escritorio_id", nullable = false)
+    private Escritorio escritorio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Papel papel;
+
+    @Column(name = "trocar_senha_no_proximo_login", nullable = false)
+    private Boolean trocarSenhaNoProximoLogin = false;
 
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)

@@ -30,9 +30,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .username(usuario.getEmail())
                 .password(usuario.getSenha())
                 .authorities(new ArrayList<>())
-                .accountExpired(false)
-                .accountLocked(false)
-                .credentialsExpired(false)
                 .disabled(!usuario.getAtivo())
                 .build();
     }

@@ -4,6 +4,7 @@ import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.service.SimulacaoParcelamentoService;
+import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,7 @@ public class SimulacaoParcelamentoController {
      * POST /api/simulacoes/calcular/salvar
      */
     @PostMapping("/calcular/salvar")
+    @ConsultorOuAdmin
     public ResponseEntity<SimulacaoResultDTO> calcularESalvar(@Valid @RequestBody SimulacaoRequestDTO request,
                                                               Authentication authentication) {
         SimulacaoResultDTO result = simulacaoParcelamentoService.calcularESalvar(request, authentication.getName());
@@ -74,11 +76,13 @@ public class SimulacaoParcelamentoController {
      * PATCH /api/simulacoes/{id}/aprovar
      */
     @PatchMapping("/{id}/aprovar")
+    @ConsultorOuAdmin
     public ResponseEntity<SimulacaoParcelamento> aprovar(@PathVariable Long id, Authentication authentication) {
         return ResponseEntity.ok(simulacaoParcelamentoService.aprovar(id, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
+    @ConsultorOuAdmin
     public ResponseEntity<Void> deleteSimulacao(@PathVariable Long id, Authentication authentication) {
         simulacaoParcelamentoService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();

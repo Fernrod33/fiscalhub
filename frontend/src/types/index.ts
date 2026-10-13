@@ -6,6 +6,8 @@ export interface Usuario {
   cpf: string;
   telefone: string;
   ativo: boolean;
+  papel: Papel;
+  trocarSenhaNoProximoLogin: boolean;
   dataCriacao: string;
 }
 
@@ -96,11 +98,17 @@ export interface DocumentoFiscal {
   documentoOriginalId?: number | null;
 }
 
+export type Papel = 'ADMIN' | 'CONSULTOR' | 'ASSISTENTE';
+
+/** Resposta de POST /api/auth/login. */
 export interface AuthUser {
   id: number;
   email: string;
   nome: string;
   token: string;
+  escritorioId: number;
+  papel: Papel;
+  trocarSenhaNoProximoLogin: boolean;
 }
 
 export interface LoginRequest {
@@ -114,4 +122,6 @@ export interface SignupRequest {
   senha: string;
   cpf: string;
   telefone: string;
+  nomeEscritorio: string;
+  documentoEscritorio: string;
 }

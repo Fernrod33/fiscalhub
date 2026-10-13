@@ -7,7 +7,7 @@ import { mensagemErro } from '../api/client';
 export default function Register() {
   const { signup } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', cpf: '', telefone: '' });
+  const [form, setForm] = useState({ nome: '', email: '', senha: '', cpf: '', telefone: '', nomeEscritorio: '', documentoEscritorio: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,6 +42,31 @@ export default function Register() {
           <h2>Cadastro</h2>
 
           {error && <div className="alert alert-error">{error}</div>}
+
+          <div className="field">
+            <label htmlFor="nomeEscritorio">Nome do escritório</label>
+            <input
+              id="nomeEscritorio"
+              name="nomeEscritorio"
+              type="text"
+              required
+              value={form.nomeEscritorio}
+              onChange={handleChange}
+              placeholder="Silva Advocacia Tributária"
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="documentoEscritorio">CNPJ ou CPF do escritório (opcional)</label>
+            <input
+              id="documentoEscritorio"
+              name="documentoEscritorio"
+              type="text"
+              value={form.documentoEscritorio}
+              onChange={handleChange}
+              placeholder="00.000.000/0000-00"
+            />
+          </div>
 
           <div className="field">
             <label htmlFor="nome">Nome completo</label>

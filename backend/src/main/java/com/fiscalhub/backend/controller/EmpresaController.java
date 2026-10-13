@@ -3,6 +3,7 @@ package com.fiscalhub.backend.controller;
 import com.fiscalhub.backend.dto.EmpresaRequestDTO;
 import com.fiscalhub.backend.dto.EmpresaResponseDTO;
 import com.fiscalhub.backend.service.EmpresaService;
+import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ public class EmpresaController {
     }
 
     @PostMapping
+    @ConsultorOuAdmin
     public ResponseEntity<EmpresaResponseDTO> createEmpresa(@Valid @RequestBody EmpresaRequestDTO dto,
                                                              Authentication authentication) {
         EmpresaResponseDTO created = empresaService.create(dto, authentication.getName());
@@ -38,6 +40,7 @@ public class EmpresaController {
     }
 
     @PutMapping("/{id}")
+    @ConsultorOuAdmin
     public ResponseEntity<EmpresaResponseDTO> updateEmpresa(@PathVariable Long id,
                                                              @Valid @RequestBody EmpresaRequestDTO dto,
                                                              Authentication authentication) {
@@ -45,6 +48,7 @@ public class EmpresaController {
     }
 
     @DeleteMapping("/{id}")
+    @ConsultorOuAdmin
     public ResponseEntity<?> deleteEmpresa(@PathVariable Long id, Authentication authentication) {
         empresaService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();
