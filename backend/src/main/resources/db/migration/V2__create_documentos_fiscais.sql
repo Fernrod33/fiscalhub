@@ -1,3 +1,4 @@
+-- IF NOT EXISTS: bancos de dev antigos ja tem estas tabelas (criadas pelo ddl-auto=update).
 CREATE TABLE IF NOT EXISTS documento_fiscal (
     id BIGSERIAL PRIMARY KEY,
     empresa_id BIGINT NOT NULL,
@@ -27,5 +28,6 @@ CREATE TABLE IF NOT EXISTS documento_fiscal (
 CREATE TABLE IF NOT EXISTS documento_fiscal_tributos (
     documento_id BIGINT NOT NULL,
     tributo VARCHAR(30) NOT NULL,
+    PRIMARY KEY (documento_id, tributo),
     CONSTRAINT fk_documento_tributo FOREIGN KEY (documento_id) REFERENCES documento_fiscal(id)
 );

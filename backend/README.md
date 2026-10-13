@@ -49,6 +49,20 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | `CORS_ALLOWED_ORIGINS` | não | `http://localhost:5173` | origens permitidas, separadas por vírgula |
 | `SPRING_PROFILES_ACTIVE` | não | — | `dev` liga SQL no log e DEBUG do Spring Security |
 
+## Banco de dados (Flyway)
+
+O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyway na inicialização. O Hibernate só valida (`ddl-auto=validate`); qualquer mudança de schema entra como nova migração `V<n>__descricao.sql`.
+
+**Banco do zero:**
+
+```sql
+CREATE DATABASE fiscalhub;
+```
+
+Depois, suba o app (`mvn spring-boot:run`). O Flyway cria tudo a partir da V1.
+
+**Banco de desenvolvimento criado antes do Flyway** (pelo antigo `ddl-auto=update`): `spring.flyway.baseline-on-migrate=true` marca a V1 como aplicada e executa só da V2 em diante.
+
 ## Installation & Running
 
 1. Clone the repository:
