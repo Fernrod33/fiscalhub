@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
@@ -74,6 +75,20 @@ class CalculadoraReceitaFederalServiceTest {
             assertThat(r.getValorAtualizado()).isEqualByComparingTo("13380.93");
             assertThat(r.getValorParcela()).isEqualByComparingTo("1338.09");
             assertThat(r.getCustoTotal()).isEqualByComparingTo("13380.90");
+        }
+
+        @Test
+        void variosDebitos_somaOPrincipalEUsaOVencimentoMaisAntigo() {
+            // 6.000 vencido em 10/01/2024 + 4.000 vencido em 10/03/2024 == 10.000 vencido em 10/01/2024
+            SimulacaoResultDTO consolidado = CenarioParcelamento.federal().valor("6000.00")
+                    .maisUmDebito("4000.00", LocalDate.of(2024, 3, 10)).diasDeAtraso(45).calcularFederal();
+            SimulacaoResultDTO unico = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
+
+            assertThat(consolidado.getValorOriginal()).isEqualByComparingTo("10000.00");
+            assertThat(consolidado.getDataVencimentoOriginal()).isEqualTo(CenarioParcelamento.VENCIMENTO);
+            assertThat(consolidado.getValorAtualizado()).isEqualByComparingTo(unico.getValorAtualizado());
+            assertThat(consolidado.getValorParcela()).isEqualByComparingTo(unico.getValorParcela());
+            assertThat(consolidado.getDebitoIds()).containsExactly(1L, 2L);
         }
 
         @Test

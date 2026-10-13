@@ -4,9 +4,7 @@ import './Layout.css';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: '▦' },
-  { to: '/empresas', label: 'Empresas', icon: '🏢' },
-  { to: '/declaracoes', label: 'Declarações', icon: '📋' },
-  { to: '/simulacao', label: 'Simulação', icon: '🧮' },
+  { to: '/empresas', label: 'Clientes', icon: '🏢' },
 ];
 
 export default function Layout() {

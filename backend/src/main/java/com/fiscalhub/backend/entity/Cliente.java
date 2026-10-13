@@ -11,8 +11,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "cliente")
@@ -89,7 +87,4 @@ public class Cliente {
     @JoinColumn(name = "criado_por_id", nullable = false)
     private Usuario criadoPor;
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Declaracao> declaracoes = new HashSet<>();
 }

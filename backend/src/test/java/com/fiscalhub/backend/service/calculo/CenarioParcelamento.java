@@ -2,11 +2,12 @@ package com.fiscalhub.backend.service.calculo;
 
 import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
-import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.Cliente;
+import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.IndiceMonetario;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
+import com.fiscalhub.backend.entity.enums.TipoTributo;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
 import com.fiscalhub.backend.service.IndiceMonetarioService;
 
@@ -24,8 +25,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Fixture dos testes do motor de parcelamento: débito, requisição e índices em memória.
- * Padrão: débito de R$ 10.000,00 vencido em 10/01/2024, 10 parcelas, sem entrada.
+ * Fixture dos testes do motor de parcelamento: débitos, requisição e índices em memória.
+ * Padrão: um débito de R$ 10.000,00 vencido em 10/01/2024, 10 parcelas, sem entrada.
  * O IndiceMonetarioService é o real, sobre um repositório fake em memória.
  */
 final class CenarioParcelamento {
@@ -38,6 +39,7 @@ final class CenarioParcelamento {
     private LocalDate dataCalculo = VENCIMENTO.plusDays(10);
     private int parcelas = 10;
     private boolean entrada;
+    private final List<Debito> outrosDebitos = new ArrayList<>();
 
     final IndiceMonetarioRepository repositorio = mock(IndiceMonetarioRepository.class);
 
@@ -92,6 +94,12 @@ final class CenarioParcelamento {
         return this;
     }
 
+    /** Acrescenta outro débito do mesmo cliente à simulação. */
+    CenarioParcelamento maisUmDebito(String valor, LocalDate vencimento) {
+        outrosDebitos.add(debito(outrosDebitos.size() + 2L, new BigDecimal(valor), vencimento));
+        return this;
+    }
+
     CenarioParcelamento comEntrada() {
         this.entrada = true;
         return this;
@@ -110,28 +118,35 @@ final class CenarioParcelamento {
     }
 
     SimulacaoResultDTO calcularFederal() {
-        return new CalculadoraReceitaFederalService(new IndiceMonetarioService(repositorio)).calcular(declaracao(), request());
+        return new CalculadoraReceitaFederalService(new IndiceMonetarioService(repositorio)).calcular(entrada());
     }
 
     SimulacaoResultDTO calcularPR() {
-        return new CalculadoraReceitaEstadualPRService(new IndiceMonetarioService(repositorio)).calcular(declaracao(), request());
+        return new CalculadoraReceitaEstadualPRService(new IndiceMonetarioService(repositorio)).calcular(entrada());
     }
 
-    private Declaracao declaracao() {
+    private EntradaCalculo entrada() {
         Cliente cliente = new Cliente();
+        cliente.setId(1L);
         cliente.setRazaoSocial("Cliente Teste Ltda");
         cliente.setCnpj("11222333000181");
-        Declaracao d = new Declaracao();
-        d.setId(1L);
-        d.setValorTotal(valor);
-        d.setDataVencimento(VENCIMENTO);
-        d.setCliente(cliente);
+        List<Debito> debitos = new ArrayList<>(List.of(debito(1L, valor, VENCIMENTO)));
+        debitos.addAll(outrosDebitos);
+        return new EntradaCalculo(cliente, debitos, request());
+    }
+
+    private static Debito debito(Long id, BigDecimal valor, LocalDate vencimento) {
+        Debito d = new Debito();
+        d.setId(id);
+        d.setTributo(TipoTributo.IRPJ);
+        d.setValorPrincipal(valor);
+        d.setDataVencimento(vencimento);
         return d;
     }
 
     private SimulacaoRequestDTO request() {
         SimulacaoRequestDTO r = new SimulacaoRequestDTO();
-        r.setDeclaracaoId(1L);
+        r.setClienteId(1L);
         r.setModalidade(modalidade);
         r.setNumeroParcelas(parcelas);
         r.setDataCalculo(dataCalculo);

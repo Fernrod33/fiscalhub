@@ -28,48 +28,6 @@ export interface Cliente {
   dataAtualizacao: string;
 }
 
-export type TipoDeclaracao = 'ICMS' | 'ISS' | 'PIS' | 'COFINS' | 'IRPJ' | 'CSLL' | 'OUTRO';
-export type StatusDeclaracao = 'PENDENTE' | 'ENVIADA' | 'PROCESSANDO' | 'APROVADA' | 'REJEITADA' | 'PAGO';
-
-export interface Declaracao {
-  id: number;
-  tipo: TipoDeclaracao;
-  periodoInicio: string;
-  periodoFim: string;
-  valorTotal: number;
-  valorImposto: number;
-  status: StatusDeclaracao;
-  dataVencimento: string;
-  dataPagamento?: string | null;
-  observacoes?: string;
-  dataCriacao: string;
-  dataAtualizacao: string;
-}
-
-export interface Parcela {
-  numero: number;
-  dataVencimento: string;
-  valorPrincipal: number;
-  valorJuros: number;
-  valorTotal: number;
-}
-
-export interface SimulacaoResultado {
-  valorOriginal: number;
-  numeroParcelas: number;
-  taxaJurosMensal: number;
-  valorTotalComJuros: number;
-  valorTotalJuros: number;
-  parcelas: Parcela[];
-}
-
-export interface SimulacaoRequest {
-  valorDevido: number;
-  numeroParcelas: number;
-  taxaJurosMensal: number;
-  dataInicio: string;
-}
-
 export type DocumentoEsfera = 'FEDERAL' | 'ESTADUAL' | 'CONTABIL';
 export type DocumentoJuridicao = 'UNIAO' | 'PARANA' | 'NAO_APLICAVEL';
 export type DocumentoStatus = 'RECEBIDO' | 'PROCESSANDO' | 'PROCESSADO' | 'PROCESSADO_COM_ALERTAS' | 'ERRO';

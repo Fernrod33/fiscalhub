@@ -4,10 +4,12 @@ import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoReceita;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * DTO de entrada para solicitar o cálculo de uma simulação de parcelamento.
@@ -15,8 +17,11 @@ import java.time.LocalDate;
 @Data
 public class SimulacaoRequestDTO {
 
-    @NotNull(message = "O ID da declaração é obrigatório")
-    private Long declaracaoId;
+    @NotNull(message = "O cliente é obrigatório")
+    private Long clienteId;
+
+    @NotEmpty(message = "Informe ao menos um débito")
+    private List<Long> debitoIds;
 
     @NotNull(message = "O órgão da receita é obrigatório")
     private OrgaoReceita orgao;

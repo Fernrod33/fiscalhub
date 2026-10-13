@@ -32,10 +32,10 @@ public class SimulacaoParcelamentoController {
         return ResponseEntity.ok(simulacaoParcelamentoService.findById(id, ua));
     }
 
-    @GetMapping("/declaracao/{declaracaoId}")
-    public ResponseEntity<List<SimulacaoParcelamento>> getByDeclaracao(@PathVariable Long declaracaoId,
+    @GetMapping("/cliente/{clienteId}")
+    public ResponseEntity<List<SimulacaoParcelamento>> getByCliente(@PathVariable Long clienteId,
                                                                        @AuthenticationPrincipal UsuarioAutenticado ua) {
-        return ResponseEntity.ok(simulacaoParcelamentoService.findByDeclaracaoId(declaracaoId, ua));
+        return ResponseEntity.ok(simulacaoParcelamentoService.findByClienteId(clienteId, ua));
     }
 
     // ---------------------------------------------------------------

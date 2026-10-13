@@ -4,7 +4,6 @@ import com.fiscalhub.backend.dto.EtapaCalculoDTO;
 import com.fiscalhub.backend.dto.ParcelaDTO;
 import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
-import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoReceita;
 import com.fiscalhub.backend.exception.BusinessRuleException;
@@ -56,14 +55,11 @@ public class CalculadoraReceitaEstadualPRService implements CalculoParcelamentoS
     }
 
     @Override
-    public SimulacaoResultDTO calcular(Declaracao declaracao, SimulacaoRequestDTO request) {
-        // ---- 0. Validações ----
-        if (declaracao.getDataVencimento() == null) {
-            throw new BusinessRuleException("A declaração precisa ter data de vencimento para calcular o parcelamento.");
-        }
-
-        BigDecimal valorOriginal = resolverValorDebito(declaracao);
-        LocalDate dataVencimento = declaracao.getDataVencimento();
+    public SimulacaoResultDTO calcular(EntradaCalculo entrada) {
+        SimulacaoRequestDTO request = entrada.parametros();
+        // ---- 0. Validações iniciais ----
+        BigDecimal valorOriginal = entrada.valorPrincipal();
+        LocalDate dataVencimento = entrada.vencimentoMaisAntigo();
         LocalDate dataCalculo = request.getDataCalculo() != null ? request.getDataCalculo() : LocalDate.now();
 
         if (!dataCalculo.isAfter(dataVencimento)) {
@@ -206,12 +202,13 @@ public class CalculadoraReceitaEstadualPRService implements CalculoParcelamentoS
 
         // ---- Montar resultado ----
         SimulacaoResultDTO result = new SimulacaoResultDTO();
-        result.setDeclaracaoId(declaracao.getId());
+        result.setClienteId(entrada.cliente().getId());
+        result.setDebitoIds(entrada.debitoIds());
         result.setOrgao(OrgaoReceita.RECEITA_ESTADUAL_PR);
         result.setModalidade(request.getModalidade());
-        result.setTributo(declaracao.getTributo());
-        result.setClienteRazaoSocial(declaracao.getCliente().getRazaoSocial());
-        result.setClienteCnpj(declaracao.getCliente().getCnpj());
+        result.setTributo(entrada.tributo());
+        result.setClienteRazaoSocial(entrada.cliente().getRazaoSocial());
+        result.setClienteCnpj(entrada.cliente().getCnpj());
         result.setValorOriginal(valorOriginal);
         result.setDataVencimentoOriginal(dataVencimento);
         result.setDataCalculo(dataCalculo);
@@ -238,13 +235,6 @@ public class CalculadoraReceitaEstadualPRService implements CalculoParcelamentoS
         return result;
     }
 
-    private BigDecimal resolverValorDebito(Declaracao declaracao) {
-        if (declaracao.getValorImposto() != null
-                && declaracao.getValorImposto().compareTo(BigDecimal.ZERO) > 0) {
-            return declaracao.getValorImposto();
-        }
-        return declaracao.getValorTotal();
-    }
 
     private List<ParcelaDTO> gerarTabelaParcelas(LocalDate dataCalculo, int numeroParcelas,
                                                    BigDecimal valorParcela, BigDecimal valorEntrada,

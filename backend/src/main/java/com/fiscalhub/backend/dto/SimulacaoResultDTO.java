@@ -19,7 +19,8 @@ public class SimulacaoResultDTO {
     private Long simulacaoId;
 
     // --- Identificação ---
-    private Long declaracaoId;
+    private Long clienteId;
+    private List<Long> debitoIds;
     private OrgaoReceita orgao;
     private ModalidadeParcelamento modalidade;
     private TipoTributo tributo;

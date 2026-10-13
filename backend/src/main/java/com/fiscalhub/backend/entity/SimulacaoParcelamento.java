@@ -99,13 +99,6 @@ public class SimulacaoParcelamento {
     @Column(name = "economia_obtida", precision = 15, scale = 2)
     private BigDecimal economiaObtida;
 
-    // --- Compatibilidade com campos legados ---
-    @Column(name = "taxa_juros", precision = 5, scale = 2)
-    private BigDecimal taxaJuros;
-
-    @Column(name = "valor_total", precision = 15, scale = 2)
-    private BigDecimal valorTotal;
-
     @Column(nullable = false)
     private Boolean aprovada = false;
 
@@ -126,9 +119,17 @@ public class SimulacaoParcelamento {
     private LocalDateTime dataAtualizacao;
 
     @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "declaracao_id", nullable = false)
-    private Declaracao declaracao;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
+
+    /** Débitos consolidados nesta simulação. */
+    @JsonIgnore
+    @ManyToMany
+    @JoinTable(name = "simulacao_debito",
+            joinColumns = @JoinColumn(name = "simulacao_id"),
+            inverseJoinColumns = @JoinColumn(name = "debito_id"))
+    private List<Debito> debitos = new ArrayList<>();
 
     @JsonIgnore
     @OneToMany(mappedBy = "simulacao", cascade = CascadeType.ALL, orphanRemoval = true)

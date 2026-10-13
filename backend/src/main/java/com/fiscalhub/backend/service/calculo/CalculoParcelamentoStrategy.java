@@ -1,8 +1,6 @@
 package com.fiscalhub.backend.service.calculo;
 
-import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
-import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 
 /**
@@ -19,9 +17,8 @@ public interface CalculoParcelamentoStrategy {
     /**
      * Executa o cálculo completo da simulação de parcelamento.
      *
-     * @param declaracao declaração fiscal base
-     * @param request    parâmetros da simulação
+     * @param entrada débitos consolidados do cliente e parâmetros da simulação
      * @return resultado detalhado com memória de cálculo e tabela de parcelas
      */
-    SimulacaoResultDTO calcular(Declaracao declaracao, SimulacaoRequestDTO request);
+    SimulacaoResultDTO calcular(EntradaCalculo entrada);
 }

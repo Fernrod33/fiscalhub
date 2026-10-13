@@ -5,17 +5,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiscalhub.backend.dto.ParcelaDTO;
 import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
-import com.fiscalhub.backend.entity.Declaracao;
+import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.ParcelaSimulacao;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.service.calculo.CalculoParcelamentoStrategy;
+import com.fiscalhub.backend.service.calculo.EntradaCalculo;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -46,9 +48,9 @@ public class SimulacaoParcelamentoService {
         return acessoRecursoService.simulacao(id, ua);
     }
 
-    public List<SimulacaoParcelamento> findByDeclaracaoId(Long declaracaoId, UsuarioAutenticado ua) {
-        acessoRecursoService.declaracao(declaracaoId, ua);
-        return simulacaoParcelamentoRepository.findByDeclaracaoId(declaracaoId);
+    public List<SimulacaoParcelamento> findByClienteId(Long clienteId, UsuarioAutenticado ua) {
+        acessoRecursoService.cliente(clienteId, ua);
+        return simulacaoParcelamentoRepository.findByClienteIdOrderByDataCriacaoDesc(clienteId);
     }
 
     // ---------------------------------------------------------------
@@ -60,20 +62,17 @@ public class SimulacaoParcelamentoService {
      */
     @Transactional(readOnly = true)
     public SimulacaoResultDTO calcular(SimulacaoRequestDTO request, UsuarioAutenticado ua) {
-        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), ua);
-        CalculoParcelamentoStrategy strategy = resolverStrategy(request);
-        return strategy.calcular(declaracao, request);
+        return resolverStrategy(request).calcular(entrada(request, ua));
     }
 
     /**
      * Executa o cálculo e persiste a simulação (incluindo parcelas) no banco.
      */
     public SimulacaoResultDTO calcularESalvar(SimulacaoRequestDTO request, UsuarioAutenticado ua) {
-        Declaracao declaracao = acessoRecursoService.declaracao(request.getDeclaracaoId(), ua);
-        CalculoParcelamentoStrategy strategy = resolverStrategy(request);
-        SimulacaoResultDTO result = strategy.calcular(declaracao, request);
+        EntradaCalculo entrada = entrada(request, ua);
+        SimulacaoResultDTO result = resolverStrategy(request).calcular(entrada);
 
-        SimulacaoParcelamento entidade = mapResultToEntity(result, declaracao);
+        SimulacaoParcelamento entidade = mapResultToEntity(result, entrada);
         simulacaoParcelamentoRepository.save(entidade);
 
         result.setSimulacaoId(entidade.getId());
@@ -97,6 +96,11 @@ public class SimulacaoParcelamentoService {
     // Helpers
     // ---------------------------------------------------------------
 
+    private EntradaCalculo entrada(SimulacaoRequestDTO request, UsuarioAutenticado ua) {
+        Cliente cliente = acessoRecursoService.cliente(request.getClienteId(), ua);
+        return new EntradaCalculo(cliente, acessoRecursoService.debitos(cliente.getId(), request.getDebitoIds(), ua), request);
+    }
+
     private CalculoParcelamentoStrategy resolverStrategy(SimulacaoRequestDTO request) {
         return strategies.stream()
                 .filter(s -> s.suporta(request.getModalidade()))
@@ -105,9 +109,10 @@ public class SimulacaoParcelamentoService {
                         "Modalidade de parcelamento não suportada: " + request.getModalidade()));
     }
 
-    private SimulacaoParcelamento mapResultToEntity(SimulacaoResultDTO result, Declaracao declaracao) {
+    private SimulacaoParcelamento mapResultToEntity(SimulacaoResultDTO result, EntradaCalculo entrada) {
         SimulacaoParcelamento entity = new SimulacaoParcelamento();
-        entity.setDeclaracao(declaracao);
+        entity.setCliente(entrada.cliente());
+        entity.setDebitos(new ArrayList<>(entrada.debitos()));
         entity.setOrgao(result.getOrgao());
         entity.setModalidade(result.getModalidade());
         entity.setValorOriginal(result.getValorOriginal());
@@ -127,9 +132,6 @@ public class SimulacaoParcelamentoService {
         entity.setValorParcela(result.getValorParcela());
         entity.setCustoTotal(result.getCustoTotal());
         entity.setEconomiaObtida(result.getEconomiaObtida());
-        // Campos legados para compatibilidade
-        entity.setTaxaJuros(result.getPercentualJurosMora());
-        entity.setValorTotal(result.getValorAtualizado());
         entity.setAprovada(false);
 
         // Serializa memória de cálculo como JSON

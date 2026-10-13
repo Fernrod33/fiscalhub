@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SimulacaoParcelamentoRepository extends JpaRepository<SimulacaoParcelamento, Long> {
-    List<SimulacaoParcelamento> findByDeclaracaoId(Long declaracaoId);
-    Optional<SimulacaoParcelamento> findByIdAndDeclaracaoClienteEscritorioId(Long id, Long escritorioId);
+    List<SimulacaoParcelamento> findByClienteIdOrderByDataCriacaoDesc(Long clienteId);
+    Optional<SimulacaoParcelamento> findByIdAndClienteEscritorioId(Long id, Long escritorioId);
 }
