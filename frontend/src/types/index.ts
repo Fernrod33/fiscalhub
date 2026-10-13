@@ -68,6 +68,34 @@ export interface SimulacaoRequest {
   dataInicio: string;
 }
 
+export type DocumentoEsfera = 'FEDERAL' | 'ESTADUAL' | 'CONTABIL';
+export type DocumentoJuridicao = 'UNIAO' | 'PARANA' | 'NAO_APLICAVEL';
+export type DocumentoStatus = 'RECEBIDO' | 'PROCESSANDO' | 'PROCESSADO' | 'PROCESSADO_COM_ALERTAS' | 'ERRO';
+export type DocumentoTipo = 'IRPJ' | 'CSLL' | 'PIS' | 'COFINS' | 'IPI' | 'DCTF' | 'DCTF_WEB' | 'EFD_CONTRIBUICOES' | 'ECD' | 'ECF' | 'EFD_ICMS_IPI' | 'ICMS' | 'DEMONSTRACAO_CONTABIL' | 'OUTRO';
+export type TributoTipo = 'IRPJ' | 'CSLL' | 'PIS' | 'COFINS' | 'IPI' | 'ICMS' | 'OUTROS';
+
+export interface DocumentoFiscal {
+  id: number;
+  empresaId: number;
+  usuarioId: number;
+  tipo: DocumentoTipo;
+  esfera: DocumentoEsfera;
+  juridicao: DocumentoJuridicao;
+  tributos: TributoTipo[];
+  periodoInicio: string;
+  periodoFim: string;
+  nomeOriginalArquivo: string;
+  nomeArquivoInterno: string;
+  extensao: string;
+  mimeType: string;
+  tamanhoBytes: number;
+  dataImportacao: string;
+  status: DocumentoStatus;
+  retificacao: boolean;
+  observacao?: string;
+  documentoOriginalId?: number | null;
+}
+
 export interface AuthUser {
   id: number;
   email: string;
