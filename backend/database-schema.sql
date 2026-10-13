@@ -1,3 +1,5 @@
+-- OBSOLETO: o schema agora e versionado pelo Flyway em src/main/resources/db/migration.
+
 -- Fiscal Hub Database Schema
 -- PostgreSQL Database Schema
 

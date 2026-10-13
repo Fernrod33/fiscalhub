@@ -1,3 +1,5 @@
+> **OBSOLETO**: descreve a API anterior à v2 (endpoints removidos, `usuarioId` por parâmetro). Use o [README](README.md).
+
 # Fiscal Hub API - Usage Examples
 
 This document provides practical examples for using the Fiscal Hub REST API.
