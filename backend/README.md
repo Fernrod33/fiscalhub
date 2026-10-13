@@ -36,19 +36,18 @@ Fiscal Hub Backend is a Spring Boot application that provides RESTful endpoints 
 - Maven 3.6+
 - PostgreSQL 12+
 
-## Database Setup
+## Configuração (variáveis de ambiente)
 
-1. Create a PostgreSQL database:
-```sql
-CREATE DATABASE fiscalhub;
-```
+Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na inicialização (`spring.config.import`) e não é versionado; variáveis de ambiente reais têm precedência.
 
-2. Update database credentials in `src/main/resources/application.properties`:
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/fiscalhub
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-```
+| Variável | Obrigatória | Padrão | Uso |
+|---|---|---|---|
+| `DB_PASSWORD` | sim | — | senha do PostgreSQL |
+| `JWT_SECRET` | sim | — | segredo HMAC do JWT, mínimo 32 bytes (`openssl rand -base64 48`). O app não sobe sem ele ou com menos de 256 bits |
+| `DB_URL` | não | `jdbc:postgresql://localhost:5432/fiscalhub` | URL JDBC |
+| `DB_USERNAME` | não | `postgres` | usuário do banco |
+| `CORS_ALLOWED_ORIGINS` | não | `http://localhost:5173` | origens permitidas, separadas por vírgula |
+| `SPRING_PROFILES_ACTIVE` | não | — | `dev` liga SQL no log e DEBUG do Spring Security |
 
 ## Installation & Running
 

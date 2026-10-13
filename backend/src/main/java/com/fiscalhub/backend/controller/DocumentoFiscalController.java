@@ -16,7 +16,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/empresas/{empresaId}/documentos")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class DocumentoFiscalController {
 
     private final DocumentoFiscalService documentoFiscalService;

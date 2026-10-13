@@ -12,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/simulacoes")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class SimulacaoParcelamentoController {
 
     private final SimulacaoParcelamentoService simulacaoParcelamentoService;

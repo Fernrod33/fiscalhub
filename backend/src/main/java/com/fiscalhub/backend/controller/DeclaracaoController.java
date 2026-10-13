@@ -12,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/declaracoes")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class DeclaracaoController {
 
     private final DeclaracaoService declaracaoService;

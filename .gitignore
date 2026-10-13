@@ -83,3 +83,6 @@ graphify-out/
 
 # Uploads locais e crash logs da JVM (hs_err_pid*.log ja coberto por *.log)
 backend/uploads/
+
+# Variaveis de ambiente locais (segredos)
+.env

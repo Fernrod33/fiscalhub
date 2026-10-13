@@ -19,21 +19,18 @@ import java.util.Date;
 public class JwtUtils {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-    @Value("${app.jwt.secret}")
-    private String jwtSecret;
+    private final SecretKey signingKey;
+    private final int jwtExpirationMs;
 
-    @Value("${app.jwt.expiration-ms}")
-    private int jwtExpirationMs;
+    // Keys.hmacShaKeyFor lanca WeakKeyException se o segredo tiver menos de 256 bits: o app nao sobe.
+    public JwtUtils(@Value("${app.jwt.secret}") String jwtSecret,
+                    @Value("${app.jwt.expiration-ms}") int jwtExpirationMs) {
+        this.signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        this.jwtExpirationMs = jwtExpirationMs;
+    }
 
     public String generateJwtToken(Authentication authentication) {
-        UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
-
-        return Jwts.builder()
-                .setSubject(userPrincipal.getUsername())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+        return generateTokenFromUsername(((UserDetails) authentication.getPrincipal()).getUsername());
     }
 
     public String generateTokenFromUsername(String username) {
@@ -41,13 +38,13 @@ public class JwtUtils {
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
     public String getUserNameFromJwtToken(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+                .setSigningKey(signingKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody()
@@ -56,7 +53,7 @@ public class JwtUtils {
 
     public boolean validateJwtToken(String authToken) {
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(authToken);
+            Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(authToken);
             return true;
         } catch (MalformedJwtException e) {
             logger.error("Invalid JWT token: {}", e.getMessage());
@@ -74,10 +71,5 @@ public class JwtUtils {
             logger.error("Erro inesperado ao validar token: {}", e.getMessage());
             throw new UnauthorizedException("Erro ao validar o token JWT.");
         }
-    }
-
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
     }
 }
