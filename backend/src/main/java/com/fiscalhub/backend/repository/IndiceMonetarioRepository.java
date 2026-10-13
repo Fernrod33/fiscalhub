@@ -24,5 +24,4 @@ public interface IndiceMonetarioRepository extends JpaRepository<IndiceMonetario
             @Param("anoFim") Integer anoFim,
             @Param("mesFim") Integer mesFim);
 
-    boolean existsByTipoAndAnoAndMes(TipoIndice tipo, Integer ano, Integer mes);
 }

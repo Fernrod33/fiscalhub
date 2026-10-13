@@ -4,6 +4,7 @@ import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.repository.JobProcessamentoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.task.TaskExecutor;
@@ -24,7 +25,7 @@ public class DespachoJobs {
     private final TaskExecutor executor;
 
     public DespachoJobs(ProcessamentoDocumentoService processamento, JobProcessamentoRepository jobRepository,
-                        TaskExecutor executor) {
+                        @Qualifier("applicationTaskExecutor") TaskExecutor executor) {
         this.processamento = processamento;
         this.jobRepository = jobRepository;
         this.executor = executor;

@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 
 /**
@@ -48,6 +49,13 @@ public class IndiceMonetario {
     @NotNull
     @Column(nullable = false, precision = 12, scale = 6)
     private BigDecimal valor;
+
+    /** De onde veio o valor (ex.: BCB_SGS_4390) e quando foi coletado. */
+    @Column(length = 30)
+    private String origem;
+
+    @Column(name = "data_coleta")
+    private LocalDateTime dataColeta;
 
     public YearMonth getYearMonth() {
         return YearMonth.of(ano, mes);
