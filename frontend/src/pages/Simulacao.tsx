@@ -3,6 +3,7 @@ import { simularParcelamento } from '../api/simulacoes';
 import type { SimulacaoResultado } from '../types';
 import './Dashboard.css';
 import './Simulacao.css';
+import { mensagemErro } from '../api/client';
 
 export default function Simulacao() {
   const [form, setForm] = useState({
@@ -34,10 +35,7 @@ export default function Simulacao() {
       });
       setResultado(res);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao realizar simulação. Verifique se o servidor está online.';
-      setError(msg);
+      setError(mensagemErro(err, 'Erro ao realizar simulação. Verifique se o servidor está online.'));
     } finally {
       setLoading(false);
     }

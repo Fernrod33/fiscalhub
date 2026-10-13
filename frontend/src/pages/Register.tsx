@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
+import { mensagemErro } from '../api/client';
 
 export default function Register() {
   const { signup } = useAuth();
@@ -22,10 +23,7 @@ export default function Register() {
       await signup(form);
       navigate('/login', { state: { registered: true } });
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao cadastrar. Tente novamente.';
-      setError(msg);
+      setError(mensagemErro(err, 'Erro ao cadastrar. Tente novamente.'));
     } finally {
       setLoading(false);
     }

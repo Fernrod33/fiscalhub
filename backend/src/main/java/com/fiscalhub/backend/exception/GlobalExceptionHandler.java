@@ -1,107 +1,91 @@
 package com.fiscalhub.backend.exception;
 
+import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import jakarta.validation.ConstraintViolationException;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.security.core.AuthenticationException;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
+/**
+ * Erros no formato ProblemDetail (RFC 9457). Exceções do Spring MVC (rota inexistente, método não suportado,
+ * corpo ilegível...) são tratadas pela classe base; aqui ficam só as da aplicação.
+ */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleResourceNotFoundException(ResourceNotFoundException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", ex.getMessage());
-        response.put("status", HttpStatus.NOT_FOUND.value());
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-        Map<String, Object> response = new HashMap<>();
-        Map<String, String> errors = new HashMap<>();
-        
-        ex.getBindingResult().getFieldErrors().forEach(error -> 
-            errors.put(error.getField(), error.getDefaultMessage())
-        );
-        
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", "Validation failed");
-        response.put("errors", errors);
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    }
-
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", "Credenciais inválidas");
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> handleGlobalException(Exception ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", ex.getMessage());
-        response.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    ProblemDetail naoEncontrado(ResourceNotFoundException ex) {
+        return problema(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(BusinessRuleException.class)
-    public ResponseEntity<Map<String, Object>> handleBusinessRuleException(BusinessRuleException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", ex.getMessage());
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    }
-    
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", ex.getMessage() != null ? ex.getMessage() : "Unauthorized");
-        response.put("status", HttpStatus.UNAUTHORIZED.value());
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<Map<String, Object>> handleDuplicateResourceException(DuplicateResourceException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", ex.getMessage());
-        response.put("status", HttpStatus.CONFLICT.value());
-        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    ProblemDetail regraDeNegocio(BusinessRuleException ex) {
+        return problema(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleConstraintViolationException(ConstraintViolationException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", "Validation failed");
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    ProblemDetail violacaoDeRestricao(ConstraintViolationException ex) {
+        return problema(HttpStatus.BAD_REQUEST, "Dados inválidos.");
+    }
+
+    @ExceptionHandler(DuplicateResourceException.class)
+    ProblemDetail duplicado(DuplicateResourceException ex) {
+        return problema(HttpStatus.CONFLICT, ex.getMessage());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, Object>> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("timestamp", LocalDateTime.now());
-        response.put("message", "Data integrity violation");
-        response.put("status", HttpStatus.CONFLICT.value());
-        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    ProblemDetail integridade(DataIntegrityViolationException ex) {
+        return problema(HttpStatus.CONFLICT, "Operação conflita com dados existentes.");
     }
 
+    @ExceptionHandler(AuthenticationException.class)
+    ProblemDetail autenticacao(AuthenticationException ex) {
+        return problema(HttpStatus.UNAUTHORIZED, "Credenciais inválidas.");
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ProblemDetail acessoNegado(AccessDeniedException ex) {
+        return problema(HttpStatus.FORBIDDEN, "Seu papel não permite esta operação.");
+    }
+
+    /** Nunca devolve a mensagem interna: registra com um id de correlação e devolve só o id. */
+    @ExceptionHandler(Exception.class)
+    ProblemDetail inesperado(Exception ex) {
+        String correlacao = UUID.randomUUID().toString();
+        log.error("Erro inesperado [correlacao={}]", correlacao, ex);
+        ProblemDetail pd = problema(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno. Informe o código " + correlacao + " ao suporte.");
+        pd.setProperty("correlacao", correlacao);
+        return pd;
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers,
+                                                                  HttpStatusCode status, WebRequest request) {
+        ProblemDetail pd = ex.getBody();
+        pd.setDetail("Dados inválidos.");
+        pd.setProperty("errors", ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(FieldError::getField, e -> String.valueOf(e.getDefaultMessage()), (a, b) -> a)));
+        return handleExceptionInternal(ex, pd, headers, status, request);
+    }
+
+    private static ProblemDetail problema(HttpStatus status, String detalhe) {
+        return ProblemDetail.forStatusAndDetail(status, detalhe);
+    }
 }

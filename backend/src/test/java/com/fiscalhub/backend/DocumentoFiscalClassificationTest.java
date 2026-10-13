@@ -15,14 +15,14 @@ class DocumentoFiscalClassificationTest {
 
     @Test
     void deveClassificarIpiComoFederal() {
-        assertEquals(DocumentoEsfera.FEDERAL, DocumentoFiscalClassificationResolver.classificarEsfera(TipoTributo.IPI));
-        assertEquals(DocumentoJuridicao.UNIAO, DocumentoFiscalClassificationResolver.classificarJuridicao(TipoTributo.IPI));
+        assertEquals(DocumentoEsfera.FEDERAL, DocumentoFiscalClassificationResolver.classificarEsfera(Set.of(TipoTributo.IPI)));
+        assertEquals(DocumentoJuridicao.UNIAO, DocumentoFiscalClassificationResolver.classificarJuridicao(Set.of(TipoTributo.IPI)));
     }
 
     @Test
     void deveClassificarIcmsComoEstadualParana() {
-        assertEquals(DocumentoEsfera.ESTADUAL, DocumentoFiscalClassificationResolver.classificarEsfera(TipoTributo.ICMS));
-        assertEquals(DocumentoJuridicao.PARANA, DocumentoFiscalClassificationResolver.classificarJuridicao(TipoTributo.ICMS));
+        assertEquals(DocumentoEsfera.ESTADUAL, DocumentoFiscalClassificationResolver.classificarEsfera(Set.of(TipoTributo.ICMS)));
+        assertEquals(DocumentoJuridicao.PARANA, DocumentoFiscalClassificationResolver.classificarJuridicao(Set.of(TipoTributo.ICMS)));
     }
 
     @Test

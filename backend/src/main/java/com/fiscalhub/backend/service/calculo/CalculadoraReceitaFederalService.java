@@ -37,11 +37,11 @@ public class CalculadoraReceitaFederalService implements CalculoParcelamentoStra
     private static final BigDecimal MULTA_MORA_MAX = new BigDecimal("20.00");
     private static final BigDecimal MULTA_MORA_DIARIA = new BigDecimal("0.33");
 
-    private IndiceMonetarioService indiceMonetarioService;
+    private final IndiceMonetarioService indiceMonetarioService;
 
-        public CalculadoraReceitaFederalService(IndiceMonetarioService indiceMonetarioService) {
-                this.indiceMonetarioService = indiceMonetarioService;
-        }
+    public CalculadoraReceitaFederalService(IndiceMonetarioService indiceMonetarioService) {
+        this.indiceMonetarioService = indiceMonetarioService;
+    }
 
     @Override
     public boolean suporta(ModalidadeParcelamento modalidade) {
@@ -112,18 +112,8 @@ public class CalculadoraReceitaFederalService implements CalculoParcelamentoStra
         YearMonth mesInicioJuros = YearMonth.from(dataVencimento).plusMonths(1);
         YearMonth mesFimJuros = YearMonth.from(dataCalculo);
 
-        BigDecimal percentualJuros = BigDecimal.ZERO;
-        String indiceUtilizado = "SELIC";
-        try {
-            percentualJuros = indiceMonetarioService.calcularJurosAcumulados(
-                    TipoIndice.SELIC, mesInicioJuros, mesFimJuros);
-        } catch (Exception e) {
-            // Se não houver dados SELIC no período, usa estimativa conservadora de 1% a.m.
-            long mesesAtraso = ChronoUnit.MONTHS.between(mesInicioJuros, mesFimJuros) + 1;
-            percentualJuros = BigDecimal.valueOf(mesesAtraso).multiply(new BigDecimal("1.00"))
-                    .setScale(4, RoundingMode.HALF_UP);
-            indiceUtilizado = "SELIC (estimado)";
-        }
+        BigDecimal percentualJuros = indiceMonetarioService.calcularJurosAcumulados(
+                TipoIndice.SELIC, mesInicioJuros, mesFimJuros);
 
         // Redução de juros para modalidades especiais
         BigDecimal reducaoJuros = BigDecimal.ZERO;
@@ -213,7 +203,7 @@ public class CalculadoraReceitaFederalService implements CalculoParcelamentoStra
         result.setValorMultaOficio(BigDecimal.ZERO);
         result.setPercentualJurosMora(percentualJuros);
         result.setValorJurosMora(valorJuros);
-        result.setIndiceUtilizado(indiceUtilizado);
+        result.setIndiceUtilizado("SELIC");
         result.setValorReducaoMulta(valorOriginal.multiply(reducaoMulta).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
         result.setValorReducaoJuros(valorOriginal.multiply(reducaoJuros).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP));
         result.setValorAtualizado(valorAtualizado);

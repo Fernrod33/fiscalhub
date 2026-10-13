@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -78,6 +79,13 @@ class CalculadoraReceitaEstadualPRServiceTest {
             assertThat(r.getValorParcela()).isEqualByComparingTo("203.69");
             assertThat(r.getCustoTotal()).isEqualByComparingTo("6110.70");
             assertThat(r.getAvisoParcelaMinima()).contains("30").contains("200.00");
+        }
+
+        @Test
+        void semUfprDoMesDoCalculoLancaExcecao() {
+            // UFPR cadastrada só para jan/2024, fev/2024 e fev/2025; o cálculo cai em abr/2024
+            assertThatThrownBy(() -> CenarioParcelamento.estadualPR().diasDeAtraso(100).calcularPR())
+                    .hasMessage("Índice UFPR ausente para 2024-04.");
         }
     }
 

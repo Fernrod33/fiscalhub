@@ -6,11 +6,6 @@ export async function getDocumentosEmpresa(empresaId: number): Promise<Documento
   return res.data;
 }
 
-export async function getDocumentoEmpresa(empresaId: number, documentoId: number): Promise<DocumentoFiscal> {
-  const res = await client.get<DocumentoFiscal>(`/api/empresas/${empresaId}/documentos/${documentoId}`);
-  return res.data;
-}
-
 export async function importarDocumento(empresaId: number, formData: FormData): Promise<DocumentoFiscal> {
   const res = await client.post<DocumentoFiscal>(`/api/empresas/${empresaId}/documentos`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

@@ -43,11 +43,11 @@ public class CalculadoraReceitaEstadualPRService implements CalculoParcelamentoS
     private static final BigDecimal MULTA_MORA_DIARIA = new BigDecimal("0.33");
     private static final BigDecimal JUROS_MENSAIS = new BigDecimal("1.00"); // 1% a.m.
 
-        private final IndiceMonetarioService indiceMonetarioService;
+    private final IndiceMonetarioService indiceMonetarioService;
 
-        public CalculadoraReceitaEstadualPRService(IndiceMonetarioService indiceMonetarioService) {
-                this.indiceMonetarioService = indiceMonetarioService;
-        }
+    public CalculadoraReceitaEstadualPRService(IndiceMonetarioService indiceMonetarioService) {
+        this.indiceMonetarioService = indiceMonetarioService;
+    }
 
     @Override
     public boolean suporta(ModalidadeParcelamento modalidade) {
@@ -85,23 +85,10 @@ public class CalculadoraReceitaEstadualPRService implements CalculoParcelamentoS
         // ---- 3. Atualização monetária pela UFPR ----
         YearMonth mesVencimento = YearMonth.from(dataVencimento);
         YearMonth mesCalculo = YearMonth.from(dataCalculo);
-        BigDecimal fatorUFPR = BigDecimal.ONE;
-        BigDecimal percentualAtualizacao = BigDecimal.ZERO;
-        String descricaoUFPR;
-
-        try {
-            fatorUFPR = indiceMonetarioService.calcularFatorAtualizacaoUFPR(mesVencimento, mesCalculo);
-            percentualAtualizacao = fatorUFPR.subtract(BigDecimal.ONE)
-                    .multiply(BigDecimal.valueOf(100)).setScale(4, RoundingMode.HALF_UP);
-            descricaoUFPR = "UFPR " + mesCalculo + " / UFPR " + mesVencimento;
-        } catch (Exception e) {
-            // Fallback: usar IPCA estimado de 0,5% ao mês
-            long meses = ChronoUnit.MONTHS.between(mesVencimento, mesCalculo);
-            percentualAtualizacao = BigDecimal.valueOf(meses).multiply(new BigDecimal("0.50"))
-                    .setScale(4, RoundingMode.HALF_UP);
-            fatorUFPR = BigDecimal.ONE.add(percentualAtualizacao.divide(BigDecimal.valueOf(100), 8, RoundingMode.HALF_UP));
-            descricaoUFPR = "UFPR (estimado - 0,5% a.m.)";
-        }
+        BigDecimal fatorUFPR = indiceMonetarioService.calcularFatorAtualizacaoUFPR(mesVencimento, mesCalculo);
+        BigDecimal percentualAtualizacao = fatorUFPR.subtract(BigDecimal.ONE)
+                .multiply(BigDecimal.valueOf(100)).setScale(4, RoundingMode.HALF_UP);
+        String descricaoUFPR = "UFPR " + mesCalculo + " / UFPR " + mesVencimento;
 
         BigDecimal valorAtualizado = valorOriginal.multiply(fatorUFPR).setScale(2, RoundingMode.HALF_UP);
         memoria.add(new EtapaCalculoDTO(etapa++, "Fator de atualização monetária (UFPR)",

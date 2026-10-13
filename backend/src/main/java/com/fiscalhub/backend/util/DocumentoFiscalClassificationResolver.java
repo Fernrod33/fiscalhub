@@ -4,15 +4,15 @@ import com.fiscalhub.backend.entity.enums.DocumentoEsfera;
 import com.fiscalhub.backend.entity.enums.DocumentoJuridicao;
 import com.fiscalhub.backend.entity.enums.TipoTributo;
 
+import java.util.Collections;
 import java.util.Set;
 
 public final class DocumentoFiscalClassificationResolver {
 
-    private DocumentoFiscalClassificationResolver() {
-    }
+    private static final Set<TipoTributo> FEDERAIS = Set.of(
+            TipoTributo.IRPJ, TipoTributo.CSLL, TipoTributo.PIS, TipoTributo.COFINS, TipoTributo.IPI);
 
-    public static DocumentoEsfera classificarEsfera(TipoTributo tributo) {
-        return classificarEsfera(Set.of(tributo));
+    private DocumentoFiscalClassificationResolver() {
     }
 
     public static DocumentoEsfera classificarEsfera(Set<TipoTributo> tributos) {
@@ -22,18 +22,7 @@ public final class DocumentoFiscalClassificationResolver {
         if (tributos.contains(TipoTributo.ICMS)) {
             return DocumentoEsfera.ESTADUAL;
         }
-        if (tributos.contains(TipoTributo.IRPJ)
-                || tributos.contains(TipoTributo.CSLL)
-                || tributos.contains(TipoTributo.PIS)
-                || tributos.contains(TipoTributo.COFINS)
-                || tributos.contains(TipoTributo.IPI)) {
-            return DocumentoEsfera.FEDERAL;
-        }
-        return DocumentoEsfera.CONTABIL;
-    }
-
-    public static DocumentoJuridicao classificarJuridicao(TipoTributo tributo) {
-        return classificarJuridicao(Set.of(tributo));
+        return federal(tributos) ? DocumentoEsfera.FEDERAL : DocumentoEsfera.CONTABIL;
     }
 
     public static DocumentoJuridicao classificarJuridicao(Set<TipoTributo> tributos) {
@@ -43,13 +32,10 @@ public final class DocumentoFiscalClassificationResolver {
         if (tributos.contains(TipoTributo.ICMS)) {
             return DocumentoJuridicao.PARANA;
         }
-        if (tributos.contains(TipoTributo.IRPJ)
-                || tributos.contains(TipoTributo.CSLL)
-                || tributos.contains(TipoTributo.PIS)
-                || tributos.contains(TipoTributo.COFINS)
-                || tributos.contains(TipoTributo.IPI)) {
-            return DocumentoJuridicao.UNIAO;
-        }
-        return DocumentoJuridicao.NAO_APLICAVEL;
+        return federal(tributos) ? DocumentoJuridicao.UNIAO : DocumentoJuridicao.NAO_APLICAVEL;
+    }
+
+    private static boolean federal(Set<TipoTributo> tributos) {
+        return !Collections.disjoint(tributos, FEDERAIS);
     }
 }

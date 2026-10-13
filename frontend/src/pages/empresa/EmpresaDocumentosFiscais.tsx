@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { downloadDocumentoArquivo, getDocumentosEmpresa, importarDocumento } from '../../api/documentos';
 import type { EmpresaAreaOutletContext } from './EmpresaArea';
 import './EmpresaArea.css';
+import { mensagemErro } from '../../api/client';
 
 type DocumentoFormState = {
   tipo: string;
@@ -43,8 +44,8 @@ export default function EmpresaDocumentosFiscais() {
     try {
       const data = await getDocumentosEmpresa(empresa.id);
       setDocumentos(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Erro ao carregar documentos.');
+    } catch (err) {
+      setError(mensagemErro(err, 'Erro ao carregar documentos.'));
     } finally {
       setLoading(false);
     }
@@ -115,8 +116,8 @@ export default function EmpresaDocumentosFiscais() {
         arquivo: null,
       });
       await loadDocumentos();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Erro ao importar documento.');
+    } catch (err) {
+      setError(mensagemErro(err, 'Erro ao importar documento.'));
     }
   }
 
@@ -129,8 +130,8 @@ export default function EmpresaDocumentosFiscais() {
       anchor.download = nomeArquivo;
       anchor.click();
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Erro ao baixar documento.');
+    } catch (err) {
+      setError(mensagemErro(err, 'Erro ao baixar documento.'));
     }
   }
 

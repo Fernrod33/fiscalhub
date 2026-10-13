@@ -27,4 +27,9 @@ client.interceptors.response.use(
   }
 );
 
+/** Mensagem de erro devolvida pela API (ProblemDetail, RFC 9457: campo `detail`). */
+export function mensagemErro(err: unknown, padrao: string): string {
+  return (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ?? padrao;
+}
+
 export default client;

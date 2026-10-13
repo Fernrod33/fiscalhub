@@ -2,7 +2,7 @@ package com.fiscalhub.backend.service;
 
 import com.fiscalhub.backend.entity.IndiceMonetario;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
-import com.fiscalhub.backend.exception.ResourceNotFoundException;
+import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,9 +33,7 @@ public class IndiceMonetarioService {
         return indiceMonetarioRepository
                 .findByTipoAndAnoAndMes(tipo, mesAno.getYear(), mesAno.getMonthValue())
                 .map(IndiceMonetario::getValor)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Índice %s não encontrado para %s. Verifique a base de índices.",
-                                tipo, mesAno)));
+                .orElseThrow(() -> indiceAusente(tipo, mesAno));
     }
 
     /**
@@ -61,8 +59,16 @@ public class IndiceMonetarioService {
                 mesFim.getYear(), mesFim.getMonthValue()
         );
 
-        if (indices.isEmpty()) {
-            return BigDecimal.ZERO;
+        // Sem fallback: índice ausente gera erro de negócio em vez de juros zerados
+        YearMonth esperado = mesInicio;
+        for (IndiceMonetario indice : indices) {
+            if (!YearMonth.of(indice.getAno(), indice.getMes()).equals(esperado)) {
+                break;
+            }
+            esperado = esperado.plusMonths(1);
+        }
+        if (!esperado.isAfter(mesFim)) {
+            throw indiceAusente(tipo, esperado);
         }
 
         // Produto de (1 + taxa_i/100) para cada mês
@@ -86,8 +92,7 @@ public class IndiceMonetarioService {
         return indiceMonetarioRepository
                 .findByTipoAndAnoAndMes(TipoIndice.UFPR, mesAno.getYear(), mesAno.getMonthValue())
                 .map(IndiceMonetario::getValor)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("UFPR não encontrada para %s. Verifique a base de índices.", mesAno)));
+                .orElseThrow(() -> indiceAusente(TipoIndice.UFPR, mesAno));
     }
 
     /**
@@ -102,5 +107,9 @@ public class IndiceMonetarioService {
         BigDecimal ufprVencimento = getValorUFPR(mesVencimento);
         BigDecimal ufprCalculo = getValorUFPR(mesCalculo);
         return ufprCalculo.divide(ufprVencimento, 8, RoundingMode.HALF_UP);
+    }
+
+    private static BusinessRuleException indiceAusente(TipoIndice tipo, YearMonth mes) {
+        return new BusinessRuleException("Índice " + tipo + " ausente para " + mes + ".");
     }
 }

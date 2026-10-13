@@ -2,12 +2,14 @@ package com.fiscalhub.backend.service.calculo;
 
 import com.fiscalhub.backend.dto.ParcelaDTO;
 import com.fiscalhub.backend.dto.SimulacaoResultDTO;
+import com.fiscalhub.backend.exception.BusinessRuleException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.YearMonth;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -83,15 +85,6 @@ class CalculadoraReceitaFederalServiceTest {
             assertThat(r.getCustoTotal()).isEqualByComparingTo("12100.08");
             assertThat(r.getAvisoParcelaMinima()).contains("24").contains("500.00");
         }
-
-        @Test
-        void semSelicCadastrada_jurosZero() {
-            SimulacaoResultDTO r = CenarioParcelamento.federalSemSelic().diasDeAtraso(45).calcularFederal();
-
-            assertThat(r.getPercentualJurosMora()).isEqualByComparingTo("0");
-            assertThat(r.getIndiceUtilizado()).isEqualTo("SELIC");
-            assertThat(r.getValorAtualizado()).isEqualByComparingTo("12000.00");
-        }
     }
 
     /** Resultado exigido pela norma. Desativados até a correção do motor na Fase 5. */
@@ -117,10 +110,20 @@ class CalculadoraReceitaFederalServiceTest {
         }
 
         @Test
-        @Disabled("Fase 5 — divergência normativa: sem SELIC cadastrada para o período o cálculo deve falhar; hoje retorna juros 0")
         void semSelicCadastradaLancaExcecao() {
             assertThatThrownBy(() -> CenarioParcelamento.federalSemSelic().diasDeAtraso(45).calcularFederal())
-                    .isInstanceOf(RuntimeException.class);
+                    .isInstanceOf(BusinessRuleException.class)
+                    .hasMessage("Índice SELIC ausente para 2024-02.");
+        }
+
+        @Test
+        void selicFaltandoNoMeioDoPeriodoLancaExcecao() {
+            CenarioParcelamento cenario = CenarioParcelamento.federalSemSelic()
+                    .selic(YearMonth.of(2024, 2), YearMonth.of(2024, 6), "1.00")
+                    .selic(YearMonth.of(2024, 8), YearMonth.of(2025, 2), "1.00")
+                    .diasDeAtraso(400);
+
+            assertThatThrownBy(cenario::calcularFederal).hasMessage("Índice SELIC ausente para 2024-07.");
         }
 
         @Test

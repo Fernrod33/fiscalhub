@@ -10,6 +10,7 @@ import {
 import type { Empresa, Declaracao, TipoDeclaracao, StatusDeclaracao } from '../types';
 import './Dashboard.css';
 import './Declaracoes.css';
+import { mensagemErro } from '../api/client';
 
 const TIPOS: TipoDeclaracao[] = ['ICMS', 'ISS', 'PIS', 'COFINS', 'IRPJ', 'CSLL', 'OUTRO'];
 const STATUS_OPTIONS: StatusDeclaracao[] = ['PENDENTE', 'ENVIADA', 'PROCESSANDO', 'APROVADA', 'REJEITADA', 'PAGO'];
@@ -119,10 +120,7 @@ export default function Declaracoes() {
       setShowModal(false);
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao salvar declaração.';
-      setError(msg);
+      setError(mensagemErro(err, 'Erro ao salvar declaração.'));
     } finally {
       setSaving(false);
     }

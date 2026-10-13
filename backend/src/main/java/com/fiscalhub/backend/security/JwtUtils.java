@@ -9,7 +9,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
-import com.fiscalhub.backend.exception.UnauthorizedException;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -55,21 +54,9 @@ public class JwtUtils {
         try {
             Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(authToken);
             return true;
-        } catch (MalformedJwtException e) {
-            logger.error("Invalid JWT token: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT inválido.");
-        } catch (ExpiredJwtException e) {
-            logger.error("JWT token is expired: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT expirado.");
-        } catch (UnsupportedJwtException e) {
-            logger.error("JWT token is unsupported: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT não suportado.");
-        } catch (IllegalArgumentException e) {
-            logger.error("JWT claims string is empty: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT vazio ou malformado.");
-        } catch (Exception e) {
-            logger.error("Erro inesperado ao validar token: {}", e.getMessage());
-            throw new UnauthorizedException("Erro ao validar o token JWT.");
+        } catch (JwtException | IllegalArgumentException e) {
+            logger.warn("Token JWT rejeitado: {}", e.getMessage());
+            return false;
         }
     }
 }

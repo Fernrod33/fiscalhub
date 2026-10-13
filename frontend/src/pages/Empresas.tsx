@@ -5,6 +5,7 @@ import { getMinhasEmpresas, createEmpresa, updateEmpresa, deleteEmpresa } from '
 import type { Empresa } from '../types';
 import './Dashboard.css';
 import './Empresas.css';
+import { mensagemErro } from '../api/client';
 
 const ESTADOS_BR = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -165,10 +166,7 @@ export default function Empresas() {
       await fetchEmpresas();
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao salvar empresa.';
-      setError(msg);
+      setError(mensagemErro(err, 'Erro ao salvar empresa.'));
     } finally {
       setSaving(false);
     }

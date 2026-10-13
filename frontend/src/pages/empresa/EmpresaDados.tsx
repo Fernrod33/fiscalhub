@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { updateEmpresa } from '../../api/empresas';
 import type { EmpresaAreaOutletContext } from './EmpresaArea';
 import './EmpresaArea.css';
+import { mensagemErro } from '../../api/client';
 
 const ESTADOS_BR = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
@@ -112,10 +113,7 @@ export default function EmpresaDados() {
       reload();
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        'Erro ao atualizar os dados.';
-      setError(msg);
+      setError(mensagemErro(err, 'Erro ao atualizar os dados.'));
     } finally {
       setSaving(false);
     }

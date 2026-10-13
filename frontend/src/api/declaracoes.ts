@@ -6,11 +6,6 @@ export async function getDeclaracoesByEmpresa(empresaId: number): Promise<Declar
   return res.data;
 }
 
-export async function getDeclaracao(id: number): Promise<Declaracao> {
-  const res = await client.get<Declaracao>(`/api/declaracoes/${id}`);
-  return res.data;
-}
-
 export async function createDeclaracao(
   empresaId: number,
   data: Omit<Declaracao, 'id' | 'dataCriacao' | 'dataAtualizacao'>
