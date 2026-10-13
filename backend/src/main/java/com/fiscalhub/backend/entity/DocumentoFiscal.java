@@ -114,9 +114,14 @@ public class DocumentoFiscal {
     @Column(length = 1000)
     private String observacao;
 
+    /** Chave do arquivo no storage (local ou S3), nunca um caminho informado pelo cliente. */
     @Size(max = 500)
-    @Column(name = "caminho_arquivo", nullable = false, length = 500)
-    private String caminhoArquivo;
+    @Column(name = "chave_armazenamento", nullable = false, length = 500)
+    private String chaveArmazenamento;
+
+    /** SHA-256 do conteúdo, calculado durante o upload: o mesmo arquivo não entra duas vezes no cliente. */
+    @Column(length = 64)
+    private String sha256;
 
     @UpdateTimestamp
     @Column(name = "data_atualizacao")

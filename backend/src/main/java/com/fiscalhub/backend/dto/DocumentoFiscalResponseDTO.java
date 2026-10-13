@@ -33,6 +33,7 @@ public class DocumentoFiscalResponseDTO {
     private Boolean retificacao;
     private String observacao;
     private Long documentoOriginalId;
+    private String sha256;
 
     public static DocumentoFiscalResponseDTO fromEntity(DocumentoFiscal documento) {
         DocumentoFiscalResponseDTO dto = new DocumentoFiscalResponseDTO();
@@ -55,6 +56,7 @@ public class DocumentoFiscalResponseDTO {
         dto.setRetificacao(documento.getRetificacao());
         dto.setObservacao(documento.getObservacao());
         dto.setDocumentoOriginalId(documento.getDocumentoOriginal() != null ? documento.getDocumentoOriginal().getId() : null);
+        dto.setSha256(documento.getSha256());
         return dto;
     }
 }

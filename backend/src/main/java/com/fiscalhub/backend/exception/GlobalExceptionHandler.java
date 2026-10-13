@@ -47,7 +47,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DuplicateResourceException.class)
     ProblemDetail duplicado(DuplicateResourceException ex) {
-        return problema(HttpStatus.CONFLICT, ex.getMessage());
+        ProblemDetail pd = problema(HttpStatus.CONFLICT, ex.getMessage());
+        if (ex.getRecursoExistenteId() != null) {
+            pd.setProperty("recursoExistenteId", ex.getRecursoExistenteId());
+        }
+        return pd;
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

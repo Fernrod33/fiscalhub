@@ -54,6 +54,7 @@ export interface DocumentoFiscal {
   retificacao: boolean;
   observacao?: string;
   documentoOriginalId?: number | null;
+  sha256?: string | null;
 }
 
 export type Papel = 'ADMIN' | 'CONSULTOR' | 'ASSISTENTE';

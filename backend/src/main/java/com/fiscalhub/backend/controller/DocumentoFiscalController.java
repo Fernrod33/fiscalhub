@@ -1,9 +1,13 @@
 package com.fiscalhub.backend.controller;
 
 import com.fiscalhub.backend.dto.DocumentoFiscalRequestDTO;
+import com.fiscalhub.backend.dto.ArquivoDocumento;
 import com.fiscalhub.backend.dto.DocumentoFiscalResponseDTO;
+import com.fiscalhub.backend.dto.StatusDocumentoDTO;
+import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import com.fiscalhub.backend.service.DocumentoFiscalService;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -12,6 +16,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 import java.util.List;
 
@@ -49,15 +57,34 @@ public class DocumentoFiscalController {
     }
 
     @GetMapping("/{documentoId}/arquivo")
-    public ResponseEntity<byte[]> downloadArquivo(@PathVariable Long clienteId,
-                                                @PathVariable Long documentoId,
-                                                @AuthenticationPrincipal UsuarioAutenticado ua) {
-        DocumentoFiscalResponseDTO documento = documentoFiscalService.consultarPorId(clienteId, documentoId, ua);
-        byte[] bytes = documentoFiscalService.downloadArquivo(clienteId, documentoId, ua);
+    public ResponseEntity<StreamingResponseBody> downloadArquivo(@PathVariable Long clienteId,
+                                                                 @PathVariable Long documentoId,
+                                                                 @AuthenticationPrincipal UsuarioAutenticado ua) {
+        ArquivoDocumento arquivo = documentoFiscalService.abrirArquivo(clienteId, documentoId, ua);
+        StreamingResponseBody corpo = saida -> {
+            try (InputStream in = arquivo.conteudo()) {
+                in.transferTo(saida);
+            }
+        };
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(arquivo.mimeType()))
+                .contentLength(arquivo.tamanho())
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(arquivo.nome(), StandardCharsets.UTF_8).build().toString())
+                .body(corpo);
+    }
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.parseMediaType(documento.getMimeType() != null ? documento.getMimeType() : "application/octet-stream"));
-        headers.setContentDispositionFormData("attachment", documento.getNomeOriginalArquivo());
-        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+    @GetMapping("/{documentoId}/status")
+    public StatusDocumentoDTO status(@PathVariable Long clienteId, @PathVariable Long documentoId,
+                                     @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return documentoFiscalService.status(clienteId, documentoId, ua);
+    }
+
+    @DeleteMapping("/{documentoId}")
+    @ConsultorOuAdmin
+    public ResponseEntity<Void> excluir(@PathVariable Long clienteId, @PathVariable Long documentoId,
+                                        @AuthenticationPrincipal UsuarioAutenticado ua) {
+        documentoFiscalService.excluir(clienteId, documentoId, ua);
+        return ResponseEntity.noContent().build();
     }
 }

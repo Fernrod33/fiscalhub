@@ -1,15 +1,19 @@
 package com.fiscalhub.backend.service;
 
 import com.fiscalhub.backend.dto.DocumentoFiscalRequestDTO;
+import com.fiscalhub.backend.dto.ArquivoDocumento;
 import com.fiscalhub.backend.dto.DocumentoFiscalResponseDTO;
+import com.fiscalhub.backend.dto.StatusDocumentoDTO;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
 import com.fiscalhub.backend.exception.BusinessRuleException;
+import com.fiscalhub.backend.exception.DuplicateResourceException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
+import com.fiscalhub.backend.repository.JobProcessamentoRepository;
+import com.fiscalhub.backend.storage.ArmazenamentoArquivos;
 import com.fiscalhub.backend.util.DocumentoFiscalClassificationResolver;
-import org.springframework.beans.factory.annotation.Value;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -17,10 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.io.InputStream;
+import java.security.DigestInputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -29,31 +35,34 @@ import java.util.UUID;
 @Transactional
 public class DocumentoFiscalService {
 
-    private static final Set<String> EXTENSOES_PERMITIDAS = Set.of(".pdf", ".xml", ".csv", ".xlsx");
-    private static final Set<String> MIME_PERMITIDOS = Set.of(
-            "application/pdf",
-            "application/xml",
-            "text/xml",
-            "text/csv",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+    /** Extensão permitida -> tipos de conteúdo aceitos (o navegador pode mandar mais de um para CSV). */
+    private static final Map<String, Set<String>> TIPOS_PERMITIDOS = Map.of(
+            ".txt", Set.of("text/plain"),
+            ".pdf", Set.of("application/pdf"),
+            ".csv", Set.of("text/csv", "text/plain", "application/vnd.ms-excel"),
+            ".xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
     private final DocumentoFiscalRepository documentoFiscalRepository;
     private final AcessoRecursoService acessoRecursoService;
     private final UsuarioRepository usuarioRepository;
+    private final ArmazenamentoArquivos armazenamento;
+    private final ProcessamentoDocumentoService processamento;
+    private final JobProcessamentoRepository jobRepository;
 
-    @Value("${fiscalhub.upload.max-size-bytes:5242880}")
-    private long maxUploadSizeBytes;
 
-    @Value("${fiscalhub.upload.directory:./uploads/documentos}")
-    private String uploadDirectory;
 
     public DocumentoFiscalService(DocumentoFiscalRepository documentoFiscalRepository,
                                  AcessoRecursoService acessoRecursoService,
-                                  UsuarioRepository usuarioRepository) {
+                                  UsuarioRepository usuarioRepository,
+                                 ArmazenamentoArquivos armazenamento,
+                                 ProcessamentoDocumentoService processamento,
+                                 JobProcessamentoRepository jobRepository) {
         this.documentoFiscalRepository = documentoFiscalRepository;
         this.acessoRecursoService = acessoRecursoService;
         this.usuarioRepository = usuarioRepository;
+        this.armazenamento = armazenamento;
+        this.processamento = processamento;
+        this.jobRepository = jobRepository;
     }
 
     public List<DocumentoFiscalResponseDTO> listarPorCliente(Long clienteId, UsuarioAutenticado ua) {
@@ -80,14 +89,15 @@ public class DocumentoFiscalService {
         String extensao = extrairExtensao(arquivo.getOriginalFilename());
         String mimeType = arquivo.getContentType() != null ? arquivo.getContentType() : "application/octet-stream";
         String nomeArquivoInterno = UUID.randomUUID() + extensao;
-        Path destino = Paths.get(uploadDirectory).resolve(nomeArquivoInterno).normalize();
+        String chave = "clientes/" + cliente.getId() + "/" + nomeArquivoInterno;
 
-        try {
-            Files.createDirectories(destino.getParent());
-            Files.copy(arquivo.getInputStream(), destino, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new BusinessRuleException("Não foi possível armazenar o arquivo importado.", e);
-        }
+        // ponytail: upload em uma requisição só; upload em partes (retomável) quando houver arquivos acima
+        // de 500 MB ou conexões instáveis
+        String sha256 = gravarCalculandoSha256(chave, arquivo, mimeType);
+        documentoFiscalRepository.findByClienteIdAndSha256(cliente.getId(), sha256).ifPresent(existente -> {
+            armazenamento.excluir(chave);
+            throw new DuplicateResourceException("Este arquivo já foi importado para o cliente.", existente.getId());
+        });
 
         DocumentoFiscal documento = new DocumentoFiscal();
         documento.setCliente(cliente);
@@ -108,36 +118,63 @@ public class DocumentoFiscalService {
         documento.setStatus(DocumentoStatus.RECEBIDO);
         documento.setRetificacao(Boolean.TRUE.equals(dto.getRetificacao()));
         documento.setObservacao(dto.getObservacao());
-        documento.setCaminhoArquivo(destino.toString());
+        documento.setChaveArmazenamento(chave);
+        documento.setSha256(sha256);
 
-        return DocumentoFiscalResponseDTO.fromEntity(documentoFiscalRepository.save(documento));
+        documentoFiscalRepository.save(documento);
+        processamento.enfileirar(documento);
+        return DocumentoFiscalResponseDTO.fromEntity(documento);
     }
 
-    public byte[] downloadArquivo(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
+    @Transactional(readOnly = true)
+    public ArquivoDocumento abrirArquivo(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
         DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
-
-        Path path = Paths.get(documento.getCaminhoArquivo());
-        if (!Files.exists(path)) {
+        if (!armazenamento.existe(documento.getChaveArmazenamento())) {
             throw new ResourceNotFoundException("Arquivo original não encontrado no armazenamento.");
         }
-
-        try {
-            return Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new BusinessRuleException("Não foi possível recuperar o arquivo solicitado.", e);
-        }
+        return new ArquivoDocumento(documento.getNomeOriginalArquivo(), documento.getMimeType(),
+                documento.getTamanhoBytes(), armazenamento.abrir(documento.getChaveArmazenamento()));
     }
 
+    @Transactional(readOnly = true)
+    public StatusDocumentoDTO status(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
+        return jobRepository.findFirstByDocumentoIdOrderByIdDesc(documento.getId())
+                .map(StatusDocumentoDTO::de)
+                .orElseThrow(() -> new ResourceNotFoundException("Documento sem processamento registrado."));
+    }
+
+    /** Exclui registro e arquivo. Documento com débitos gerados não pode ser excluído (409 pela FK). */
+    public void excluir(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
+        documentoFiscalRepository.delete(documento);
+        documentoFiscalRepository.flush(); // falha de FK antes de apagar o arquivo
+        armazenamento.excluir(documento.getChaveArmazenamento());
+    }
+
+    private String gravarCalculandoSha256(String chave, MultipartFile arquivo, String mimeType) {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+        try (InputStream in = new DigestInputStream(arquivo.getInputStream(), digest)) {
+            armazenamento.salvar(chave, in, arquivo.getSize(), mimeType);
+        } catch (IOException e) {
+            throw new BusinessRuleException("Não foi possível armazenar o arquivo importado.", e);
+        }
+        return HexFormat.of().formatHex(digest.digest());
+    }
+
+    /** Tamanho máximo é validado pelo multipart (spring.servlet.multipart.*): estoura com 413. */
     private void validarArquivo(MultipartFile arquivo) {
-        if (arquivo.getSize() > maxUploadSizeBytes) {
-            throw new BusinessRuleException("Arquivo excede o tamanho máximo permitido de " + maxUploadSizeBytes + " bytes.");
+        Set<String> tiposAceitos = TIPOS_PERMITIDOS.get(extrairExtensao(arquivo.getOriginalFilename()));
+        if (tiposAceitos == null) {
+            throw new BusinessRuleException("Tipo de arquivo não permitido. Use TXT (SPED), PDF, CSV ou XLSX.");
         }
-        if (!EXTENSOES_PERMITIDAS.contains(extrairExtensao(arquivo.getOriginalFilename()))) {
-            throw new BusinessRuleException("Tipo de arquivo não permitido. Use PDF, XML, CSV ou XLSX.");
-        }
-        String mimeType = arquivo.getContentType();
-        if (mimeType != null && !MIME_PERMITIDOS.contains(mimeType)) {
-            throw new BusinessRuleException("MIME type inválido para o arquivo importado.");
+        if (arquivo.getContentType() != null && !tiposAceitos.contains(arquivo.getContentType())) {
+            throw new BusinessRuleException("Tipo de conteúdo inválido para o arquivo importado.");
         }
     }
 

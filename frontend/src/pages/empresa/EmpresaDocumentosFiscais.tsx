@@ -199,7 +199,7 @@ export default function EmpresaDocumentosFiscais() {
 
               <label className="full-width">
                 <span>Arquivo</span>
-                <input type="file" accept=".pdf,.xml,.csv,.xlsx" onChange={(e) => onFieldChange('arquivo', e.target.files?.[0] || null)} />
+                <input type="file" accept=".txt,.pdf,.csv,.xlsx" onChange={(e) => onFieldChange('arquivo', e.target.files?.[0] || null)} />
               </label>
 
               <div className="full-width tributos-box">

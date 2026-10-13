@@ -115,7 +115,7 @@ public class DadosTeste {
         d.setExtensao(".pdf");
         d.setMimeType("application/pdf");
         d.setTamanhoBytes(10L);
-        d.setCaminhoArquivo("target/test-uploads/inexistente.pdf");
+        d.setChaveArmazenamento("teste/" + d.getNomeArquivoInterno());
         return documentoRepository.save(d);
     }
 

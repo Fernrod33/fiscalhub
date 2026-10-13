@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface DocumentoFiscalRepository extends JpaRepository<DocumentoFiscal, Long> {
     List<DocumentoFiscal> findByClienteIdOrderByDataImportacaoDesc(Long clienteId);
 
+    Optional<DocumentoFiscal> findByClienteIdAndSha256(Long clienteId, String sha256);
+
     Optional<DocumentoFiscal> findByIdAndClienteIdAndClienteEscritorioId(Long id, Long clienteId, Long escritorioId);
 }
