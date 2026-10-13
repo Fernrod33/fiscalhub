@@ -4,12 +4,10 @@ import com.fiscalhub.backend.entity.IndiceMonetario;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.List;
@@ -22,8 +20,11 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class IndiceMonetarioService {
 
-    @Autowired
-    private IndiceMonetarioRepository indiceMonetarioRepository;
+    private final IndiceMonetarioRepository indiceMonetarioRepository;
+
+    public IndiceMonetarioService(IndiceMonetarioRepository indiceMonetarioRepository) {
+        this.indiceMonetarioRepository = indiceMonetarioRepository;
+    }
 
     /**
      * Retorna a taxa percentual mensal de um índice para um mês específico.

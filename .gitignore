@@ -77,3 +77,9 @@ dist-ssr
 
 # Arquivos de comandos de inicialização (local apenas)
 comandos_inicializacao.txt
+
+# graphify (artefato gerado)
+graphify-out/
+
+# Uploads locais e crash logs da JVM (hs_err_pid*.log ja coberto por *.log)
+backend/uploads/

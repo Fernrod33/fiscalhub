@@ -12,7 +12,6 @@ import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.service.calculo.CalculoParcelamentoStrategy;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,17 +22,21 @@ import java.util.List;
 @Transactional
 public class SimulacaoParcelamentoService {
 
-    @Autowired
-    private SimulacaoParcelamentoRepository simulacaoParcelamentoRepository;
+    private final SimulacaoParcelamentoRepository simulacaoParcelamentoRepository;
+    private final DeclaracaoService declaracaoService;
+    private final List<CalculoParcelamentoStrategy> strategies;
+    private final ObjectMapper objectMapper;
 
-    @Autowired
-    private DeclaracaoService declaracaoService;
-
-    @Autowired
-    private List<CalculoParcelamentoStrategy> strategies;
-
-    @Autowired
-    private ObjectMapper objectMapper;
+    public SimulacaoParcelamentoService(
+            SimulacaoParcelamentoRepository simulacaoParcelamentoRepository,
+            DeclaracaoService declaracaoService,
+            List<CalculoParcelamentoStrategy> strategies,
+            ObjectMapper objectMapper) {
+        this.simulacaoParcelamentoRepository = simulacaoParcelamentoRepository;
+        this.declaracaoService = declaracaoService;
+        this.strategies = strategies;
+        this.objectMapper = objectMapper;
+    }
 
     // ---------------------------------------------------------------
     // Consultas

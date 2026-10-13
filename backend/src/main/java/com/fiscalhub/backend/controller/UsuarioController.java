@@ -3,11 +3,9 @@ package com.fiscalhub.backend.controller;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.service.UsuarioService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -15,8 +13,11 @@ import java.util.List;
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService usuarioService;
+    private final UsuarioService usuarioService;
+
+    UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Usuario>> getAllUsuarios() {

@@ -7,7 +7,6 @@ import com.fiscalhub.backend.entity.enums.StatusDeclaracao;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.DeclaracaoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,14 +16,17 @@ import java.util.List;
 @Transactional
 public class DeclaracaoService {
 
-    @Autowired
-    private DeclaracaoRepository declaracaoRepository;
+    private final DeclaracaoRepository declaracaoRepository;
+    private final UsuarioService usuarioService;
+    private final EmpresaService empresaService;
 
-    @Autowired
-    private UsuarioService usuarioService;
-
-    @Autowired
-    private EmpresaService empresaService;
+    public DeclaracaoService(DeclaracaoRepository declaracaoRepository,
+                             UsuarioService usuarioService,
+                             EmpresaService empresaService) {
+        this.declaracaoRepository = declaracaoRepository;
+        this.usuarioService = usuarioService;
+        this.empresaService = empresaService;
+    }
 
     public List<Declaracao> findAll() {
         return declaracaoRepository.findAll();

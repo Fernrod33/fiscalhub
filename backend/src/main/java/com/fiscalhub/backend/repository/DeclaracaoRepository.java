@@ -5,12 +5,9 @@ import com.fiscalhub.backend.entity.enums.StatusDeclaracao;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDate;
 import java.util.List;
 
-@Repository
 public interface DeclaracaoRepository extends JpaRepository<Declaracao, Long> {
 
     List<Declaracao> findByUsuarioId(Long usuarioId);

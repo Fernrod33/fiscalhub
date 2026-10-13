@@ -5,11 +5,9 @@ import com.fiscalhub.backend.dto.SimulacaoResultDTO;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.service.SimulacaoParcelamentoService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 
 @RestController
@@ -17,8 +15,11 @@ import java.util.List;
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class SimulacaoParcelamentoController {
 
-    @Autowired
-    private SimulacaoParcelamentoService simulacaoParcelamentoService;
+    private final SimulacaoParcelamentoService simulacaoParcelamentoService;
+
+    SimulacaoParcelamentoController(SimulacaoParcelamentoService simulacaoParcelamentoService) {
+        this.simulacaoParcelamentoService = simulacaoParcelamentoService;
+    }
 
     // ---------------------------------------------------------------
     // Leitura de simulações salvas

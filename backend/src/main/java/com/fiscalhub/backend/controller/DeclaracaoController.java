@@ -4,7 +4,6 @@ import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.enums.StatusDeclaracao;
 import com.fiscalhub.backend.service.DeclaracaoService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,8 +15,11 @@ import java.util.List;
 @CrossOrigin(origins = "*", maxAge = 3600)
 public class DeclaracaoController {
 
-    @Autowired
-    private DeclaracaoService declaracaoService;
+    private final DeclaracaoService declaracaoService;
+
+    DeclaracaoController(DeclaracaoService declaracaoService) {
+        this.declaracaoService = declaracaoService;
+    }
 
     @GetMapping
     public ResponseEntity<List<Declaracao>> getAllDeclaracoes() {

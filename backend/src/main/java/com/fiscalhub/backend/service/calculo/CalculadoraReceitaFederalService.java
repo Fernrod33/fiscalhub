@@ -1,7 +1,5 @@
 package com.fiscalhub.backend.service.calculo;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiscalhub.backend.dto.EtapaCalculoDTO;
 import com.fiscalhub.backend.dto.ParcelaDTO;
 import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
@@ -12,7 +10,6 @@ import com.fiscalhub.backend.entity.enums.OrgaoReceita;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.service.IndiceMonetarioService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,7 +19,6 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Engine de cálculo para parcelamentos da Receita Federal do Brasil.
@@ -41,11 +37,11 @@ public class CalculadoraReceitaFederalService implements CalculoParcelamentoStra
     private static final BigDecimal MULTA_MORA_MAX = new BigDecimal("20.00");
     private static final BigDecimal MULTA_MORA_DIARIA = new BigDecimal("0.33");
 
-    @Autowired
     private IndiceMonetarioService indiceMonetarioService;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        public CalculadoraReceitaFederalService(IndiceMonetarioService indiceMonetarioService) {
+                this.indiceMonetarioService = indiceMonetarioService;
+        }
 
     @Override
     public boolean suporta(ModalidadeParcelamento modalidade) {

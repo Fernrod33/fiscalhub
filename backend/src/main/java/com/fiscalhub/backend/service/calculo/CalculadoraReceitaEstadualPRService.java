@@ -7,10 +7,8 @@ import com.fiscalhub.backend.dto.SimulacaoResultDTO;
 import com.fiscalhub.backend.entity.Declaracao;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoReceita;
-import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.service.IndiceMonetarioService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -45,8 +43,11 @@ public class CalculadoraReceitaEstadualPRService implements CalculoParcelamentoS
     private static final BigDecimal MULTA_MORA_DIARIA = new BigDecimal("0.33");
     private static final BigDecimal JUROS_MENSAIS = new BigDecimal("1.00"); // 1% a.m.
 
-    @Autowired
-    private IndiceMonetarioService indiceMonetarioService;
+        private final IndiceMonetarioService indiceMonetarioService;
+
+        public CalculadoraReceitaEstadualPRService(IndiceMonetarioService indiceMonetarioService) {
+                this.indiceMonetarioService = indiceMonetarioService;
+        }
 
     @Override
     public boolean suporta(ModalidadeParcelamento modalidade) {

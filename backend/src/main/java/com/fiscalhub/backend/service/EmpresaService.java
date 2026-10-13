@@ -10,7 +10,6 @@ import com.fiscalhub.backend.exception.ForbiddenException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.EmpresaRepository;
 import com.fiscalhub.backend.util.CnpjValidationUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,11 +20,13 @@ import java.util.stream.Collectors;
 @Transactional
 public class EmpresaService {
 
-    @Autowired
-    private EmpresaRepository empresaRepository;
+    private final EmpresaRepository empresaRepository;
+    private final UsuarioService usuarioService;
 
-    @Autowired
-    private UsuarioService usuarioService;
+    public EmpresaService(EmpresaRepository empresaRepository, UsuarioService usuarioService) {
+        this.empresaRepository = empresaRepository;
+        this.usuarioService = usuarioService;
+    }
 
     /** Used internally by other services that need the Empresa entity. */
     public Empresa findById(Long id) {

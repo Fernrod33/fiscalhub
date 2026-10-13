@@ -3,7 +3,6 @@ package com.fiscalhub.backend.dto;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * Representa uma etapa da memória de cálculo da simulação.
