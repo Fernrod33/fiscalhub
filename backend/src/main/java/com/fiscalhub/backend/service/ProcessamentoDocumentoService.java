@@ -67,11 +67,16 @@ public class ProcessamentoDocumentoService {
             validar(documento);
             documento.setStatus(DocumentoStatus.PROCESSADO);
             job.setStatus(StatusJob.CONCLUIDO);
-        } catch (RuntimeException e) {
-            log.warn("Job {} falhou: {}", jobId, e.getMessage());
+        } catch (FalhaDeValidacao e) {
             documento.setStatus(DocumentoStatus.ERRO);
             job.setStatus(StatusJob.ERRO);
-            job.setMensagem(e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage().substring(0, Math.min(1000, e.getMessage().length())));
+            job.setMensagem(e.getMessage());
+        } catch (RuntimeException e) {
+            // a mensagem vai para o /status do usuário: detalhe interno (storage, SDK) só no log
+            log.error("Job {} falhou", jobId, e);
+            documento.setStatus(DocumentoStatus.ERRO);
+            job.setStatus(StatusJob.ERRO);
+            job.setMensagem("Falha inesperada no processamento. Job " + jobId + ".");
         }
         job.setFim(LocalDateTime.now());
     }
@@ -79,7 +84,14 @@ public class ProcessamentoDocumentoService {
     /** Por enquanto só confere que o arquivo está no storage; os parsers entram na Fase 1. */
     private void validar(DocumentoFiscal documento) {
         if (!armazenamento.existe(documento.getChaveArmazenamento())) {
-            throw new IllegalStateException("Arquivo não encontrado no armazenamento.");
+            throw new FalhaDeValidacao("Arquivo não encontrado no armazenamento.");
+        }
+    }
+
+    /** Problema do arquivo, com mensagem própria para o usuário. */
+    static class FalhaDeValidacao extends RuntimeException {
+        FalhaDeValidacao(String mensagem) {
+            super(mensagem);
         }
     }
 }

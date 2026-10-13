@@ -1,21 +1,38 @@
 # FiscalHub — Backend
 
-API REST do FiscalHub: ferramenta para advogados e contadores consultores tributários. Importa escriturações e demonstrações, lê a parte tributária e simula parcelamentos conforme as normas da Receita Federal e da SEFA-PR.
+API REST do FiscalHub: ferramenta para advogados e contadores consultores tributários, organizados em **escritórios** que atendem vários **clientes** (empresas). Todos os dados fiscais entram por **importação de arquivo**; nenhum valor fiscal é digitado.
 
 Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (backend em `backend/`, frontend React em `frontend/`).
 
 ## Stack
 
-- Java 25, Spring Boot 3.5.6 (Web, Data JPA, Security, Validation)
+- Java 25, Spring Boot 3.5.6 (Web, Data JPA, Security, Validation, AOP)
 - PostgreSQL + Flyway (migrações versionadas)
 - JWT (JJWT 0.11) para autenticação stateless
-- Testes: JUnit 5, Mockito, MockMvc, Testcontainers (PostgreSQL 18)
+- AWS SDK v2 (S3) para storage em produção
+- Testes: JUnit 5, Mockito, MockMvc, Testcontainers (PostgreSQL 18 e MinIO)
 
 ## Pré-requisitos
 
 - JDK 25 e Maven 3.9+
 - PostgreSQL 15+ (desenvolvimento local)
-- Docker (só para `mvn test`: os testes de integração sobem um PostgreSQL via Testcontainers)
+- Docker em execução para `mvn test` (Testcontainers sobe PostgreSQL e MinIO)
+
+## Modelo: escritório, papéis e clientes
+
+- **Escritório**: nome e CNPJ ou CPF (opcional, validado). O `POST /api/auth/signup` cria o escritório e o primeiro usuário como `ADMIN`, na mesma transação.
+- **Usuário** pertence a um escritório e tem um papel:
+
+| Papel | Pode |
+|---|---|
+| `ADMIN` | tudo, inclusive gerenciar os usuários do escritório e consultar a auditoria |
+| `CONSULTOR` | tudo o que envolve clientes (cadastrar, alterar, excluir, simular), sem gerenciar usuários |
+| `ASSISTENTE` | ler e importar arquivos; não altera nem exclui nada e não gerencia usuários |
+
+- **Cliente** pertence ao escritório (qualquer membro o enxerga); quem cadastrou fica em `criado_por`. CNPJ é único **por escritório**.
+- Documentos, débitos e simulações herdam o escopo pelo cliente. Recurso de outro escritório responde **404**; papel sem permissão responde **403**.
+- Saída de usuário é **desativação** (login bloqueado; nada fica órfão). O último `ADMIN` ativo não sai nem é rebaixado.
+- O JWT carrega `uid`, `escritorioId` e `papel`. A cada requisição o filtro confere, numa consulta indexada, se o usuário segue ativo e com o mesmo papel: desativar ou rebaixar invalida o token na hora.
 
 ## Configuração (variáveis de ambiente)
 
@@ -28,6 +45,14 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | `DB_URL` | não | `jdbc:postgresql://localhost:5432/fiscalhub` | URL JDBC |
 | `DB_USERNAME` | não | `postgres` | usuário do banco |
 | `CORS_ALLOWED_ORIGINS` | não | `http://localhost:5173` | origens permitidas, separadas por vírgula |
+| `UPLOAD_MAX_SIZE` | não | `500MB` | limite único do upload (arquivo e requisição); acima dele, 413 |
+| `STORAGE_TIPO` | não | `local` | `local` (disco) ou `s3` (S3/MinIO) |
+| `STORAGE_LOCAL_DIRETORIO` | não | `./uploads/documentos` | raiz do storage local |
+| `S3_ENDPOINT` | não | — | só para MinIO/compatíveis (ex.: `http://localhost:9000`); vazio = AWS |
+| `S3_REGIAO` | não | `us-east-1` | região |
+| `S3_BUCKET` | não | `fiscalhub-documentos` | bucket (precisa existir) |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | não | — | vazias = cadeia padrão de credenciais da AWS |
+| `SELIC_AGENDAMENTO` | não | `true` | importação automática da SELIC do Banco Central |
 | `SPRING_PROFILES_ACTIVE` | não | — | `dev` para desenvolvimento (ver Perfis) |
 
 ## Perfis
@@ -35,8 +60,8 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | Perfil | Arquivo | Efeito |
 |---|---|---|
 | padrão | `application.properties` | log `INFO`, sem SQL no log, sem DEBUG do Spring Security |
-| `dev` | `application-dev.properties` | `show-sql`, `format_sql`, log `DEBUG`; carrega índices SELIC/UFPR **aproximados** de exemplo (`DataInitializer`) |
-| `test` | `src/test/resources/application-test.properties` | usado pelos testes de integração; o banco vem do Testcontainers |
+| `dev` | `application-dev.properties` | `show-sql`, `format_sql`, log `DEBUG`; aplica também `db/dev` (seed **aproximado** da UFPR) |
+| `test` | `src/test/resources/application-test.properties` | testes de integração; banco do Testcontainers; sem importação da SELIC |
 
 Nenhum perfil cria usuário: cadastre-se por `POST /api/auth/signup`.
 
@@ -44,20 +69,45 @@ Nenhum perfil cria usuário: cadastre-se por `POST /api/auth/signup`.
 
 O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyway na inicialização. O Hibernate só valida (`ddl-auto=validate`); qualquer mudança de schema entra como nova migração `V<n>__descricao.sql`.
 
-| Migração | Conteúdo |
+| Migração | Conteúdo e efeito sobre dados existentes |
 |---|---|
-| `V1__baseline.sql` | usuário, empresa, declaração, simulação, parcela, índice monetário |
+| `V1__baseline.sql` | schema base (usuário, empresa, declaração, simulação, parcela, índice) |
 | `V2__create_documentos_fiscais.sql` | documentos fiscais importados e seus tributos |
+| `V3__escritorio_e_papeis.sql` | cria `escritorio`; cada usuário existente ganha um escritório próprio e vira `ADMIN` |
+| `V4__cliente.sql` | `empresa` vira `cliente`, com `escritorio_id` do dono atual e `criado_por`; CNPJ único por escritório |
+| `V5__debito_e_simulacao.sql` | cria `debito` e `simulacao_debito`; **apaga** as simulações antigas e a tabela `declaracao` |
+| `V6__storage_e_jobs.sql` | `chave_armazenamento` (a chave dos arquivos antigos = nome interno), `sha256` único por cliente, `job_processamento` |
+| `V7__auditoria.sql` | `auditoria_evento`, com trigger que impede `UPDATE` e `DELETE` |
+| `V8__indice_origem.sql` | origem e data da coleta dos índices; os antigos ficam como `LEGADO` |
 
-**Banco do zero:**
+**Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
 
-```sql
-CREATE DATABASE fiscalhub;
-```
+**Banco de desenvolvimento criado antes do Flyway** (pelo antigo `ddl-auto=update`): `spring.flyway.baseline-on-migrate=true` marca a V1 como aplicada e executa da V2 em diante.
 
-Depois, suba o app. O Flyway cria tudo a partir da V1.
+## Importação, storage e processamento
 
-**Banco de desenvolvimento criado antes do Flyway** (pelo antigo `ddl-auto=update`): `spring.flyway.baseline-on-migrate=true` marca a V1 como aplicada e executa só da V2 em diante.
+- **Upload** (`POST /api/clientes/{id}/documentos`, multipart): grava direto no storage por stream, calculando o **SHA-256** no caminho. O mesmo arquivo enviado de novo para o mesmo cliente responde **409** com `recursoExistenteId`.
+- Tipos aceitos: `.txt` (SPED), `.pdf`, `.csv`, `.xlsx`, com o tipo de conteúdo conferido por extensão.
+- **Download** por stream (`StreamingResponseBody`).
+- **Storage**: `ArmazenamentoArquivos`, com `ArmazenamentoLocal` (dev) e `ArmazenamentoS3` (S3/MinIO), escolhido por `fiscalhub.storage.tipo`.
+- **Jobs**: o documento entra `RECEBIDO` e um registro em `job_processamento` é despachado, depois do commit, ao pool do Spring Boot (`spring.task.execution.pool.*`). Hoje o processador só valida o arquivo e marca `PROCESSADO`; os parsers entram na Fase 1. Na subida, jobs presos em `PROCESSANDO` voltam para a fila. Acompanhe por `GET /api/clientes/{id}/documentos/{doc}/status`.
+
+## Índices: SELIC oficial
+
+A SELIC mensal vem do Banco Central (API SGS, **série 4390**, "Taxa de juros - Selic acumulada no mês", % a.m.). A importação roda na subida e diariamente (`fiscalhub.selic.cron`, padrão 6h). Ela traz só meses fechados (a série inclui o mês corrente parcial), não duplica e corrige valores aproximados anteriores, gravando a origem (`BCB_SGS_4390`) e a data da coleta. Sem SELIC para um mês do período, a simulação responde 400 ("Índice SELIC ausente para AAAA-MM"); não há estimativa.
+
+A UPF/UFPR do Paraná ainda não tem fonte oficial automatizada (Fase 5). Em `dev` há um seed aproximado.
+
+## Auditoria
+
+Toda gravação passa pela anotação `@Auditavel` e pelo `AuditoriaAspect`. São auditados:
+- login (sucesso e falha);
+- importação, download e exclusão de documento;
+- criação, edição e exclusão de cliente;
+- criação de simulação;
+- gestão de usuários.
+
+Cada evento guarda escritório, usuário, ação, recurso, data e hora, IP e detalhes em JSON, sem dados sensíveis. A tabela aceita só inserção. A consulta é por `GET /api/auditoria` (só `ADMIN`, paginado, filtrado pelo escritório).
 
 ## Executando
 
@@ -75,97 +125,121 @@ A API sobe em `http://localhost:8080`.
 mvn test   # requer Docker em execução
 ```
 
-- **Integração** (`integracao/`): isolamento entre usuários (IDOR), ausência de senha nas respostas, 401 sem token e banco do zero só com as migrações.
-- **Motor de parcelamento** (`service/calculo/`): testes de caracterização do comportamento atual e testes normativos `@Disabled("Fase 5 — ...")`, que documentam cada divergência em relação à lei e serão ativados quando o motor for corrigido.
+- **Integração** (`integracao/`, anotação `@TesteIntegracao`, um único contexto):
+  - isolamento entre escritórios e papéis;
+  - escritório, signup e gestão de usuários;
+  - débitos e simulação com vários débitos;
+  - documentos (upload, SHA-256, download por stream, jobs);
+  - auditoria;
+  - ProblemDetail;
+  - banco do zero só com as migrações.
+- **Storage** (`storage/`): o mesmo contrato para o local e para o S3 contra MinIO real.
+- **Motor de parcelamento** (`service/calculo/`):
+  - testes de caracterização do comportamento atual;
+  - testes normativos `@Disabled("Fase 5 — ...")` documentando cada divergência em relação à lei.
 
-## Autenticação
+## Erros
 
-Todos os endpoints, exceto `/api/auth/**`, exigem `Authorization: Bearer <token>`. Sem token, ou com token inválido, a resposta é **401**.
-
-O usuário é sempre o do token; nenhum endpoint aceita `usuarioId` como parâmetro. Recurso inexistente ou de outro usuário responde **404**, para não revelar que existe.
+Todas as respostas de erro seguem o `ProblemDetail` (RFC 9457): `status`, `title`, `detail` e, quando couber, `errors` (validação), `recursoExistenteId` (duplicado) ou `correlacao` (erro interno: a mensagem interna não é exposta; o id permite achar o log).
 
 ## Endpoints
+
+Todos exigem `Authorization: Bearer <token>`, exceto `/api/auth/**`. O usuário e o escritório vêm sempre do token.
 
 ### Autenticação (público)
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/api/auth/signup` | cadastra usuário (`nome`, `email`, `senha`, `cpf`, `telefone`) |
-| POST | `/api/auth/login` | devolve `{ token, type, id, email, nome }` |
+| POST | `/api/auth/signup` | cria escritório + `ADMIN` (`nome`, `email`, `senha`, `cpf`, `telefone`, `nomeEscritorio`, `documentoEscritorio`) |
+| POST | `/api/auth/login` | devolve `{ token, type, id, email, nome, escritorioId, papel, trocarSenhaNoProximoLogin }` |
 
-### Usuário autenticado
+### Usuários
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/api/usuarios/me` | todos | próprio cadastro (sem senha) |
+| PUT | `/api/usuarios/me` | todos | altera `nome`, `cpf`, `telefone` |
+| PUT | `/api/usuarios/me/senha` | todos | troca a senha (`senhaAtual`, `novaSenha`) |
+| DELETE | `/api/usuarios/me` | todos | desativa a própria conta |
+| GET | `/api/usuarios` | ADMIN | usuários do escritório |
+| POST | `/api/usuarios` | ADMIN | cria com senha provisória (`nome`, `email`, `papel`, `senhaProvisoria`) |
+| PATCH | `/api/usuarios/{id}/papel` | ADMIN | altera o papel |
+| PATCH | `/api/usuarios/{id}/desativar` | ADMIN | desativa |
+
+### Clientes
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/api/clientes` | todos | clientes do escritório |
+| GET | `/api/clientes/{id}` | todos | um cliente |
+| POST | `/api/clientes` | ADMIN, CONSULTOR | cadastra (valida CNPJ e CEP) |
+| PUT | `/api/clientes/{id}` | ADMIN, CONSULTOR | altera |
+| DELETE | `/api/clientes/{id}` | ADMIN, CONSULTOR | exclui |
+
+### Documentos do cliente
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/api/clientes/{id}/documentos` | todos | lista |
+| GET | `/api/clientes/{id}/documentos/{doc}` | todos | metadados |
+| GET | `/api/clientes/{id}/documentos/{doc}/arquivo` | todos | baixa o original (stream) |
+| GET | `/api/clientes/{id}/documentos/{doc}/status` | todos | andamento do processamento |
+| POST | `/api/clientes/{id}/documentos` | todos | importa (multipart: `arquivo` + `documento` JSON) |
+| DELETE | `/api/clientes/{id}/documentos/{doc}` | ADMIN, CONSULTOR | exclui registro e arquivo (409 se já gerou débitos) |
+
+### Débitos (somente leitura)
 
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/usuarios/me` | dados do próprio usuário (sem senha) |
-| PUT | `/api/usuarios/me` | altera `nome`, `cpf` e `telefone` |
-| DELETE | `/api/usuarios/me` | exclui a própria conta |
+| GET | `/api/clientes/{id}/debitos` | débitos do cliente, cada um com o documento e o trecho de origem |
 
-### Empresas
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/api/empresas/minhas` | empresas do usuário |
-| GET | `/api/empresas/{id}` | uma empresa |
-| POST | `/api/empresas` | cadastra (valida CNPJ e CEP) |
-| PUT | `/api/empresas/{id}` | altera |
-| DELETE | `/api/empresas/{id}` | exclui |
-
-### Documentos fiscais da empresa
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/api/empresas/{empresaId}/documentos` | lista os documentos importados |
-| GET | `/api/empresas/{empresaId}/documentos/{id}` | metadados de um documento |
-| GET | `/api/empresas/{empresaId}/documentos/{id}/arquivo` | baixa o arquivo original |
-| POST | `/api/empresas/{empresaId}/documentos` | importa (multipart: `arquivo` + `documento` JSON; PDF, XML, CSV ou XLSX até 5 MB) |
-
-### Declarações
-
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/api/declaracoes/{id}` | uma declaração |
-| GET | `/api/declaracoes/empresa/{empresaId}` | declarações da empresa |
-| POST | `/api/declaracoes?empresaId={id}` | cria |
-| PUT | `/api/declaracoes/{id}` | altera |
-| DELETE | `/api/declaracoes/{id}` | exclui |
+Não há criação manual: os débitos são gerados pela importação (parsers da Fase 2).
 
 ### Simulações de parcelamento
 
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/simulacoes/calcular` | calcula sem salvar |
-| POST | `/api/simulacoes/calcular/salvar` | calcula e salva com a tabela de parcelas |
-| GET | `/api/simulacoes/{id}` | uma simulação salva |
-| GET | `/api/simulacoes/declaracao/{declaracaoId}` | simulações da declaração |
-| PATCH | `/api/simulacoes/{id}/aprovar` | marca como aprovada |
-| DELETE | `/api/simulacoes/{id}` | exclui |
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| POST | `/api/simulacoes/calcular` | todos | calcula sem salvar (`clienteId`, `debitoIds`, `orgao`, `modalidade`, `numeroParcelas`, ...) |
+| POST | `/api/simulacoes/calcular/salvar` | ADMIN, CONSULTOR | calcula e salva com a tabela de parcelas |
+| GET | `/api/simulacoes/{id}` | todos | uma simulação |
+| GET | `/api/simulacoes/cliente/{clienteId}` | todos | simulações do cliente |
+| PATCH | `/api/simulacoes/{id}/aprovar` | ADMIN, CONSULTOR | marca como aprovada |
+| DELETE | `/api/simulacoes/{id}` | ADMIN, CONSULTOR | exclui |
 
-> Declarações e simulações serão substituídas pelo novo domínio (débitos importados) nas próximas fases.
+A simulação consolida vários débitos do mesmo cliente: soma o principal e usa o vencimento mais antigo. O cálculo por débito e as correções normativas entram na Fase 5.
+
+### Auditoria
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/api/auditoria?page=&size=` | ADMIN | eventos do escritório, mais recentes primeiro |
 
 ## Estrutura
 
 ```
 src/main/java/com/fiscalhub/backend/
-├── config/       # DataInitializer (só perfil dev)
+├── auditoria/    # @Auditavel, AuditoriaAspect (único ponto de gravação), consulta
 ├── controller/   # recebem a requisição e devolvem a resposta
 ├── dto/          # contratos da API; fromEntity() centraliza o mapeamento por agregado
 ├── entity/       # entidades JPA e enums
-├── exception/    # exceções de negócio e GlobalExceptionHandler
+├── exception/    # exceções de negócio e GlobalExceptionHandler (ProblemDetail)
 ├── repository/   # Spring Data
-├── security/     # JWT, filtro e SecurityConfig (CORS global)
-├── service/      # regras de negócio; AcessoRecursoService = autorização por dono
+├── security/     # JWT, UsuarioAutenticado, filtro, SecurityConfig, @ConsultorOuAdmin
+├── service/      # regras de negócio; AcessoRecursoService = autorização por escritório
 │   └── calculo/  # motor de parcelamento (RFB e SEFA-PR)
+├── storage/      # ArmazenamentoArquivos: local e S3
 └── util/
 src/main/resources/
 ├── application.properties
 ├── application-dev.properties
-└── db/migration/ # Flyway
+├── db/migration/ # Flyway
+└── db/dev/       # seed só do perfil dev
 ```
 
 ## Segurança
 
 - Senhas com BCrypt; `senha` nunca sai em resposta (DTO + `@JsonIgnore`).
 - Segredos só por variável de ambiente, sem valor padrão no código.
+- Isolamento por escritório num único ponto (`AcessoRecursoService`) e papéis por `@PreAuthorize`.
 - CORS só para as origens em `CORS_ALLOWED_ORIGINS`.
 - O `app.jwt.secret` antigo ficou no histórico do git: **gere um segredo novo** para qualquer ambiente real.

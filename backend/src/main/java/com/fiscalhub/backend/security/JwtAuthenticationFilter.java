@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             jwtUtils.autenticar(header.substring(7))
                     // uma consulta indexada: desativado ou papel alterado invalida o token antes de expirar
-                    .filter(u -> usuarioRepository.existsByIdAndAtivoTrueAndPapel(u.id(), u.papel()))
+                    .filter(u -> usuarioRepository.existsByIdAndAtivoTrueAndPapelAndEscritorioId(u.id(), u.papel(), u.escritorioId()))
                     .ifPresent(u -> SecurityContextHolder.getContext().setAuthentication(
                             new UsernamePasswordAuthenticationToken(u, null,
                                     List.of(new SimpleGrantedAuthority("ROLE_" + u.papel())))));
