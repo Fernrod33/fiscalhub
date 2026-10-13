@@ -7,6 +7,8 @@ import com.fiscalhub.backend.dto.SignupRequest;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.security.JwtUtils;
 import com.fiscalhub.backend.service.UsuarioService;
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +33,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Auditavel(value = AcaoAuditoria.LOGIN, registrarFalha = true)
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getSenha()));

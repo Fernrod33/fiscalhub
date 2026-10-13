@@ -6,6 +6,8 @@ import com.fiscalhub.backend.dto.DocumentoFiscalResponseDTO;
 import com.fiscalhub.backend.dto.StatusDocumentoDTO;
 import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import com.fiscalhub.backend.service.DocumentoFiscalService;
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
 import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -34,6 +36,7 @@ public class DocumentoFiscalController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Auditavel(AcaoAuditoria.DOCUMENTO_IMPORTAR)
     public ResponseEntity<DocumentoFiscalResponseDTO> importarDocumento(
             @PathVariable Long clienteId,
             @RequestPart("arquivo") MultipartFile arquivo,
@@ -57,6 +60,7 @@ public class DocumentoFiscalController {
     }
 
     @GetMapping("/{documentoId}/arquivo")
+    @Auditavel(value = AcaoAuditoria.DOCUMENTO_BAIXAR, idParam = "documentoId")
     public ResponseEntity<StreamingResponseBody> downloadArquivo(@PathVariable Long clienteId,
                                                                  @PathVariable Long documentoId,
                                                                  @AuthenticationPrincipal UsuarioAutenticado ua) {
@@ -82,6 +86,7 @@ public class DocumentoFiscalController {
 
     @DeleteMapping("/{documentoId}")
     @ConsultorOuAdmin
+    @Auditavel(value = AcaoAuditoria.DOCUMENTO_EXCLUIR, idParam = "documentoId")
     public ResponseEntity<Void> excluir(@PathVariable Long clienteId, @PathVariable Long documentoId,
                                         @AuthenticationPrincipal UsuarioAutenticado ua) {
         documentoFiscalService.excluir(clienteId, documentoId, ua);

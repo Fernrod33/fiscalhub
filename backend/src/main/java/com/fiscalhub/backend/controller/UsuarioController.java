@@ -7,6 +7,8 @@ import com.fiscalhub.backend.dto.UsuarioResponseDTO;
 import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.service.UsuarioService;
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +47,7 @@ public class UsuarioController {
 
     /** Saída do próprio usuário: desativação (o último ADMIN ativo não pode sair). */
     @DeleteMapping("/me")
+    @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)
     public ResponseEntity<Void> deleteMe(@AuthenticationPrincipal UsuarioAutenticado ua) {
         usuarioService.desativar(ua, ua.id());
         return ResponseEntity.noContent().build();
@@ -58,12 +61,14 @@ public class UsuarioController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(AcaoAuditoria.USUARIO_CRIAR)
     public ResponseEntity<UsuarioResponseDTO> criar(@Valid @RequestBody NovoUsuarioDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua) {
         return ResponseEntity.status(HttpStatus.CREATED).body(UsuarioResponseDTO.fromEntity(usuarioService.criarNoEscritorio(ua, dto)));
     }
 
     @PatchMapping("/{id}/papel")
     @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(AcaoAuditoria.USUARIO_ALTERAR_PAPEL)
     public UsuarioResponseDTO alterarPapel(@PathVariable Long id, @Valid @RequestBody AlteracaoPapelDTO dto,
                                            @AuthenticationPrincipal UsuarioAutenticado ua) {
         return UsuarioResponseDTO.fromEntity(usuarioService.alterarPapel(ua, id, dto.papel()));
@@ -71,6 +76,7 @@ public class UsuarioController {
 
     @PatchMapping("/{id}/desativar")
     @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)
     public UsuarioResponseDTO desativar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
         return UsuarioResponseDTO.fromEntity(usuarioService.desativar(ua, id));
     }

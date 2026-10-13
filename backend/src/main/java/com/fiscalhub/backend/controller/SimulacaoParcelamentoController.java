@@ -5,6 +5,8 @@ import com.fiscalhub.backend.dto.SimulacaoResultDTO;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.service.SimulacaoParcelamentoService;
 import com.fiscalhub.backend.security.ConsultorOuAdmin;
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +63,7 @@ public class SimulacaoParcelamentoController {
      */
     @PostMapping("/calcular/salvar")
     @ConsultorOuAdmin
+    @Auditavel(value = AcaoAuditoria.SIMULACAO_CRIAR, idCampo = "simulacaoId")
     public ResponseEntity<SimulacaoResultDTO> calcularESalvar(@Valid @RequestBody SimulacaoRequestDTO request,
                                                               @AuthenticationPrincipal UsuarioAutenticado ua) {
         SimulacaoResultDTO result = simulacaoParcelamentoService.calcularESalvar(request, ua);

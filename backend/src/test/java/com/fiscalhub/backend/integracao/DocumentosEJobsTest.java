@@ -78,6 +78,7 @@ class DocumentosEJobsTest {
         mvc.perform(asyncDispatch(download))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("sped.txt")))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
                 .andExpect(content().bytes(conteudo.getBytes(StandardCharsets.UTF_8)));
     }
 
