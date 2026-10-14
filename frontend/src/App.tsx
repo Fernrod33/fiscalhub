@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -14,6 +15,9 @@ import EmpresaDocumentosContabeis from './pages/empresa/EmpresaDocumentosContabe
 import EmpresaDebitos from './pages/empresa/EmpresaDebitos';
 import EmpresaSimulacoes from './pages/empresa/EmpresaSimulacoes';
 
+// Só em desenvolvimento: em produção o import.meta.env.DEV é false e o chunk do laboratório nem é gerado.
+const LaboratorioDesign = import.meta.env.DEV ? lazy(() => import('./laboratorio/LaboratorioDesign')) : null;
+
 export default function App() {
   return (
     <AuthProvider>
@@ -21,6 +25,9 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          {LaboratorioDesign && (
+            <Route path="/laboratorio-design" element={<Suspense><LaboratorioDesign /></Suspense>} />
+          )}
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
