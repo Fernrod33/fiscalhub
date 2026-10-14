@@ -87,3 +87,6 @@ backend/uploads/
 # Playwright
 frontend/test-results/
 frontend/playwright-report/
+
+# Amostras reais (anonimizadas) para o teste opcional AmostrasReaisTest: nunca vão para o git
+amostras-locais/
