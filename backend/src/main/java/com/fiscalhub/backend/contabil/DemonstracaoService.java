@@ -190,12 +190,15 @@ public class DemonstracaoService {
         return valor.multiply(CEM).divide(base, 2, RoundingMode.HALF_EVEN);
     }
 
-    /** AH: (atual − anterior) / |anterior| × 100. */
+    /**
+     * AH: (atual / anterior − 1) × 100. Com o sinal da convenção (credor −), crescer um passivo ou uma receita dá AH
+     * positivo, como no ativo; sinal trocado entre os anos (ex.: prejuízo que virou lucro) dá AH abaixo de −100%.
+     */
     private static BigDecimal variacao(BigDecimal atual, BigDecimal anterior) {
         if (atual == null || anterior == null || anterior.signum() == 0) {
             return null;
         }
-        return atual.subtract(anterior).multiply(CEM).divide(anterior.abs(), 2, RoundingMode.HALF_EVEN);
+        return atual.multiply(CEM).divide(anterior, 2, RoundingMode.HALF_EVEN).subtract(CEM);
     }
 
     /** Referencial x publicada por exercício: ativo e passivo + PL (BP) ou resultado (DRE). */

@@ -71,6 +71,7 @@ class DemonstracoesTest {
                 .andExpect(jsonPath("$.linhas[0].valores['2024'].av").value(100.00))
                 .andExpect(jsonPath("$.linhas[?(@.codigo == '1.01.01.01.01')].valores['2024'].av").value(66.67))
                 .andExpect(jsonPath("$.linhas[?(@.codigo == '2')].valores['2024'].valor").value(-6000.00)) // credor −
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2')].valores['2024'].ah").value(100.00)) // passivo dobrou: +100%
                 .andExpect(jsonPath("$.conferencia[?(@.exercicio == 2024 && @.item == 'Ativo')].diferenca").value(0.00))
                 .andReturn().getResponse().getContentAsString();
 
