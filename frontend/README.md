@@ -1,75 +1,87 @@
-# React + TypeScript + Vite
+# FiscalHub — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + TypeScript + Vite. Dados fiscais só entram por importação de arquivo; nenhuma tela pede valor fiscal digitado.
 
-Currently, two official plugins are available:
+## Rodar
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev          # http://localhost:5173 (backend em http://localhost:8080)
+npm run build        # tsc + build de produção em dist/
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Variáveis (opcionais, em `.env.local`):
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Variável | Padrão | Uso |
+|---|---|---|
+| `VITE_API_URL` | `http://localhost:8080` | Base da API |
+| `VITE_UPLOAD_MAX_BYTES` | 500 MB | Limite de upload checado antes do envio (o backend valida de novo) |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Pastas
 
 ```
+src/
+  app/          rotas (data router, código dividido por rota), guardas, providers, tema, telas de erro
+  features/     uma pasta por domínio: auth, clientes, documentos, debitos, simulacoes,
+                usuarios, auditoria, painel — cada uma com api.ts (TanStack Query),
+                components/ e pages/
+  components/   compartilhados: DataTable, Cartao, EstadoVazio, TextoTruncado, Campo, Confirmar
+    layout/     AppShell, menu lateral, cabeçalho, trilha, paleta de comandos (Ctrl+K)
+    motion/     componentes de movimento (abaixo)
+    ui/         shadcn/ui ajustado aos tokens — não editar sem necessidade
+  lib/          http (cliente único, ProblemDetail -> ErroApi), formatadores, cnpj, rótulos,
+                preferências, config; api/ com os tipos gerados da OpenAPI
+  styles/       globals.css (tokens) e motion.ts (tokens de movimento)
+  laboratorio/  referência viva do design system — só em dev, fora do build
+```
+
+Regras que valem para todo o código:
+
+- Toda chamada à API passa por `lib/http.ts`. Erros chegam como `ErroApi` (status, tipo, correlação, campos); use `mensagemErro(err, padrao)` para exibir.
+- Números, datas, CNPJ e competência sempre por `lib/formatadores.ts`.
+- Permissão na tela: `usePermissoes()` (`alterar`, `admin`). O backend é a autoridade; a tela só esconde o que daria 403.
+
+## Design system
+
+Referência visual: `npm run dev` e abra `/laboratorio-design` (a rota não existe no build de produção).
+
+**Tokens** (`src/styles/globals.css`): cores semânticas em `:root` (claro) e `.dark` — `background`, `surface`, `foreground`, `muted`, `border`, `primary` (azul-petróleo), `success`/`warning`/`danger`/`info` com `-bg`, e `sidebar-*` (menu escuro nos dois temas). Use as classes do Tailwind geradas por eles (`bg-surface`, `text-muted-foreground`…), nunca cor literal.
+
+- Tipografia: Inter em tudo; Source Serif 4 (`font-serif`) só no h1 da página e no h2 dos cartões.
+- Números em Inter com `tabular-nums` (já aplicado a `td`, `.num` e `[data-numerico]`).
+- Cor só indica estado (ex.: KPI "Com erro" > 0 em perigo). Nada de cor decorativa.
+- Tabelas: datas, valores, competência e status sem quebra; nomes longos com `TextoTruncado` (reticências + tooltip).
+
+**Movimento** (`src/styles/motion.ts` é a fonte única; vira variáveis CSS `--dur-*`/`--ease-*` no boot):
+
+| Componente | Uso |
+|---|---|
+| `Reveal` | entrada suave de um bloco |
+| `Stagger` + `StaggerItem` | entrada em sequência de listas e grades de KPI |
+| `AnimatedNumber` | número que conta até o valor (leitor de tela recebe só o final) |
+| `Collapse` | abrir/fechar com altura animada |
+
+Tudo respeita `prefers-reduced-motion` (hook `useMovimentoReduzido` e bloco no CSS). Troca de página usa View Transitions do React Router (`viewTransition` em `Link`/`navigate`).
+
+## Tipos da API
+
+Gerados da OpenAPI do backend (o endpoint `/v3/api-docs` só existe no perfil `dev`):
+
+```bash
+# backend rodando com SPRING_PROFILES_ACTIVE=dev
+npm run gerar:api    # escreve src/lib/api/schema.d.ts
+```
+
+Não edite `schema.d.ts`; os aliases usados no código ficam em `src/lib/api/tipos.ts`.
+
+## Testes
+
+```bash
+npm test                  # Vitest (jsdom): formatadores, http/ProblemDetail, DataTable,
+                          # useMovimentoReduzido, ClienteForm, paleta de comandos
+npx playwright install chromium   # uma vez
+npx playwright test       # e2e: fumaça + acessibilidade (axe, WCAG A/AA, dois temas)
+```
+
+O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo.
