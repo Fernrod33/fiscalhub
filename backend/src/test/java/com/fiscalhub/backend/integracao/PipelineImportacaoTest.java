@@ -83,6 +83,20 @@ class PipelineImportacaoTest {
                 .andExpect(jsonPath("$.detail").value("O documento não está aguardando cliente."));
     }
 
+    @Test
+    void planilhaNaCentralSemClienteAguardaOClienteSemSugestao() throws Exception {
+        byte[] xlsx = new org.springframework.core.io.ClassPathResource("amostras/balancete.xlsx").getContentAsByteArray();
+        String resposta = mvc.perform(multipart("/api/documentos").file(new MockMultipartFile("arquivo", "balancete.xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)).with(consultor))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        long id = ((Number) JsonPath.read(resposta, "$.id")).longValue();
+        aguardar(() -> documentoRepository.findById(id).orElseThrow().getStatus().finalizado());
+        mvc.perform(get("/api/documentos/{d}", id).with(consultor))
+                .andExpect(jsonPath("$.status").value("AGUARDANDO_CLIENTE"))
+                .andExpect(jsonPath("$.tipo").value("BALANCETE"))
+                .andExpect(jsonPath("$.cnpjArquivo").isEmpty());
+    }
+
     private long enviar(String nome, String tipo, String conteudo, String metadados) throws Exception {
         var requisicao = multipart("/api/documentos")
                 .file(new MockMultipartFile("arquivo", nome, tipo, conteudo.getBytes(StandardCharsets.ISO_8859_1)));

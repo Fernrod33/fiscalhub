@@ -93,7 +93,20 @@ public class ProcessamentoDocumentoService {
 
     /** Roda no executor (ver DespachoJobs), fora de transação: cada fase abre a sua. */
     public void executar(Long jobId) {
-        Long documentoId = transacao.execute(t -> iniciar(jobId));
+        Long documentoId;
+        try {
+            documentoId = transacao.execute(t -> iniciar(jobId));
+        } catch (RuntimeException e) {
+            // sem isso o job ficaria PENDENTE para sempre e o erro só existiria na thread
+            log.error("Job {} falhou ao iniciar", jobId, e);
+            transacao.executeWithoutResult(t -> jobRepository.findById(jobId).ifPresent(job -> {
+                job.setStatus(StatusJob.ERRO);
+                job.setMensagem("Falha inesperada ao iniciar o processamento. Job " + jobId + ".");
+                job.setFim(LocalDateTime.now());
+                job.getDocumento().setStatus(DocumentoStatus.ERRO);
+            }));
+            return;
+        }
         if (documentoId == null) {
             return;
         }
