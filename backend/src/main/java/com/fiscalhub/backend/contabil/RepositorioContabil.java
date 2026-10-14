@@ -178,12 +178,23 @@ public class RepositorioContabil {
                 });
     }
 
-    public List<Vigente> vigentesDoPeriodo(long clienteId, LocalDate inicio, LocalDate fim, long excetoEscrituracao) {
+    /** Escriturações vigentes da mesma origem (ECD ou planilha), cliente e período: candidatas a substituídas. */
+    public List<Vigente> vigentesDoPeriodo(long clienteId, String origem, LocalDate inicio, LocalDate fim, long excetoEscrituracao) {
         return jdbc.query("""
                         SELECT id, documento_id, finalidade FROM escrituracao_contabil
-                        WHERE cliente_id = ? AND data_inicio = ? AND data_fim = ? AND situacao = 'VIGENTE' AND id <> ?""",
+                        WHERE cliente_id = ? AND origem = ? AND data_inicio = ? AND data_fim = ? AND situacao = 'VIGENTE' AND id <> ?""",
                 (rs, i) -> new Vigente(rs.getLong(1), rs.getLong(2), rs.getString(3)),
-                clienteId, Date.valueOf(inicio), Date.valueOf(fim), excetoEscrituracao);
+                clienteId, origem, Date.valueOf(inicio), Date.valueOf(fim), excetoEscrituracao);
+    }
+
+    /** Código referencial nas contas da escrituração (de-para da planilha), em lote. */
+    public void atualizarReferenciais(long escrituracaoId, Map<String, String> referencialPorConta) {
+        jdbc.batchUpdate("UPDATE conta_contabil SET codigo_referencial = ? WHERE escrituracao_id = ? AND codigo = ?",
+                List.copyOf(referencialPorConta.entrySet()), TAMANHO_LOTE, (ps, e) -> {
+                    ps.setString(1, e.getValue());
+                    ps.setLong(2, escrituracaoId);
+                    ps.setString(3, e.getKey());
+                });
     }
 
     /** Leiaute 7: o plano referencial só aparece no I051, depois da escrituração criada. */

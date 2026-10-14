@@ -54,6 +54,12 @@
         </dependency>
 
         <!-- Spring AOP: aspecto unico de auditoria (@Auditavel) -->
+        <!-- Balancete em .xlsx: leitura em stream (XSSFReader + SAX), valor em cache das fórmulas, nunca avaliadas -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.5.1</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>

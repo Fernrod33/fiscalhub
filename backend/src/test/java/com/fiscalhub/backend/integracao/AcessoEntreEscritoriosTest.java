@@ -197,6 +197,14 @@ class AcessoEntreEscritoriosTest {
                 Map.entry("POST reprocessar documento", post("/api/documentos/{d}/reprocessar", doc)),
                 Map.entry("POST confirmar cliente do documento", post("/api/documentos/{d}/confirmar-cliente", doc)),
                 Map.entry("DELETE documento", delete("/api/documentos/{d}", doc)),
+                Map.entry("GET previa da planilha", get("/api/documentos/{d}/planilha", doc)),
+                Map.entry("POST mapeamento da planilha", post("/api/documentos/{d}/planilha/mapeamento", doc).contentType(APPLICATION_JSON)
+                        .content("{\"linhaCabecalho\":1,\"colunas\":{\"codigo\":0,\"descricao\":1,\"saldoFinal\":2},"
+                                + "\"periodoInicio\":\"2024-01-01\",\"periodoFim\":\"2024-12-31\",\"planoReferencial\":\"1\"}")),
+                Map.entry("GET de-para da planilha", get("/api/documentos/{d}/planilha/depara", doc)),
+                Map.entry("PUT de-para da planilha", put("/api/documentos/{d}/planilha/depara", doc).contentType(APPLICATION_JSON).content("[]")),
+                Map.entry("GET escrituracoes do cliente", get("/api/clientes/{c}/escrituracoes", c)),
+                Map.entry("GET demonstracoes do cliente", get("/api/clientes/{c}/demonstracoes", c)),
                 Map.entry("POST importar documento", importacao(c))
         );
     }

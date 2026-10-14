@@ -435,7 +435,7 @@ final class LeituraEcd {
      * preservado). Uma original importada depois da substituta já nasce substituída.
      */
     private void tratarRetificacao() {
-        for (RepositorioContabil.Vigente anterior : repositorio.vigentesDoPeriodo(cliente.getId(), inicio, fim, escrituracaoId)) {
+        for (RepositorioContabil.Vigente anterior : repositorio.vigentesDoPeriodo(cliente.getId(), "ECD", inicio, fim, escrituracaoId)) {
             if ("ORIGINAL".equals(finalidade) && "SUBSTITUTA".equals(anterior.finalidade())) {
                 repositorio.marcarSituacao(escrituracaoId, "SUBSTITUIDA");
                 contexto.registrar(Severidade.ALERTA, "0000", linha0000, "ORIGINAL_JA_SUBSTITUIDA", "Já existe uma ECD "

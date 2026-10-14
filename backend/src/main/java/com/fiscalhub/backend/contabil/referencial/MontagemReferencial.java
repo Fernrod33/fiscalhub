@@ -93,8 +93,11 @@ public class MontagemReferencial {
         return plano;
     }
 
-    /** Tabelas do plano para o exercício: a do ano mais recente até o exercício (ou a mais antiga, se não houver). */
-    private Map<String, String> tabelas(String plano, int exercicio) {
+    /**
+     * Tabelas do plano para o exercício (demonstração BP/DRE -> tabela): a do ano mais recente até o exercício (ou a mais
+     * antiga, se não houver). Único ponto dessa escolha.
+     */
+    public Map<String, String> tabelas(String plano, int exercicio) {
         Map<String, String> escolhidas = new HashMap<>();
         jdbc.query("""
                 SELECT demonstracao, tabela FROM tabela_referencial WHERE plano = ?
@@ -118,8 +121,8 @@ public class MontagemReferencial {
         Map<Long, BigDecimal> porConta = new HashMap<>();
         String sql = "I355".equals(pedido.origemResultado())
                 ? "SELECT conta_id, sum(saldo_final) FROM saldo_conta WHERE escrituracao_id = ? AND origem = 'I355' GROUP BY conta_id"
-                : "SELECT s.conta_id, sum(s.saldo_final) FROM saldo_conta s JOIN conta_contabil c ON c.id = s.conta_id "
-                + "WHERE s.escrituracao_id = ? AND s.origem = 'PLANILHA' AND c.natureza = '04' GROUP BY s.conta_id";
+                // planilha: o saldo de todas as contas; entram na DRE só as mapeadas para a tabela de resultado
+                : "SELECT conta_id, sum(saldo_final) FROM saldo_conta WHERE escrituracao_id = ? AND origem = 'PLANILHA' GROUP BY conta_id";
         jdbc.query(sql, rs -> { porConta.put(rs.getLong(1), rs.getBigDecimal(2)); }, pedido.escrituracaoId());
         return porConta;
     }

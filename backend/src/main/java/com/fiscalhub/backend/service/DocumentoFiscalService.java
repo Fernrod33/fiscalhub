@@ -10,7 +10,6 @@ import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
-import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
@@ -182,7 +181,7 @@ public class DocumentoFiscalService {
     /** Roda de novo a partir do arquivo no storage; o processador apaga o que a execução anterior gerou. */
     public DocumentoFiscalResponseDTO reprocessar(Long documentoId, UsuarioAutenticado ua) {
         DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
-        exigirParado(documento);
+        processamento.exigirParado(documento.getId());
         processamento.enfileirar(documento);
         return DocumentoFiscalResponseDTO.fromEntity(documento);
     }
@@ -213,16 +212,10 @@ public class DocumentoFiscalService {
     /** Exclui registro, dados derivados (cascata) e arquivo. Documento com débitos gerados não pode ser excluído (FK). */
     public void excluir(Long documentoId, UsuarioAutenticado ua) {
         DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
-        exigirParado(documento);
+        processamento.exigirParado(documento.getId());
         documentoFiscalRepository.delete(documento);
         documentoFiscalRepository.flush(); // falha de FK antes de apagar o arquivo
         armazenamento.excluir(documento.getChaveArmazenamento());
-    }
-
-    private void exigirParado(DocumentoFiscal documento) {
-        if (jobRepository.existsByDocumentoIdAndStatusIn(documento.getId(), List.of(StatusJob.PENDENTE, StatusJob.PROCESSANDO))) {
-            throw new BusinessRuleException("O documento ainda está em processamento. Aguarde terminar.");
-        }
     }
 
     private static ClienteRequestDTO sugestao(DocumentoFiscal documento) {

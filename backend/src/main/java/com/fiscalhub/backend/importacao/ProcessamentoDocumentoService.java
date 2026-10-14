@@ -7,6 +7,7 @@ import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.entity.enums.EtapaProcessamento;
 import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.entity.enums.TipoJob;
+import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.importacao.Inconsistencia.Severidade;
 import com.fiscalhub.backend.repository.ClienteRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
@@ -81,6 +82,13 @@ public class ProcessamentoDocumentoService {
         documento.setStatus(DocumentoStatus.RECEBIDO);
         eventos.publishEvent(new JobCriado(job.getId()));
         return job;
+    }
+
+    /** Reprocessar, excluir ou remapear um documento com job em andamento é recusado. */
+    public void exigirParado(Long documentoId) {
+        if (jobRepository.existsByDocumentoIdAndStatusIn(documentoId, List.of(StatusJob.PENDENTE, StatusJob.PROCESSANDO))) {
+            throw new BusinessRuleException("O documento ainda está em processamento. Aguarde terminar.");
+        }
     }
 
     /** Roda no executor (ver DespachoJobs), fora de transação: cada fase abre a sua. */
