@@ -1,6 +1,6 @@
 // Referência viva do design system (só em desenvolvimento, fora do build de produção): tokens e componentes.
-import type { ReactNode } from 'react';
-import { AlertTriangle, FileText, Inbox, Moon, Sun, Upload } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, ChevronDown, FileText, Inbox, Moon, RotateCcw, Sun, Upload } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { DataTable, type ColumnDef } from '@/components/data-table';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import { TextoTruncado } from '@/components/texto-truncado';
+import { AnimatedNumber, Collapse, Reveal, Stagger, StaggerItem } from '@/components/motion';
 import { useTema } from '@/app/tema';
 import * as fmt from '@/lib/formatadores';
 import { documentosExemplo, kpisExemplo, type DocumentoExemplo } from './fixture';
@@ -30,6 +31,8 @@ const colunas: ColumnDef<DocumentoExemplo>[] = [
 
 export default function LaboratorioDesign() {
   const { escuro, setTema } = useTema();
+  const [rodada, setRodada] = useState(0);
+  const [aberto, setAberto] = useState(false);
   return (
     <div className="mx-auto grid max-w-6xl gap-6 p-6">
       <div className="flex items-center justify-between gap-3">
@@ -62,17 +65,31 @@ export default function LaboratorioDesign() {
         </div>
       </Secao>
 
-      <Secao titulo="KPIs (cor só quando indica estado)">
-        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {kpisExemplo.map((k) => (
-            <li key={k.rotulo} className="rounded-lg border bg-surface p-3 shadow-sm">
-              <p className="text-muted-foreground">{k.rotulo}</p>
-              <p className={`num text-xl font-semibold ${k.estado === 'perigo' && k.valor > 0 ? 'text-danger' : ''}`}>
-                {k.formato === 'moeda' ? fmt.moeda(k.valor) : fmt.inteiro(k.valor)}
-              </p>
-            </li>
-          ))}
-        </ul>
+      <Secao titulo="Movimento: KPIs em cascata e número animado (cor só quando indica estado)">
+        <Button variant="outline" size="sm" className="mb-3" onClick={() => setRodada((r) => r + 1)}>
+          <RotateCcw aria-hidden /> Repetir animações
+        </Button>
+        <Reveal key={`r${rodada}`}>
+          <Stagger as="ul" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {kpisExemplo.map((k) => (
+              <StaggerItem as="li" key={k.rotulo} className="rounded-lg border bg-surface p-3 shadow-sm transition-transform duration-(--dur-base) ease-(--ease-standard) hover:-translate-y-0.5">
+                <p className="text-muted-foreground">{k.rotulo}</p>
+                <AnimatedNumber valor={k.valor} formatar={k.formato === 'moeda' ? fmt.moeda : fmt.inteiro}
+                                className={`text-xl font-semibold ${k.estado === 'perigo' && k.valor > 0 ? 'text-danger' : ''}`} />
+              </StaggerItem>
+            ))}
+          </Stagger>
+        </Reveal>
+        <div className="mt-4">
+          <Button variant="ghost" size="sm" aria-expanded={aberto} aria-controls="lab-memoria" onClick={() => setAberto((a) => !a)}>
+            <ChevronDown aria-hidden className={`transition-transform duration-(--dur-base) ${aberto ? 'rotate-180' : ''}`} /> Memória de cálculo (Collapse)
+          </Button>
+          <Collapse aberto={aberto} id="lab-memoria">
+            <ol className="num mt-2 grid gap-1 rounded-md bg-muted p-3">
+              <li>Valor original: {fmt.moeda(10000)}</li><li>Multa de mora (20%): {fmt.moeda(2000)}</li><li>Juros SELIC: {fmt.moeda(1380.93)}</li>
+            </ol>
+          </Collapse>
+        </div>
       </Secao>
 
       <Secao titulo="Botões, campos e selos">

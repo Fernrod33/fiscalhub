@@ -121,7 +121,29 @@
 }
 
 /* ---------- movimento (valores vêm de src/styles/motion.ts) ---------- */
+
+/* Transição entre páginas (View Transitions, via viewTransition do React Router):
+   só a área de conteúdo anima; menu e cabeçalho (raiz) ficam parados. Sem suporte: troca normal. */
+.area-conteudo { view-transition-name: main; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-old(main) { animation: var(--dur-fast) var(--ease-standard) both saida-pagina; }
+::view-transition-new(main) { animation: var(--dur-slow) var(--ease-emphasized) both entrada-pagina; }
+@keyframes saida-pagina { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes entrada-pagina { from { opacity: 0; transform: translateY(8px); } }
+
+/* Diálogo, gaveta, popover, menus e tooltip seguem os tokens (fora de @layer: vence as utilidades). */
+[data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='popover-content'],
+[data-slot='dropdown-menu-content'], [data-slot='select-content'], [data-slot='tooltip-content'] {
+  --tw-animation-duration: var(--dur-base);
+  --tw-ease: var(--ease-standard);
+}
+[data-slot='sheet-content'], [data-slot='sheet-overlay'] {
+  --tw-animation-duration: var(--dur-slow);
+  --tw-ease: var(--ease-emphasized);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   :root {
     --dur-fast: 1ms !important;
     --dur-base: 1ms !important;
