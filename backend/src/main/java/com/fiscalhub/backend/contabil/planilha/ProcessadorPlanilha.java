@@ -71,7 +71,8 @@ public class ProcessadorPlanilha implements ProcessadorDocumento {
             contexto.etapa(EtapaProcessamento.GRAVANDO);
             gravar(documento, cliente, mapeamento, linhas, contexto);
         } catch (IOException e) {
-            throw new FalhaImportacao("PLANILHA_ILEGIVEL", "Não foi possível ler a planilha: " + e.getMessage());
+            // IOException (inclusive zip bomb recusada): a mensagem da biblioteca fica fora da tela
+            throw new FalhaImportacao("PLANILHA_ILEGIVEL", "Não foi possível ler a planilha: arquivo corrompido, grande demais ou fora do formato.");
         } catch (FontePlanilha.PlanilhaInvalida e) {
             throw new FalhaImportacao("PLANILHA_INVALIDA", e.getMessage(), null, e.linha() == 0 ? null : e.linha());
         }

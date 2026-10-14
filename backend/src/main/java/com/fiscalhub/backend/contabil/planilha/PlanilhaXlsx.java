@@ -33,6 +33,8 @@ import java.util.TreeMap;
  */
 final class PlanilhaXlsx implements FontePlanilha {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PlanilhaXlsx.class);
+
     static {
         ZipSecureFile.setMinInflateRatio(0.01);              // descompactado no máximo 100x o compactado
         ZipSecureFile.setMaxEntrySize(200L * 1024 * 1024);   // nenhuma parte do .xlsx acima de 200 MB
@@ -49,7 +51,8 @@ final class PlanilhaXlsx implements FontePlanilha {
             pacote = OPCPackage.open(temporario.toFile(), PackageAccess.READ);
         } catch (OpenXML4JException | RuntimeException e) {
             Files.deleteIfExists(temporario);
-            throw new PlanilhaInvalida(0, "Não foi possível abrir o .xlsx: " + e.getMessage());
+            log.warn("Falha ao abrir .xlsx", e); // detalhe (inclui caminho temporário) só no log
+            throw new PlanilhaInvalida(0, "Não foi possível abrir o .xlsx: arquivo corrompido ou não é uma planilha do Excel.");
         }
     }
 
@@ -63,7 +66,8 @@ final class PlanilhaXlsx implements FontePlanilha {
                 nomes.add(it.getSheetName());
             }
         } catch (OpenXML4JException e) {
-            throw new PlanilhaInvalida(0, "Abas ilegíveis: " + e.getMessage());
+            log.warn("Abas ilegíveis no .xlsx", e);
+            throw new PlanilhaInvalida(0, "Não foi possível ler as abas da planilha.");
         }
         return nomes;
     }
@@ -85,7 +89,8 @@ final class PlanilhaXlsx implements FontePlanilha {
             }
             throw new PlanilhaInvalida(0, "A aba " + aba + " não existe na planilha.");
         } catch (OpenXML4JException | SAXException | javax.xml.parsers.ParserConfigurationException e) {
-            throw new PlanilhaInvalida(0, "Planilha ilegível: " + e.getMessage());
+            log.warn("Aba ilegível no .xlsx", e);
+            throw new PlanilhaInvalida(0, "Não foi possível ler a aba da planilha (conteúdo inválido).");
         }
     }
 
