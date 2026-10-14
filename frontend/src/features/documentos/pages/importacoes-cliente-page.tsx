@@ -39,7 +39,7 @@ export default function ImportacoesClientePage() {
       </Cartao>
       <Cartao aria-labelledby="titulo-documentos">
         <CartaoTitulo id="titulo-documentos">Documentos importados</CartaoTitulo>
-        <TabelaDocumentos clienteId={clienteId} documentos={documentos.data} carregando={documentos.isPending} destacado={duplicado} />
+        <TabelaDocumentos documentos={documentos.data} carregando={documentos.isPending} destacado={duplicado} />
       </Cartao>
     </Reveal>
   );

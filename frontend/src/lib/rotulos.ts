@@ -1,6 +1,6 @@
 /** Rótulos dos enums da API. Tipados contra os tipos gerados: um valor novo no backend quebra o build aqui. */
 import type { Tom } from '@/components/selo';
-import type { DocumentoRequest, DocumentoStatus, EventoAuditoria, Papel, Debito } from './api/tipos';
+import type { Documento, DocumentoStatus, EventoAuditoria, Papel, Debito } from './api/tipos';
 
 export const PAPEIS: Record<Papel, string> = { ADMIN: 'Administrador', CONSULTOR: 'Consultor', ASSISTENTE: 'Assistente' };
 
@@ -10,12 +10,14 @@ export const STATUS_DOCUMENTO: Record<DocumentoStatus, { rotulo: string; tom: To
   PROCESSADO: { rotulo: 'Processado', tom: 'success' },
   PROCESSADO_COM_ALERTAS: { rotulo: 'Processado com alertas', tom: 'warning' },
   ERRO: { rotulo: 'Erro', tom: 'danger' },
+  AGUARDANDO_CLIENTE: { rotulo: 'Aguardando cliente', tom: 'info' },
+  AGUARDANDO_MAPEAMENTO: { rotulo: 'Aguardando mapeamento', tom: 'info' },
 };
 
-/** Status em que o processamento terminou: o polling para. */
-export const STATUS_FINAL: DocumentoStatus[] = ['PROCESSADO', 'PROCESSADO_COM_ALERTAS', 'ERRO'];
+/** Status em que o processamento parou (terminou ou espera o usuário): o polling para. */
+export const STATUS_FINAL: DocumentoStatus[] = ['PROCESSADO', 'PROCESSADO_COM_ALERTAS', 'ERRO', 'AGUARDANDO_CLIENTE', 'AGUARDANDO_MAPEAMENTO'];
 
-export const TIPOS_DOCUMENTO: Record<DocumentoRequest['tipo'], string> = {
+export const TIPOS_DOCUMENTO: Record<Documento['tipo'], string> = {
   ECD: 'ECD — Escrituração Contábil Digital',
   ECF: 'ECF — Escrituração Contábil Fiscal',
   EFD_CONTRIBUICOES: 'EFD-Contribuições',
@@ -23,20 +25,19 @@ export const TIPOS_DOCUMENTO: Record<DocumentoRequest['tipo'], string> = {
   DCTF: 'DCTF',
   DCTF_WEB: 'DCTFWeb',
   DEMONSTRACAO_CONTABIL: 'Demonstração contábil',
+  BALANCETE: 'Balancete (planilha)',
   IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', ICMS: 'ICMS',
   OUTRO: 'Outro',
 };
 
-export const TRIBUTOS: Record<DocumentoRequest['tributos'][number], string> = {
-  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', ICMS: 'ICMS', ISS: 'ISS', INSS: 'INSS',
-  FGTS: 'FGTS', IRPF: 'IRPF', ITR: 'ITR', ITCMD: 'ITCMD', IPVA: 'IPVA', IPTU: 'IPTU', ITBI: 'ITBI', OUTROS: 'Outros',
-};
 
 export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   LOGIN: 'Login',
   DOCUMENTO_IMPORTAR: 'Importou documento',
   DOCUMENTO_BAIXAR: 'Baixou documento',
   DOCUMENTO_EXCLUIR: 'Excluiu documento',
+  DOCUMENTO_REPROCESSAR: 'Reprocessou documento',
+  DOCUMENTO_CONFIRMAR_CLIENTE: 'Confirmou cliente do documento',
   CLIENTE_CRIAR: 'Cadastrou cliente',
   CLIENTE_EDITAR: 'Editou cliente',
   CLIENTE_EXCLUIR: 'Excluiu cliente',

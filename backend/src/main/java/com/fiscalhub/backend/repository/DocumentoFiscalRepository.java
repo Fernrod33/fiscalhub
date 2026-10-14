@@ -14,20 +14,20 @@ import java.util.Optional;
 public interface DocumentoFiscalRepository extends JpaRepository<DocumentoFiscal, Long> {
     List<DocumentoFiscal> findByClienteIdOrderByDataImportacaoDesc(Long clienteId);
 
-    Optional<DocumentoFiscal> findByClienteIdAndSha256(Long clienteId, String sha256);
+    Optional<DocumentoFiscal> findFirstByEscritorioIdAndSha256(Long escritorioId, String sha256);
 
-    Optional<DocumentoFiscal> findByIdAndClienteIdAndClienteEscritorioId(Long id, Long clienteId, Long escritorioId);
+    Optional<DocumentoFiscal> findByIdAndEscritorioId(Long id, Long escritorioId);
 
     /** Documentos do escritório com filtros opcionais (null = sem filtro). */
     @Query(value = """
-            select d from DocumentoFiscal d join fetch d.cliente c
-            where c.escritorio.id = :escritorioId
+            select d from DocumentoFiscal d left join fetch d.cliente c
+            where d.escritorio.id = :escritorioId
               and (:clienteId is null or c.id = :clienteId)
               and (:tipo is null or d.tipo = :tipo)
               and (:status is null or d.status = :status)""",
             countQuery = """
             select count(d) from DocumentoFiscal d
-            where d.cliente.escritorio.id = :escritorioId
+            where d.escritorio.id = :escritorioId
               and (:clienteId is null or d.cliente.id = :clienteId)
               and (:tipo is null or d.tipo = :tipo)
               and (:status is null or d.status = :status)""")
@@ -41,6 +41,6 @@ public interface DocumentoFiscalRepository extends JpaRepository<DocumentoFiscal
     }
 
     @Query("select d.status as status, count(d) as total from DocumentoFiscal d"
-            + " where d.cliente.escritorio.id = :escritorioId group by d.status")
+            + " where d.escritorio.id = :escritorioId group by d.status")
     List<ContagemPorStatus> contarPorStatus(Long escritorioId);
 }

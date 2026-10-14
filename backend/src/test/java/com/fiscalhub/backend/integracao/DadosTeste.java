@@ -131,6 +131,7 @@ public class DadosTeste {
     public DocumentoFiscal documento(Cliente cliente) {
         DocumentoFiscal d = new DocumentoFiscal();
         d.setCliente(cliente);
+        d.setEscritorio(cliente.getEscritorio());
         d.setUsuario(cliente.getCriadoPor());
         d.setTipo(DocumentoTipo.DCTF);
         d.setEsfera(DocumentoEsfera.FEDERAL);

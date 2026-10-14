@@ -1,22 +1,28 @@
 package com.fiscalhub.backend.service;
 
-import com.fiscalhub.backend.dto.DocumentoFiscalRequestDTO;
 import com.fiscalhub.backend.dto.ArquivoDocumento;
+import com.fiscalhub.backend.dto.ClienteRequestDTO;
+import com.fiscalhub.backend.dto.DocumentoFiscalRequestDTO;
 import com.fiscalhub.backend.dto.DocumentoFiscalResponseDTO;
+import com.fiscalhub.backend.dto.InconsistenciaDTO;
 import com.fiscalhub.backend.dto.StatusDocumentoDTO;
-import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.Cliente;
+import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
+import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
+import com.fiscalhub.backend.importacao.InconsistenciaRepository;
+import com.fiscalhub.backend.importacao.ProcessamentoDocumentoService;
+import com.fiscalhub.backend.repository.ClienteRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
+import com.fiscalhub.backend.repository.EscritorioRepository;
 import com.fiscalhub.backend.repository.JobProcessamentoRepository;
-import com.fiscalhub.backend.storage.ArmazenamentoArquivos;
-import com.fiscalhub.backend.util.DocumentoFiscalClassificationResolver;
-import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.repository.UsuarioRepository;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
+import com.fiscalhub.backend.storage.ArmazenamentoArquivos;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,11 +36,12 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.EnumMap;
 import java.util.HexFormat;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+/** Documentos importados: upload (no escritório ou dentro de um cliente), consulta, reprocessamento e exclusão. */
 @Service
 @Transactional
 public class DocumentoFiscalService {
@@ -49,24 +56,29 @@ public class DocumentoFiscalService {
     private final DocumentoFiscalRepository documentoFiscalRepository;
     private final AcessoRecursoService acessoRecursoService;
     private final UsuarioRepository usuarioRepository;
+    private final EscritorioRepository escritorioRepository;
+    private final ClienteRepository clienteRepository;
+    private final ClienteService clienteService;
     private final ArmazenamentoArquivos armazenamento;
     private final ProcessamentoDocumentoService processamento;
     private final JobProcessamentoRepository jobRepository;
+    private final InconsistenciaRepository inconsistenciaRepository;
 
-
-
-    public DocumentoFiscalService(DocumentoFiscalRepository documentoFiscalRepository,
-                                 AcessoRecursoService acessoRecursoService,
-                                  UsuarioRepository usuarioRepository,
-                                 ArmazenamentoArquivos armazenamento,
-                                 ProcessamentoDocumentoService processamento,
-                                 JobProcessamentoRepository jobRepository) {
+    public DocumentoFiscalService(DocumentoFiscalRepository documentoFiscalRepository, AcessoRecursoService acessoRecursoService,
+                                  UsuarioRepository usuarioRepository, EscritorioRepository escritorioRepository,
+                                  ClienteRepository clienteRepository, ClienteService clienteService,
+                                  ArmazenamentoArquivos armazenamento, ProcessamentoDocumentoService processamento,
+                                  JobProcessamentoRepository jobRepository, InconsistenciaRepository inconsistenciaRepository) {
         this.documentoFiscalRepository = documentoFiscalRepository;
         this.acessoRecursoService = acessoRecursoService;
         this.usuarioRepository = usuarioRepository;
+        this.escritorioRepository = escritorioRepository;
+        this.clienteRepository = clienteRepository;
+        this.clienteService = clienteService;
         this.armazenamento = armazenamento;
         this.processamento = processamento;
         this.jobRepository = jobRepository;
+        this.inconsistenciaRepository = inconsistenciaRepository;
     }
 
     public List<DocumentoFiscalResponseDTO> listarPorCliente(Long clienteId, UsuarioAutenticado ua) {
@@ -92,50 +104,47 @@ public class DocumentoFiscalService {
         return resumo;
     }
 
-    public DocumentoFiscalResponseDTO consultarPorId(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
-        return DocumentoFiscalResponseDTO.fromEntity(acessoRecursoService.documento(clienteId, documentoId, ua));
+    @Transactional(readOnly = true)
+    public DocumentoFiscalResponseDTO consultar(Long documentoId, UsuarioAutenticado ua) {
+        return DocumentoFiscalResponseDTO.fromEntity(acessoRecursoService.documento(documentoId, ua));
     }
 
-    public DocumentoFiscalResponseDTO importar(Long clienteId, MultipartFile arquivo, DocumentoFiscalRequestDTO dto, UsuarioAutenticado ua) {
+    /**
+     * Guarda o arquivo e enfileira o processamento. clienteId vazio: upload no escritório, e o cliente vem do arquivo.
+     * O tipo informado é só sugestão; o processamento detecta o tipo pelo conteúdo.
+     */
+    public DocumentoFiscalResponseDTO importar(Long clienteId, MultipartFile arquivo, DocumentoFiscalRequestDTO dto,
+                                               UsuarioAutenticado ua) {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new BusinessRuleException("Arquivo é obrigatório.");
         }
-
-        Cliente cliente = acessoRecursoService.cliente(clienteId, ua);
+        Cliente cliente = clienteId == null ? null : acessoRecursoService.cliente(clienteId, ua);
         validarArquivo(arquivo);
-        validarMetadados(dto);
 
         String extensao = extrairExtensao(arquivo.getOriginalFilename());
         String mimeType = arquivo.getContentType() != null ? arquivo.getContentType() : "application/octet-stream";
-        String nomeArquivoInterno = UUID.randomUUID() + extensao;
-        String chave = "clientes/" + cliente.getId() + "/" + nomeArquivoInterno;
+        String chave = "escritorios/" + ua.escritorioId() + "/" + UUID.randomUUID() + extensao;
 
         // ponytail: upload em uma requisição só; upload em partes (retomável) quando houver arquivos acima
         // de 500 MB ou conexões instáveis
         String sha256 = gravarCalculandoSha256(chave, arquivo, mimeType);
-        documentoFiscalRepository.findByClienteIdAndSha256(cliente.getId(), sha256).ifPresent(existente -> {
+        documentoFiscalRepository.findFirstByEscritorioIdAndSha256(ua.escritorioId(), sha256).ifPresent(existente -> {
             armazenamento.excluir(chave);
-            throw new DuplicateResourceException("Este arquivo já foi importado para o cliente.", existente.getId());
+            throw new DuplicateResourceException("Este arquivo já foi importado no escritório.", existente.getId());
         });
 
         DocumentoFiscal documento = new DocumentoFiscal();
+        documento.setEscritorio(escritorioRepository.getReferenceById(ua.escritorioId()));
         documento.setCliente(cliente);
         documento.setUsuario(usuarioRepository.getReferenceById(ua.id()));
-        documento.setTipo(dto.getTipo());
-        documento.setEsfera(dto.getEsfera() != null ? dto.getEsfera()
-                : DocumentoFiscalClassificationResolver.classificarEsfera(dto.getTributos()));
-        documento.setJuridicao(dto.getJuridicao() != null ? dto.getJuridicao()
-                : DocumentoFiscalClassificationResolver.classificarJuridicao(dto.getTributos()));
-        documento.setTributos(Set.copyOf(dto.getTributos()));
-        documento.setPeriodoInicio(dto.getPeriodoInicio());
-        documento.setPeriodoFim(dto.getPeriodoFim());
+        DocumentoTipo informado = dto == null ? null : dto.getTipo();
+        documento.setTipoInformado(informado);
+        documento.setTipo(informado != null ? informado : DocumentoTipo.OUTRO); // até a detecção pelo conteúdo
+        documento.setObservacao(dto == null ? null : dto.getObservacao());
         documento.setNomeOriginalArquivo(arquivo.getOriginalFilename());
         documento.setExtensao(extensao);
         documento.setMimeType(mimeType);
         documento.setTamanhoBytes(arquivo.getSize());
-        documento.setStatus(DocumentoStatus.RECEBIDO);
-        documento.setRetificacao(Boolean.TRUE.equals(dto.getRetificacao()));
-        documento.setObservacao(dto.getObservacao());
         documento.setChaveArmazenamento(chave);
         documento.setSha256(sha256);
 
@@ -145,8 +154,8 @@ public class DocumentoFiscalService {
     }
 
     @Transactional(readOnly = true)
-    public ArquivoDocumento abrirArquivo(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
-        DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
+    public ArquivoDocumento abrirArquivo(Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
         if (!armazenamento.existe(documento.getChaveArmazenamento())) {
             throw new ResourceNotFoundException("Arquivo original não encontrado no armazenamento.");
         }
@@ -155,19 +164,73 @@ public class DocumentoFiscalService {
     }
 
     @Transactional(readOnly = true)
-    public StatusDocumentoDTO status(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
-        DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
+    public StatusDocumentoDTO status(Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
         return jobRepository.findFirstByDocumentoIdOrderByIdDesc(documento.getId())
                 .map(StatusDocumentoDTO::de)
                 .orElseThrow(() -> new ResourceNotFoundException("Documento sem processamento registrado."));
     }
 
-    /** Exclui registro e arquivo. Documento com débitos gerados não pode ser excluído (409 pela FK). */
-    public void excluir(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
-        DocumentoFiscal documento = acessoRecursoService.documento(clienteId, documentoId, ua);
+    @Transactional(readOnly = true)
+    public List<InconsistenciaDTO> inconsistencias(Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
+        return inconsistenciaRepository.findByDocumentoIdOrderByIdAsc(documento.getId()).stream()
+                .map(InconsistenciaDTO::de)
+                .toList();
+    }
+
+    /** Roda de novo a partir do arquivo no storage; o processador apaga o que a execução anterior gerou. */
+    public DocumentoFiscalResponseDTO reprocessar(Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
+        exigirParado(documento);
+        processamento.enfileirar(documento);
+        return DocumentoFiscalResponseDTO.fromEntity(documento);
+    }
+
+    /**
+     * Documento aguardando cliente: associa a um cliente existente (clienteId) ou cadastra o sugerido pelo arquivo
+     * (CNPJ e nome lidos do 0000) e reprocessa. Nada é digitado.
+     */
+    public DocumentoFiscalResponseDTO confirmarCliente(Long documentoId, Long clienteId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
+        if (documento.getStatus() != DocumentoStatus.AGUARDANDO_CLIENTE) {
+            throw new BusinessRuleException("O documento não está aguardando cliente.");
+        }
+        Cliente cliente;
+        if (clienteId != null) {
+            cliente = acessoRecursoService.cliente(clienteId, ua);
+        } else if (documento.getCnpjArquivo() != null) {
+            cliente = clienteRepository.findByEscritorioIdAndCnpj(ua.escritorioId(), documento.getCnpjArquivo())
+                    .orElseGet(() -> clienteRepository.getReferenceById(clienteService.create(sugestao(documento), ua).id()));
+        } else {
+            throw new BusinessRuleException("O arquivo não identifica a empresa: escolha um cliente.");
+        }
+        documento.setCliente(cliente);
+        processamento.enfileirar(documento);
+        return DocumentoFiscalResponseDTO.fromEntity(documento);
+    }
+
+    /** Exclui registro, dados derivados (cascata) e arquivo. Documento com débitos gerados não pode ser excluído (FK). */
+    public void excluir(Long documentoId, UsuarioAutenticado ua) {
+        DocumentoFiscal documento = acessoRecursoService.documento(documentoId, ua);
+        exigirParado(documento);
         documentoFiscalRepository.delete(documento);
         documentoFiscalRepository.flush(); // falha de FK antes de apagar o arquivo
         armazenamento.excluir(documento.getChaveArmazenamento());
+    }
+
+    private void exigirParado(DocumentoFiscal documento) {
+        if (jobRepository.existsByDocumentoIdAndStatusIn(documento.getId(), List.of(StatusJob.PENDENTE, StatusJob.PROCESSANDO))) {
+            throw new BusinessRuleException("O documento ainda está em processamento. Aguarde terminar.");
+        }
+    }
+
+    private static ClienteRequestDTO sugestao(DocumentoFiscal documento) {
+        ClienteRequestDTO dto = new ClienteRequestDTO();
+        String nome = documento.getNomeEmpresaArquivo() == null ? documento.getCnpjArquivo() : documento.getNomeEmpresaArquivo();
+        dto.setRazaoSocial(nome.length() > 150 ? nome.substring(0, 150) : nome);
+        dto.setCnpj(documento.getCnpjArquivo());
+        return dto;
     }
 
     private String gravarCalculandoSha256(String chave, MultipartFile arquivo, String mimeType) {
@@ -193,24 +256,6 @@ public class DocumentoFiscalService {
         }
         if (arquivo.getContentType() != null && !tiposAceitos.contains(arquivo.getContentType())) {
             throw new BusinessRuleException("Tipo de conteúdo inválido para o arquivo importado.");
-        }
-    }
-
-    private void validarMetadados(DocumentoFiscalRequestDTO dto) {
-        if (dto == null) {
-            throw new BusinessRuleException("Dados do documento são obrigatórios.");
-        }
-        if (dto.getTipo() == null) {
-            throw new BusinessRuleException("Tipo do documento é obrigatório.");
-        }
-        if (dto.getPeriodoInicio() == null || dto.getPeriodoFim() == null) {
-            throw new BusinessRuleException("Período inicial e final são obrigatórios.");
-        }
-        if (dto.getPeriodoInicio().isAfter(dto.getPeriodoFim())) {
-            throw new BusinessRuleException("Período final deve ser maior ou igual ao período inicial.");
-        }
-        if (dto.getTributos() == null || dto.getTributos().isEmpty()) {
-            throw new BusinessRuleException("Informe pelo menos um tributo relacionado ao documento.");
         }
     }
 

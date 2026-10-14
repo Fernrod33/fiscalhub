@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.entity;
 
+import com.fiscalhub.backend.entity.enums.EtapaProcessamento;
 import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.entity.enums.TipoJob;
 import jakarta.persistence.*;
@@ -33,6 +34,14 @@ public class JobProcessamento {
 
     @Column(nullable = false)
     private Integer tentativas = 0;
+
+    /** Gravados só pelo RegistroProgresso (transação própria), para a tela acompanhar durante o processamento. */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EtapaProcessamento etapa = EtapaProcessamento.RECEBIDO;
+
+    @Column(nullable = false)
+    private Integer progresso = 0;
 
     @Column(length = 1000)
     private String mensagem;

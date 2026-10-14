@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     List<Cliente> findByEscritorioIdOrderByRazaoSocial(Long escritorioId);
     Optional<Cliente> findByIdAndEscritorioId(Long id, Long escritorioId);
+    Optional<Cliente> findByEscritorioIdAndCnpj(Long escritorioId, String cnpj);
     boolean existsByCnpjAndEscritorioId(String cnpj, Long escritorioId);
 }

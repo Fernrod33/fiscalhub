@@ -1,22 +1,14 @@
 package com.fiscalhub.backend.dto;
 
-import com.fiscalhub.backend.entity.enums.DocumentoEsfera;
-import com.fiscalhub.backend.entity.enums.DocumentoJuridicao;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
-import com.fiscalhub.backend.entity.enums.TipoTributo;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.time.LocalDate;
-import java.util.Set;
-
+/** Parte opcional do upload. O tipo é só sugestão: vale o detectado no conteúdo. */
 @Data
 public class DocumentoFiscalRequestDTO {
     private DocumentoTipo tipo;
-    private DocumentoEsfera esfera;
-    private DocumentoJuridicao juridicao;
-    private Set<TipoTributo> tributos;
-    private LocalDate periodoInicio;
-    private LocalDate periodoFim;
+
+    @Size(max = 1000)
     private String observacao;
-    private Boolean retificacao = false;
 }

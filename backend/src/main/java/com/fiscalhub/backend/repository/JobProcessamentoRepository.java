@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,6 +16,8 @@ public interface JobProcessamentoRepository extends JpaRepository<JobProcessamen
     Optional<JobProcessamento> findFirstByDocumentoIdOrderByIdDesc(Long documentoId);
 
     List<JobProcessamento> findByStatus(StatusJob status);
+
+    boolean existsByDocumentoIdAndStatusIn(Long documentoId, Collection<StatusJob> status);
 
     /** Commit próprio: os jobs só são despachados depois que a volta para PENDENTE estiver gravada. */
     @Transactional

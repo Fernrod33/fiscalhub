@@ -1,4 +1,4 @@
-package com.fiscalhub.backend.service;
+package com.fiscalhub.backend.importacao;
 
 import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.repository.JobProcessamentoRepository;

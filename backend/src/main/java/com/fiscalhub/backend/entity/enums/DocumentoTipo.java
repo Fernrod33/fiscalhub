@@ -1,6 +1,5 @@
 package com.fiscalhub.backend.entity.enums;
 
-import java.util.Set;
 
 public enum DocumentoTipo {
     IRPJ,
@@ -16,12 +15,7 @@ public enum DocumentoTipo {
     EFD_ICMS_IPI,
     ICMS,
     DEMONSTRACAO_CONTABIL,
-    OUTRO;
-
-    public static DocumentoTipo fromTributos(Set<TipoTributo> tributos) {
-        if (tributos != null && tributos.contains(TipoTributo.ICMS) && tributos.contains(TipoTributo.IPI)) {
-            return EFD_ICMS_IPI;
-        }
-        return OUTRO;
-    }
+    /** Balancete em planilha (.xlsx ou .csv). */
+    BALANCETE,
+    OUTRO
 }

@@ -33,8 +33,14 @@ public class DocumentoFiscal {
     private Long id;
 
     @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "escritorio_id", nullable = false)
+    private Escritorio escritorio;
+
+    /** Pode ficar vazio até o processamento ler a empresa no arquivo (upload no nível do escritório). */
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "cliente_id", nullable = false)
+    @JoinColumn(name = "cliente_id")
     private Cliente cliente;
 
     @JsonIgnore
@@ -47,14 +53,17 @@ public class DocumentoFiscal {
     @Column(nullable = false, length = 40)
     private DocumentoTipo tipo;
 
-    @NotNull
+    /** Tipo informado no upload: só sugestão, vale o detectado no conteúdo. */
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(name = "tipo_informado", length = 40)
+    private DocumentoTipo tipoInformado;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
     private DocumentoEsfera esfera;
 
-    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(length = 20)
     private DocumentoJuridicao juridicao;
 
     @BatchSize(size = 100) // listas paginadas: tributos de vários documentos numa consulta só
@@ -64,13 +73,19 @@ public class DocumentoFiscal {
     @Column(name = "tributo", nullable = false, length = 30)
     private Set<TipoTributo> tributos = new HashSet<>();
 
-    @NotNull
-    @Column(name = "periodo_inicio", nullable = false)
+    /** Período lido do arquivo (ou escolhido no assistente da planilha). */
+    @Column(name = "periodo_inicio")
     private LocalDate periodoInicio;
 
-    @NotNull
-    @Column(name = "periodo_fim", nullable = false)
+    @Column(name = "periodo_fim")
     private LocalDate periodoFim;
+
+    /** Empresa lida do arquivo: sugestão de cadastro quando não há cliente com esse CNPJ. */
+    @Column(name = "cnpj_arquivo", length = 14)
+    private String cnpjArquivo;
+
+    @Column(name = "nome_empresa_arquivo", length = 255)
+    private String nomeEmpresaArquivo;
 
     @NotNull
     @Size(max = 255)

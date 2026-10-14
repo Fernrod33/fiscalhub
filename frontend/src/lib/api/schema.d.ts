@@ -100,6 +100,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_1"];
+        put?: never;
+        post: operations["importar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/reprocessar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reprocessar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/confirmar-cliente": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["confirmarCliente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes": {
         parameters: {
             query?: never;
@@ -260,14 +308,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documentos": {
+    "/api/documentos/{documentoId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_1"];
+        get: operations["consultar"];
+        put?: never;
+        post?: never;
+        delete: operations["excluir"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/inconsistencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["inconsistencias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/arquivo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["baixar"];
         put?: never;
         post?: never;
         delete?: never;
@@ -284,54 +380,6 @@ export interface paths {
             cookie?: never;
         };
         get: operations["resumo"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/clientes/{clienteId}/documentos/{documentoId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["consultarDocumento"];
-        put?: never;
-        post?: never;
-        delete: operations["excluir"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/clientes/{clienteId}/documentos/{documentoId}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["status"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/clientes/{clienteId}/documentos/{documentoId}/arquivo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["downloadArquivo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -534,18 +582,8 @@ export interface components {
         };
         DocumentoFiscalRequestDTO: {
             /** @enum {string} */
-            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "OUTRO";
-            /** @enum {string} */
-            esfera: "FEDERAL" | "ESTADUAL" | "CONTABIL";
-            /** @enum {string} */
-            juridicao: "UNIAO" | "PARANA" | "NAO_APLICAVEL";
-            tributos: ("IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS")[];
-            /** Format: date */
-            periodoInicio: string;
-            /** Format: date */
-            periodoFim: string;
+            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
             observacao: string;
-            retificacao: boolean;
         };
         DocumentoFiscalResponseDTO: {
             /** Format: int64 */
@@ -556,12 +594,9 @@ export interface components {
             /** Format: int64 */
             usuarioId: number;
             /** @enum {string} */
-            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "OUTRO";
+            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
             /** @enum {string} */
-            esfera: "FEDERAL" | "ESTADUAL" | "CONTABIL";
-            /** @enum {string} */
-            juridicao: "UNIAO" | "PARANA" | "NAO_APLICAVEL";
-            tributos: ("IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS")[];
+            tipoInformado: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
             /** Format: date */
             periodoInicio: string;
             /** Format: date */
@@ -574,10 +609,15 @@ export interface components {
             /** Format: date-time */
             dataImportacao: string;
             /** @enum {string} */
-            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO";
-            retificacao: boolean;
+            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
             observacao: string;
             sha256: string;
+            cnpjArquivo: string;
+            nomeEmpresaArquivo: string;
+        };
+        ConfirmacaoCliente: {
+            /** Format: int64 */
+            clienteId: number;
         };
         SignupRequest: {
             nome: string;
@@ -662,9 +702,13 @@ export interface components {
             /** Format: int64 */
             documentoId: number;
             /** @enum {string} */
-            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO";
+            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
             /** @enum {string} */
             job: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "ERRO";
+            /** @enum {string} */
+            etapa: "RECEBIDO" | "LENDO" | "VALIDANDO" | "GRAVANDO" | "CONCLUIDO";
+            /** Format: int32 */
+            progresso: number;
             /** Format: int32 */
             tentativas: number;
             mensagem: string;
@@ -672,6 +716,17 @@ export interface components {
             inicio: string;
             /** Format: date-time */
             fim: string;
+        };
+        InconsistenciaDTO: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            severidade: "ERRO" | "ALERTA" | "INFO";
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            regra: string;
+            mensagem: string;
         };
         StreamingResponseBody: unknown;
         DebitoResponseDTO: {
@@ -709,7 +764,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR";
+            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -981,6 +1036,107 @@ export interface operations {
             };
         };
     };
+    listar_1: {
+        parameters: {
+            query: {
+                clienteId?: number;
+                tipo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+                status?: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
+                pageable: components["schemas"]["Pageable"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedModelDocumentoFiscalResponseDTO"];
+                };
+            };
+        };
+    };
+    importar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    arquivo: string;
+                    documento?: components["schemas"]["DocumentoFiscalRequestDTO"];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DocumentoFiscalResponseDTO"];
+                };
+            };
+        };
+    };
+    reprocessar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DocumentoFiscalResponseDTO"];
+                };
+            };
+        };
+    };
+    confirmarCliente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ConfirmacaoCliente"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DocumentoFiscalResponseDTO"];
+                };
+            };
+        };
+    };
     listarClientes: {
         parameters: {
             query?: never;
@@ -1061,7 +1217,7 @@ export interface operations {
                 "multipart/form-data": {
                     /** Format: binary */
                     arquivo: string;
-                    documento: components["schemas"]["DocumentoFiscalRequestDTO"];
+                    documento?: components["schemas"]["DocumentoFiscalRequestDTO"];
                 };
             };
         };
@@ -1277,59 +1433,11 @@ export interface operations {
             };
         };
     };
-    listar_1: {
-        parameters: {
-            query: {
-                clienteId?: number;
-                tipo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "OUTRO";
-                status?: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO";
-                pageable: components["schemas"]["Pageable"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagedModelDocumentoFiscalResponseDTO"];
-                };
-            };
-        };
-    };
-    resumo: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": {
-                        [key: string]: number;
-                    };
-                };
-            };
-        };
-    };
-    consultarDocumento: {
+    consultar: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                clienteId: number;
                 documentoId: number;
             };
             cookie?: never;
@@ -1352,7 +1460,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                clienteId: number;
                 documentoId: number;
             };
             cookie?: never;
@@ -1373,7 +1480,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                clienteId: number;
                 documentoId: number;
             };
             cookie?: never;
@@ -1391,12 +1497,33 @@ export interface operations {
             };
         };
     };
-    downloadArquivo: {
+    inconsistencias: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                clienteId: number;
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InconsistenciaDTO"][];
+                };
+            };
+        };
+    };
+    baixar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
                 documentoId: number;
             };
             cookie?: never;
@@ -1410,6 +1537,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StreamingResponseBody"];
+                };
+            };
+        };
+    };
+    resumo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
                 };
             };
         };

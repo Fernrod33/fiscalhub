@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Documento, DocumentoRequest, DocumentoStatus, PaginaDocumentos } from '@/lib/api/tipos';
+import type { Documento, DocumentoStatus, PaginaDocumentos } from '@/lib/api/tipos';
 import { http } from '@/lib/http';
 import { STATUS_FINAL } from '@/lib/rotulos';
 
@@ -46,36 +46,36 @@ export const useResumoDocumentos = () => useQuery({
   refetchInterval: (q) => Object.keys(q.state.data ?? {}).some((s) => !STATUS_FINAL.includes(s as DocumentoStatus)) ? 2000 : false,
 });
 
-export type MetadadosImportacao = Pick<DocumentoRequest, 'tipo' | 'tributos' | 'periodoInicio' | 'periodoFim'>;
-
-/** Envia o arquivo com os metadados; `progresso` é a fração já enviada (0 a 1). */
-export function useImportarDocumento(clienteId: number) {
+/**
+ * Envia o arquivo; o tipo, o período e a empresa vêm do conteúdo. Sem clienteId, vai para a central do escritório
+ * (o cliente sai do arquivo). `progresso` é a fração já enviada (0 a 1).
+ */
+export function useImportarDocumento(clienteId?: number) {
   const qc = useQueryClient();
   const [progresso, setProgresso] = useState(0);
   const mutacao = useMutation({
-    mutationFn: ({ arquivo, metadados }: { arquivo: File; metadados: MetadadosImportacao }) => {
+    mutationFn: (arquivo: File) => {
       const corpo = new FormData();
       corpo.append('arquivo', arquivo);
-      corpo.append('documento', new Blob([JSON.stringify(metadados)], { type: 'application/json' }));
       setProgresso(0);
-      return http.enviarComProgresso<Documento>(`/api/clientes/${clienteId}/documentos`, corpo, setProgresso);
+      return http.enviarComProgresso<Documento>(clienteId ? `/api/clientes/${clienteId}/documentos` : '/api/documentos', corpo, setProgresso);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.todos }),
   });
   return { ...mutacao, progresso };
 }
 
-export function useExcluirDocumento(clienteId: number) {
+export function useExcluirDocumento() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (documentoId: number) => http.delete(`/api/clientes/${clienteId}/documentos/${documentoId}`),
+    mutationFn: (documentoId: number) => http.delete(`/api/documentos/${documentoId}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.todos }),
   });
 }
 
 /** Baixa o arquivo original e dispara o download no navegador. */
-export async function baixarDocumento(clienteId: number, documentoId: number) {
-  const { blob, nome } = await http.baixar(`/api/clientes/${clienteId}/documentos/${documentoId}/arquivo`);
+export async function baixarDocumento(documentoId: number) {
+  const { blob, nome } = await http.baixar(`/api/documentos/${documentoId}/arquivo`);
   const url = URL.createObjectURL(blob);
   const a = Object.assign(document.createElement('a'), { href: url, download: nome });
   a.click();

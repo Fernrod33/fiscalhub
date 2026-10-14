@@ -104,7 +104,7 @@ class AcessoEntreEscritoriosTest {
                 "/api/clientes/" + clienteB.getId(),
                 "/api/clientes/" + clienteB.getId() + "/debitos",
                 "/api/simulacoes/" + simulacaoB.getId(),
-                "/api/clientes/" + clienteB.getId() + "/documentos/" + documentoB.getId())) {
+                "/api/documentos/" + documentoB.getId())) {
             mvc.perform(get(url).with(tokenB)).andExpect(status().isOk());
             mvc.perform(get(url).with(colega)).andExpect(status().isOk());
         }
@@ -190,8 +190,13 @@ class AcessoEntreEscritoriosTest {
                 Map.entry("PATCH aprovar simulacao", patch("/api/simulacoes/{id}/aprovar", s)),
                 Map.entry("DELETE simulacao", delete("/api/simulacoes/{id}", s)),
                 Map.entry("GET documentos do cliente", get("/api/clientes/{c}/documentos", c)),
-                Map.entry("GET documento", get("/api/clientes/{c}/documentos/{d}", c, doc)),
-                Map.entry("GET arquivo do documento", get("/api/clientes/{c}/documentos/{d}/arquivo", c, doc)),
+                Map.entry("GET documento", get("/api/documentos/{d}", doc)),
+                Map.entry("GET status do documento", get("/api/documentos/{d}/status", doc)),
+                Map.entry("GET inconsistencias do documento", get("/api/documentos/{d}/inconsistencias", doc)),
+                Map.entry("GET arquivo do documento", get("/api/documentos/{d}/arquivo", doc)),
+                Map.entry("POST reprocessar documento", post("/api/documentos/{d}/reprocessar", doc)),
+                Map.entry("POST confirmar cliente do documento", post("/api/documentos/{d}/confirmar-cliente", doc)),
+                Map.entry("DELETE documento", delete("/api/documentos/{d}", doc)),
                 Map.entry("POST importar documento", importacao(c))
         );
     }
@@ -206,6 +211,6 @@ class AcessoEntreEscritoriosTest {
         return multipart("/api/clientes/{c}/documentos", clienteId)
                 .file(new MockMultipartFile("arquivo", "x.csv", "text/csv", ("a;b;" + System.nanoTime()).getBytes()))
                 .file(new MockMultipartFile("documento", "", "application/json",
-                        "{\"tipo\":\"OUTRO\",\"tributos\":[\"IRPJ\"],\"periodoInicio\":\"2024-01-01\",\"periodoFim\":\"2024-01-31\"}".getBytes()));
+                        "{\"tipo\":\"OUTRO\"}".getBytes()));
     }
 }

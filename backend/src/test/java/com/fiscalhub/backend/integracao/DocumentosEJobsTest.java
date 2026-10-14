@@ -11,7 +11,7 @@ import com.fiscalhub.backend.entity.enums.StatusJob;
 import com.fiscalhub.backend.entity.enums.TipoJob;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.fiscalhub.backend.repository.JobProcessamentoRepository;
-import com.fiscalhub.backend.service.DespachoJobs;
+import com.fiscalhub.backend.importacao.DespachoJobs;
 import com.fiscalhub.backend.storage.ArmazenamentoArquivos;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,8 +25,8 @@ import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequ
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import java.util.function.BooleanSupplier;
 
+import static com.fiscalhub.backend.integracao.Espera.aguardar;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -64,14 +64,16 @@ class DocumentosEJobsTest {
         assertThat(salvo.getSha256()).hasSize(64);
         assertThat(armazenamento.existe(salvo.getChaveArmazenamento())).isTrue();
 
-        aguardar(() -> documentoRepository.findById(id).orElseThrow().getStatus() == DocumentoStatus.PROCESSADO);
-        mvc.perform(get("/api/clientes/{c}/documentos/{d}/status", cliente.getId(), id).with(token))
+        aguardar(() -> documentoRepository.findById(id).orElseThrow().getStatus() == DocumentoStatus.PROCESSADO_COM_ALERTAS); // SPED não reconhecido: guardado, com alerta
+        mvc.perform(get("/api/documentos/{d}/status", id).with(token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PROCESSADO"))
+                .andExpect(jsonPath("$.status").value("PROCESSADO_COM_ALERTAS"))
+                .andExpect(jsonPath("$.etapa").value("CONCLUIDO"))
+                .andExpect(jsonPath("$.progresso").value(100))
                 .andExpect(jsonPath("$.job").value("CONCLUIDO"))
                 .andExpect(jsonPath("$.tentativas").value(1));
 
-        MvcResult download = mvc.perform(get("/api/clientes/{c}/documentos/{d}/arquivo", cliente.getId(), id)
+        MvcResult download = mvc.perform(get("/api/documentos/{d}/arquivo", id)
                         .with(token))
                 .andExpect(request().asyncStarted())
                 .andReturn();
@@ -102,8 +104,9 @@ class DocumentosEJobsTest {
     void excluirRemoveRegistroEArquivo() throws Exception {
         long id = importar("sped.txt", "text/plain");
         String chave = documentoRepository.findById(id).orElseThrow().getChaveArmazenamento();
+        aguardar(() -> documentoRepository.findById(id).orElseThrow().getStatus().finalizado()); // em processamento: 400
 
-        mvc.perform(delete("/api/clientes/{c}/documentos/{d}", cliente.getId(), id).with(token))
+        mvc.perform(delete("/api/documentos/{d}", id).with(token))
                 .andExpect(status().isNoContent());
         assertThat(documentoRepository.findById(id)).isEmpty();
         assertThat(armazenamento.existe(chave)).isFalse();
@@ -136,23 +139,8 @@ class DocumentosEJobsTest {
         return multipart("/api/clientes/{c}/documentos", cliente.getId())
                 .file(new MockMultipartFile("arquivo", nome, tipo, conteudo.getBytes(StandardCharsets.UTF_8)))
                 .file(new MockMultipartFile("documento", "", "application/json",
-                        "{\"tipo\":\"EFD_CONTRIBUICOES\",\"tributos\":[\"PIS\"],\"periodoInicio\":\"2024-01-01\",\"periodoFim\":\"2024-01-31\"}"
+                        "{\"tipo\":\"EFD_CONTRIBUICOES\"}"
                                 .getBytes(StandardCharsets.UTF_8)));
     }
 
-    /** Espera simples pelo processamento assíncrono (até 10 s). */
-    private static void aguardar(BooleanSupplier condicao) {
-        long limite = System.currentTimeMillis() + 10_000;
-        while (!condicao.getAsBoolean()) {
-            if (System.currentTimeMillis() > limite) {
-                throw new AssertionError("Condição não atingida em 10 s");
-            }
-            try {
-                Thread.sleep(50);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new AssertionError(e);
-            }
-        }
-    }
 }

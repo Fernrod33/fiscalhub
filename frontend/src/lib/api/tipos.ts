@@ -12,7 +12,6 @@ export type Papel = Usuario['papel'];
 export type Cliente = S['ClienteResponseDTO'];
 export type ClienteRequest = S['ClienteRequestDTO'];
 export type Documento = S['DocumentoFiscalResponseDTO'];
-export type DocumentoRequest = S['DocumentoFiscalRequestDTO'];
 export type StatusDocumento = S['StatusDocumentoDTO'];
 export type DocumentoStatus = Documento['status'];
 export type Debito = S['DebitoResponseDTO'];

@@ -20,7 +20,7 @@ import java.util.Set;
 
 /**
  * Ponto único de autorização por escritório: carrega o recurso já filtrado pelo escritório do usuário autenticado.
- * Recursos filhos (documentos, débitos, simulações) herdam o escopo pelo cliente.
+ * Débitos e simulações herdam o escopo pelo cliente; documentos têm o escritório próprio (podem chegar sem cliente).
  * Recurso inexistente ou de outro escritório gera 404 (nunca 403), para não revelar que ele existe.
  * O papel (o que cada um pode fazer) fica no @PreAuthorize dos controllers.
  */
@@ -65,8 +65,9 @@ public class AcessoRecursoService {
                 .orElseThrow(() -> naoEncontrado("Simulação", id));
     }
 
-    public DocumentoFiscal documento(Long clienteId, Long documentoId, UsuarioAutenticado ua) {
-        return documentoFiscalRepository.findByIdAndClienteIdAndClienteEscritorioId(documentoId, clienteId, ua.escritorioId())
+    /** Documento do escritório (pode ainda não ter cliente: upload pela central, aguardando confirmação). */
+    public DocumentoFiscal documento(Long documentoId, UsuarioAutenticado ua) {
+        return documentoFiscalRepository.findByIdAndEscritorioId(documentoId, ua.escritorioId())
                 .orElseThrow(() -> naoEncontrado("Documento", documentoId));
     }
 

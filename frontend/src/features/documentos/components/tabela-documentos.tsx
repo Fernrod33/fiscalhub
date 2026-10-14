@@ -15,18 +15,17 @@ import { baixarDocumento, useExcluirDocumento } from '../api';
 import { StatusDocumento } from './status-documento';
 
 /** Documentos importados de um cliente: status ao vivo, download e exclusão. */
-export function TabelaDocumentos({ clienteId, documentos, carregando, destacado }: {
-  clienteId: number;
+export function TabelaDocumentos({ documentos, carregando, destacado }: {
   documentos: Documento[] | undefined;
   carregando: boolean;
   /** Id do documento a destacar (ex.: o existente, depois de um envio duplicado). */
   destacado?: number;
 }) {
   const { alterar } = usePermissoes();
-  const excluir = useExcluirDocumento(clienteId);
+  const excluir = useExcluirDocumento();
   const [excluindo, setExcluindo] = useState<Documento | null>(null);
 
-  const baixar = (d: Documento) => baixarDocumento(clienteId, d.id)
+  const baixar = (d: Documento) => baixarDocumento(d.id)
     .catch((e) => toast.error(mensagemErro(e, 'Não foi possível baixar o arquivo.')));
 
   const colunas: ColumnDef<Documento>[] = [
