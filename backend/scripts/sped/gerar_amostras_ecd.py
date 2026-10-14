@@ -5,6 +5,7 @@ Os códigos referenciais (I051) existem nas tabelas oficiais L100_A/L300_A de 20
 
 Uso (na pasta backend/): python -I scripts/sped/gerar_amostras_ecd.py
 """
+import re
 from pathlib import Path
 
 SAIDA = Path('src/test/resources/amostras')
@@ -108,3 +109,13 @@ gravar('ecd-balanco-nao-fecha-l9.txt', ecd('9.00',
                         ('2.2', 'D', 2, '2', 'P', 'Patrimônio líquido', '500,00', 'C', '4800,00', 'C')]))
 gravar('ecd-sem-i051-l9.txt', ecd('9.00', contas=[c if c[0] != '1.1.02' else c[:6] + (None,) for c in CONTAS]))
 gravar('ecd-contagem-errada-l9.txt', ecd('9.00', ajuste_9900=('I155', 1)))
+
+
+def metade(m):
+    centavos = (int(m.group(1)) * 100 + int(m.group(2))) // 2
+    return f'{centavos // 100},{centavos % 100:02d}'
+
+
+# exercício anterior para o comparativo (AH): mesmos lançamentos com metade dos valores (relações lineares: D = C e
+# balanço continuam fechando)
+gravar('ecd-2023-l9.txt', re.sub(r'(\d+),(\d\d)', metade, ecd('9.00')).replace('2024', '2023'))

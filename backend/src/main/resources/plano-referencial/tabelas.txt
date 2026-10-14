@@ -1,0 +1,25 @@
+# Tabelas do Plano de Contas Referencial (dinâmicas da ECD/ECF), baixadas do portal Sped Tabelas:
+#   http://www.sped.fazenda.gov.br/spedtabelas/AppConsulta/publico/aspx/ConsultaTabelasExternas.aspx?CodSistema=SpedContabil
+#   pacote "SpedContabil - Pacote de Planos Referenciais <ano>" -> tabela -> "Baixar tabela" (baixadas em 2026-10-14).
+# Planos (0000.COD_PLAN_REF): 1 = PJ em Geral - Lucro Real (L100_A balanço, L300_A resultado);
+#                            2 = PJ em Geral - Lucro Presumido (P100 balanço, P150 resultado).
+# A tabela de 2021 vale para os anos seguintes enquanto o portal não publicar outra.
+# Para atualizar: scripts/sped/baixar_tabelas_referenciais.py e uma linha nova aqui. A importação (reexecutável)
+# compara o SHA-256 e só recarrega a tabela que mudou.
+# tabela|ano|plano|demonstracao|id do pacote|id da tabela|arquivo baixado|sha256
+SPEDECF_DINAMICA_L100_A_2018|2018|1|BP|94|1045|tb13104.txt|824acc707af469c09150941e41d94a9465dc58adc358f9a40854a93540654470
+SPEDECF_DINAMICA_L300_A_2018|2018|1|DRE|94|1048|tb13110.txt|4f3ecc3de41a218c053b98e1a6530e27b9a14592b30a3a8c4859536cf91dd665
+SPEDECF_DINAMICA_P100_2018|2018|2|BP|94|1050|tb13154.txt|824acc707af469c09150941e41d94a9465dc58adc358f9a40854a93540654470
+SPEDECF_DINAMICA_P150_2018|2018|2|DRE|94|1051|tb13160.txt|4f3ecc3de41a218c053b98e1a6530e27b9a14592b30a3a8c4859536cf91dd665
+SPEDECF_DINAMICA_L100_A_2019|2019|1|BP|96|1189|tb14043.txt|4ee247281b0cadb4e72d5ef6e21d1f02c225c1df51ef3b3480bf64975056f117
+SPEDECF_DINAMICA_L300_A_2019|2019|1|DRE|96|1192|tb13863.txt|7727ed31a6e17617497d82f6bf3bee66ade6df9114f818e68e596625a84844ec
+SPEDECF_DINAMICA_P100_2019|2019|2|BP|96|1194|tb14044.txt|4ee247281b0cadb4e72d5ef6e21d1f02c225c1df51ef3b3480bf64975056f117
+SPEDECF_DINAMICA_P150_2019|2019|2|DRE|96|1195|tb14087.txt|7727ed31a6e17617497d82f6bf3bee66ade6df9114f818e68e596625a84844ec
+SPEDECF_DINAMICA_L100_A_2020|2020|1|BP|102|1341|tb14368.txt|65299ca0a5ab3eb03f778b74840d8f70291acf74afbced95309a6a75a75aa4d7
+SPEDECF_DINAMICA_L300_A_2020|2020|1|DRE|102|1344|tb14374.txt|ac362855947a7138e107e597c396c6174feb34ad104bebb02c80ccb0db3c1eca
+SPEDECF_DINAMICA_P100_2020|2020|2|BP|102|1346|tb14418.txt|65299ca0a5ab3eb03f778b74840d8f70291acf74afbced95309a6a75a75aa4d7
+SPEDECF_DINAMICA_P150_2020|2020|2|DRE|102|1347|tb14424.txt|45c5264e97d1afbfee33462f6cb58ee409ff8b95f66ac5d4cee4454e808b4358
+SPEDECF_DINAMICA_L100_A_2021|2021|1|BP|112|1494|tb17561.txt|aadbc1ad9ff16426a828c40f1335716698f744a21b4be519af276035c3e58339
+SPEDECF_DINAMICA_L300_A_2021|2021|1|DRE|112|1497|tb17491.txt|2fa6e8cece4bfa12dfcc446fc2b2824c0afe0491acb1da118481bf7d4a984fb5
+SPEDECF_DINAMICA_P100_2021|2021|2|BP|112|1499|tb17652.txt|af3607ea6ac3b9c54f1ab1749cdff2a152cb53db9f69a439761fe5329ea85cd0
+SPEDECF_DINAMICA_P150_2021|2021|2|DRE|112|1500|tb17771.txt|ba5914cadfbf55e584d6e4f6f9e4e65f8485c5977ffb1a2967235bd47ac1eaa2
