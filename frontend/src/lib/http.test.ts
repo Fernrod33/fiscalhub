@@ -53,6 +53,12 @@ describe('cliente HTTP', () => {
     expect(init.headers['X-XSRF-TOKEN']).toBeUndefined();
   });
 
+  it('resposta sem corpo (202 Accepted) resolve sem erro', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
+    document.cookie = 'XSRF-TOKEN=tok';
+    await expect(http.post('/x', {})).resolves.toBeUndefined();
+  });
+
   it('alteração devolve o cookie XSRF-TOKEN no cabeçalho', async () => {
     document.cookie = 'XSRF-TOKEN=abc%2D1';
     responder(200, {});
