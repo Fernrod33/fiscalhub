@@ -9,8 +9,6 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 export default defineConfig([
   globalIgnores([
     'dist', 'src/lib/api/schema.d.ts', 'playwright-report', 'test-results',
-    // telas antigas: removidas na Tarefa 4 (F4), junto com esta linha
-    'src/pages', 'src/components/Layout.tsx', 'src/components/ProtectedRoute.tsx', 'src/context', 'src/api', 'src/types', 'src/App.tsx',
   ]),
   {
     files: ['**/*.{ts,tsx}'],

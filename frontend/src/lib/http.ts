@@ -2,7 +2,7 @@
  * Cliente HTTP único (fetch nativo): token, normalização de erro ProblemDetail (RFC 9457) e tratamento de 401.
  * Nenhum outro módulo chama fetch para a API.
  */
-export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
 /** Erro da API já normalizado a partir do ProblemDetail. */
 export class ErroApi extends Error {

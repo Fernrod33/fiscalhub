@@ -1,0 +1,52 @@
+/** Rótulos dos enums da API. Tipados contra os tipos gerados: um valor novo no backend quebra o build aqui. */
+import type { DocumentoRequest, DocumentoStatus, EventoAuditoria, Papel, Debito } from './api/tipos';
+
+export const PAPEIS: Record<Papel, string> = { ADMIN: 'Administrador', CONSULTOR: 'Consultor', ASSISTENTE: 'Assistente' };
+
+export const STATUS_DOCUMENTO: Record<DocumentoStatus, { rotulo: string; tom: 'info' | 'warning' | 'success' | 'danger' }> = {
+  RECEBIDO: { rotulo: 'Recebido', tom: 'info' },
+  PROCESSANDO: { rotulo: 'Processando', tom: 'warning' },
+  PROCESSADO: { rotulo: 'Processado', tom: 'success' },
+  PROCESSADO_COM_ALERTAS: { rotulo: 'Processado com alertas', tom: 'warning' },
+  ERRO: { rotulo: 'Erro', tom: 'danger' },
+};
+
+/** Status em que o processamento terminou: o polling para. */
+export const STATUS_FINAL: DocumentoStatus[] = ['PROCESSADO', 'PROCESSADO_COM_ALERTAS', 'ERRO'];
+
+export const TIPOS_DOCUMENTO: Record<DocumentoRequest['tipo'], string> = {
+  ECD: 'ECD — Escrituração Contábil Digital',
+  ECF: 'ECF — Escrituração Contábil Fiscal',
+  EFD_CONTRIBUICOES: 'EFD-Contribuições',
+  EFD_ICMS_IPI: 'EFD ICMS/IPI',
+  DCTF: 'DCTF',
+  DCTF_WEB: 'DCTFWeb',
+  DEMONSTRACAO_CONTABIL: 'Demonstração contábil',
+  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', ICMS: 'ICMS',
+  OUTRO: 'Outro',
+};
+
+export const TRIBUTOS: Record<DocumentoRequest['tributos'][number], string> = {
+  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', ICMS: 'ICMS', ISS: 'ISS', INSS: 'INSS',
+  FGTS: 'FGTS', IRPF: 'IRPF', ITR: 'ITR', ITCMD: 'ITCMD', IPVA: 'IPVA', IPTU: 'IPTU', ITBI: 'ITBI', OUTROS: 'Outros',
+};
+
+export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
+  LOGIN: 'Login',
+  DOCUMENTO_IMPORTAR: 'Importou documento',
+  DOCUMENTO_BAIXAR: 'Baixou documento',
+  DOCUMENTO_EXCLUIR: 'Excluiu documento',
+  CLIENTE_CRIAR: 'Cadastrou cliente',
+  CLIENTE_EDITAR: 'Editou cliente',
+  CLIENTE_EXCLUIR: 'Excluiu cliente',
+  SIMULACAO_CRIAR: 'Criou simulação',
+  USUARIO_CRIAR: 'Criou usuário',
+  USUARIO_ALTERAR_PAPEL: 'Alterou papel',
+  USUARIO_DESATIVAR: 'Desativou usuário',
+};
+
+export const SITUACAO_DEBITO: Record<Debito['situacao'], string> = {
+  EM_ABERTO: 'Em aberto', INSCRITO_DIVIDA_ATIVA: 'Inscrito em dívida ativa', PARCELADO: 'Parcelado', SUSPENSO: 'Suspenso',
+};
+
+export const ORGAO_CREDOR: Record<Debito['orgaoCredor'], string> = { RFB: 'RFB', PGFN: 'PGFN', SEFA_PR: 'SEFA-PR', PGE_PR: 'PGE-PR' };

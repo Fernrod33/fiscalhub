@@ -8,7 +8,6 @@ export type LoginRequest = S['LoginRequest'];
 export type SignupRequest = S['SignupRequest'];
 export type Usuario = S['UsuarioResponseDTO'];
 export type NovoUsuario = S['NovoUsuarioDTO'];
-export type UsuarioUpdate = S['UsuarioUpdateDTO'];
 export type TrocaSenha = S['TrocaSenhaDTO'];
 export type Papel = Usuario['papel'];
 export type Cliente = S['ClienteResponseDTO'];
