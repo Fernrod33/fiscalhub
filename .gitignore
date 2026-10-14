@@ -75,9 +75,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Arquivos de comandos de inicialização (local apenas)
-comandos_inicializacao.txt
-
 # graphify (artefato gerado)
 graphify-out/
 

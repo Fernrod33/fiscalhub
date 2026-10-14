@@ -118,6 +118,23 @@ Cada evento guarda escritório, usuário, ação, recurso, data e hora, IP e det
 
 ## Executando
 
+No Windows, na raiz do repositório:
+
+```powershell
+.\iniciar.ps1          # ou dois cliques em iniciar.cmd
+```
+
+O script confere Java 25+, Maven, Node 20+ e portas livres. Na primeira vez, cria o `backend/.env`: pede a senha do PostgreSQL e gera um `JWT_SECRET`. Depois cria o banco se ele não existir, roda `npm ci` quando o `package-lock.json` muda e sobe o backend e o frontend em janelas próprias.
+
+| Opção | Efeito |
+|---|---|
+| `-Perfil padrao` | sobe sem o perfil `dev` |
+| `-SemFrontend` | sobe só o backend |
+| `-PularInstalacao` | não roda o `npm ci` |
+| `-NaoAbrirNavegador` | não abre o navegador no fim |
+
+Manualmente:
+
 ```bash
 cd backend
 cp .env.example .env   # preencha DB_PASSWORD e JWT_SECRET
