@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { Providers } from './app/providers';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -20,6 +21,7 @@ const LaboratorioDesign = import.meta.env.DEV ? lazy(() => import('./laboratorio
 
 export default function App() {
   return (
+    <Providers>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -47,5 +49,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </Providers>
   );
 }

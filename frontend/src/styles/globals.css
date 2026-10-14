@@ -1,0 +1,131 @@
+/* FiscalHub — design system (direção A, institucional sóbrio, com títulos serifados). Tailwind v4, tokens CSS-first. */
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/source-serif-4';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------- cores semânticas ---------- */
+:root {
+  --background: #f4f6f9;
+  --surface: #ffffff;
+  --foreground: #0f1c2e;
+  --muted: #eef2f6;            /* fundo de áreas discretas */
+  --muted-foreground: #556378; /* texto secundário */
+  --border: #d7dee7;
+  --primary: #0b4f6c;          /* azul-petróleo */
+  --primary-foreground: #ffffff;
+  --accent: #e7eef5;           /* hover em listas e menus claros */
+  --accent-foreground: #0f1c2e;
+  --ring: #0b4f6c;
+  --success: #1b6e3a; --success-bg: #e3f3e8;
+  --warning: #8a5300; --warning-bg: #fdf0d8;
+  --danger: #a1262b;  --danger-bg: #fbe4e4; --danger-foreground: #ffffff;
+  --info: #1d5a8c;    --info-bg: #e2eef8;
+  /* menu lateral escuro também no tema claro */
+  --sidebar: #0f2a3d;
+  --sidebar-foreground: #d4e1ec;
+  --sidebar-accent: #1d4a66;
+  --sidebar-border: #1a3a52;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0b1220;
+  --surface: #111a2b;
+  --foreground: #e6edf5;
+  --muted: #17233a;
+  --muted-foreground: #9aabbf;
+  --border: #24324a;
+  --primary: #5bb0d4;
+  --primary-foreground: #04131c;
+  --accent: #1a2740;
+  --accent-foreground: #e6edf5;
+  --ring: #5bb0d4;
+  --success: #6fd394; --success-bg: #12301f;
+  --warning: #f2b85c; --warning-bg: #352710;
+  --danger: #f28b8e;  --danger-bg: #3a1618; --danger-foreground: #2a0a0c;
+  --info: #7fbcec;    --info-bg: #13283d;
+  --sidebar: #08101c;
+  --sidebar-foreground: #b6c6d8;
+  --sidebar-accent: #16304a;
+  --sidebar-border: #142236;
+  color-scheme: dark;
+}
+
+/* ---------- tokens para o Tailwind (nomes semânticos + os que o shadcn/ui espera) ---------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  /* aliases do shadcn/ui */
+  --color-card: var(--surface);
+  --color-card-foreground: var(--foreground);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
+  --color-destructive: var(--danger);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: #ffffff;
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-foreground);
+  --color-sidebar-ring: var(--ring);
+}
+
+@theme {
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  /* só títulos de página (h1) e de seção de card (h2): via PageTitle e CardTitle */
+  --font-serif: 'Source Serif 4 Variable', Georgia, serif;
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --shadow-sm: 0 1px 2px rgb(15 28 46 / 0.06);
+  --shadow-md: 0 4px 12px -4px rgb(15 28 46 / 0.12);
+  --text-base: 0.875rem; /* 14px: alta densidade */
+  --text-base--line-height: 1.45;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { font-family: var(--font-sans); }
+  body {
+    @apply bg-background text-foreground text-base antialiased;
+    font-synthesis: none;
+  }
+  /* números alinhados em todo o sistema (tabelas, KPIs, valores) */
+  .num, td, [data-numerico] { font-variant-numeric: tabular-nums; }
+}
+
+/* ---------- movimento (valores vêm de src/styles/motion.ts) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms !important;
+    --dur-base: 1ms !important;
+    --dur-slow: 1ms !important;
+  }
+  *, ::before, ::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; }
+}

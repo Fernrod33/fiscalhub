@@ -86,3 +86,7 @@ backend/uploads/
 
 # Variaveis de ambiente locais (segredos)
 .env
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
