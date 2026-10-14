@@ -13,6 +13,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     List<Usuario> findByEscritorioIdOrderByNome(Long escritorioId);
     Optional<Usuario> findByIdAndEscritorioId(Long id, Long escritorioId);
     long countByEscritorioIdAndPapelAndAtivoTrue(Long escritorioId, Papel papel);
-    /** Usado a cada requisição: token de usuário desativado, com papel ou escritório alterado deixa de valer. */
-    boolean existsByIdAndAtivoTrueAndPapelAndEscritorioId(Long id, Papel papel, Long escritorioId);
+    /** Estado conferido a cada requisição pelo filtro JWT (uma leitura por chave primária). */
+    interface EstadoToken {
+        Boolean getAtivo();
+        Integer getVersaoToken();
+        Boolean getTrocarSenhaNoProximoLogin();
+    }
+
+    Optional<EstadoToken> findEstadoTokenById(Long id);
 }

@@ -34,7 +34,7 @@ public class AuthController {
 
     @PostMapping("/login")
     @Auditavel(value = AcaoAuditoria.LOGIN, registrarFalha = true)
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<JwtResponse> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getSenha()));
 
@@ -43,7 +43,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+    public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
         usuarioService.registrarEscritorio(signUpRequest);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));

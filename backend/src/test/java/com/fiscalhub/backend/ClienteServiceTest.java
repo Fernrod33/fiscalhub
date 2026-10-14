@@ -44,8 +44,8 @@ class ClienteServiceTest {
     @InjectMocks
     private ClienteService clienteService;
 
-    private static final UsuarioAutenticado UA = new UsuarioAutenticado(1L, "usuario-a@test.com", 5L, Papel.ADMIN);
-    private static final UsuarioAutenticado UB = new UsuarioAutenticado(2L, "usuario-b@test.com", 6L, Papel.ADMIN);
+    private static final UsuarioAutenticado UA = new UsuarioAutenticado(1L, "usuario-a@test.com", 5L, Papel.ADMIN, 0);
+    private static final UsuarioAutenticado UB = new UsuarioAutenticado(2L, "usuario-b@test.com", 6L, Papel.ADMIN, 0);
     private Cliente clienteA;
 
     @BeforeEach
@@ -64,7 +64,7 @@ class ClienteServiceTest {
         List<ClienteResponseDTO> resultado = clienteService.listar(UA);
 
         assertThat(resultado).hasSize(1);
-        assertThat(resultado.get(0).getRazaoSocial()).isEqualTo("Cliente A Ltda");
+        assertThat(resultado.get(0).razaoSocial()).isEqualTo("Cliente A Ltda");
     }
 
     @Test
@@ -73,7 +73,7 @@ class ClienteServiceTest {
 
         ClienteResponseDTO dto = clienteService.buscar(10L, UA);
 
-        assertThat(dto.getId()).isEqualTo(10L);
+        assertThat(dto.id()).isEqualTo(10L);
     }
 
     @Test
@@ -97,7 +97,7 @@ class ClienteServiceTest {
 
         ClienteResponseDTO result = clienteService.create(dto, UA);
 
-        assertThat(result.getCnpj()).isEqualTo("12345678000195");
+        assertThat(result.cnpj()).isEqualTo("12345678000195");
         verify(clienteRepository).save(any(Cliente.class));
     }
 
@@ -152,7 +152,7 @@ class ClienteServiceTest {
 
         ClienteResponseDTO result = clienteService.update(10L, dto, UA);
 
-        assertThat(result.getRazaoSocial()).isEqualTo("Cliente A Atualizada");
+        assertThat(result.razaoSocial()).isEqualTo("Cliente A Atualizada");
     }
 
     @Test

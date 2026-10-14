@@ -32,7 +32,8 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
 - **Cliente** pertence ao escritório (qualquer membro o enxerga); quem cadastrou fica em `criado_por`. CNPJ é único **por escritório**.
 - Documentos, débitos e simulações herdam o escopo pelo cliente. Recurso de outro escritório responde **404**; papel sem permissão responde **403**.
 - Saída de usuário é **desativação** (login bloqueado; nada fica órfão). O último `ADMIN` ativo não sai nem é rebaixado.
-- O JWT carrega `uid`, `escritorioId` e `papel`. A cada requisição o filtro confere, numa consulta indexada, se o usuário segue ativo e com o mesmo papel: desativar ou rebaixar invalida o token na hora.
+- O JWT carrega `uid`, `escritorioId`, `papel` e `tv` (versão do token). A cada requisição o filtro lê o usuário pela chave primária e confere se ele segue ativo e com a mesma versão. Troca de senha, desativação e mudança de papel incrementam a versão e invalidam na hora os tokens anteriores.
+- **Senha provisória**: enquanto `trocarSenhaNoProximoLogin` for verdadeiro, toda rota autenticada responde 403 com `type` `/problemas/senha-troca-obrigatoria`, exceto `GET /api/usuarios/me` e `PUT /api/usuarios/me/senha`. A troca devolve um token novo.
 
 ## Configuração (variáveis de ambiente)
 
@@ -53,6 +54,7 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | `S3_BUCKET` | não | `fiscalhub-documentos` | bucket (precisa existir) |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | não | — | vazias = cadeia padrão de credenciais da AWS |
 | `SELIC_AGENDAMENTO` | não | `true` | importação automática da SELIC do Banco Central |
+| `FORWARD_HEADERS_STRATEGY` | não | `none` | atrás de proxy ou load balancer use `native` ou `framework`, para que a auditoria grave o IP real do `X-Forwarded-For`. Só ative se o proxy for confiável: senão o cliente forja o IP |
 | `SPRING_PROFILES_ACTIVE` | não | — | `dev` para desenvolvimento (ver Perfis) |
 
 ## Perfis
@@ -64,6 +66,10 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | `test` | `src/test/resources/application-test.properties` | testes de integração; banco do Testcontainers; sem importação da SELIC |
 
 Nenhum perfil cria usuário: cadastre-se por `POST /api/auth/signup`.
+
+**Um banco por ambiente.** O perfil `dev` registra no histórico do Flyway a migração repetível de `db/dev` (seed da UFPR). Nunca reutilize o banco de dev sem o perfil `dev`: o Flyway recusa a subida por encontrar uma migração aplicada que não existe nas pastas do outro perfil.
+
+**Contrato OpenAPI:** no perfil `dev`, `GET /v3/api-docs` devolve o contrato da API, usado pelo frontend para gerar os tipos (`npm run gerar:api`). Nos outros perfis o endpoint não existe.
 
 ## Banco de dados (Flyway)
 
@@ -79,6 +85,7 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V6__storage_e_jobs.sql` | `chave_armazenamento` (a chave dos arquivos antigos = nome interno), `sha256` único por cliente, `job_processamento` |
 | `V7__auditoria.sql` | `auditoria_evento`, com trigger que impede `UPDATE` e `DELETE` |
 | `V8__indice_origem.sql` | origem e data da coleta dos índices; os antigos ficam como `LEGADO` |
+| `V9__versao_token_e_limpeza.sql` | `versao_token` no usuário (todos começam em 0); remove `documento_original_id` e `nome_arquivo_interno` |
 
 **Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
 
@@ -159,7 +166,7 @@ Todos exigem `Authorization: Bearer <token>`, exceto `/api/auth/**`. O usuário 
 |---|---|---|---|
 | GET | `/api/usuarios/me` | todos | próprio cadastro (sem senha) |
 | PUT | `/api/usuarios/me` | todos | altera `nome`, `cpf`, `telefone` |
-| PUT | `/api/usuarios/me/senha` | todos | troca a senha (`senhaAtual`, `novaSenha`) |
+| PUT | `/api/usuarios/me/senha` | todos | troca a senha (`senhaAtual`, `novaSenha`) e devolve um token novo (mesmo formato do login) |
 | DELETE | `/api/usuarios/me` | todos | desativa a própria conta |
 | GET | `/api/usuarios` | ADMIN | usuários do escritório |
 | POST | `/api/usuarios` | ADMIN | cria com senha provisória (`nome`, `email`, `papel`, `senhaProvisoria`) |

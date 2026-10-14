@@ -27,16 +27,6 @@ public class IndiceMonetarioService {
     }
 
     /**
-     * Retorna a taxa percentual mensal de um índice para um mês específico.
-     */
-    public BigDecimal getTaxaMensal(TipoIndice tipo, YearMonth mesAno) {
-        return indiceMonetarioRepository
-                .findByTipoAndAnoAndMes(tipo, mesAno.getYear(), mesAno.getMonthValue())
-                .map(IndiceMonetario::getValor)
-                .orElseThrow(() -> indiceAusente(tipo, mesAno));
-    }
-
-    /**
      * Calcula o fator acumulado de um índice de taxa mensal (ex: SELIC)
      * entre dois meses (inclusive), usando composição composta.
      *

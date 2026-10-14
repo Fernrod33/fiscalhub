@@ -13,6 +13,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -29,14 +30,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String header = request.getHeader("Authorization");
-        if (header != null && header.startsWith("Bearer ")) {
-            jwtUtils.autenticar(header.substring(7))
-                    // uma consulta indexada: desativado ou papel alterado invalida o token antes de expirar
-                    .filter(u -> usuarioRepository.existsByIdAndAtivoTrueAndPapelAndEscritorioId(u.id(), u.papel(), u.escritorioId()))
-                    .ifPresent(u -> SecurityContextHolder.getContext().setAuthentication(
-                            new UsernamePasswordAuthenticationToken(u, null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_" + u.papel())))));
+        Optional<UsuarioAutenticado> autenticado = header != null && header.startsWith("Bearer ")
+                ? jwtUtils.autenticar(header.substring(7)) : Optional.empty();
+        if (autenticado.isPresent()) {
+            UsuarioAutenticado u = autenticado.get();
+            // ponytail: uma leitura por PK a cada requisição; cache curto quando a latência do filtro JWT for relevante
+            Optional<UsuarioRepository.EstadoToken> estado = usuarioRepository.findEstadoTokenById(u.id())
+                    .filter(e -> e.getAtivo() && e.getVersaoToken() == u.versaoToken());
+            if (estado.isPresent()) {
+                if (estado.get().getTrocarSenhaNoProximoLogin() && !liberadaDuranteTrocaDeSenha(request)) {
+                    RespostaProblema.escrever(response, HttpServletResponse.SC_FORBIDDEN, RespostaProblema.SENHA_TROCA_OBRIGATORIA,
+                            "Troca de senha obrigatória", "Troque a senha provisória antes de continuar.");
+                    return;
+                }
+                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                        u, null, List.of(new SimpleGrantedAuthority("ROLE_" + u.papel()))));
+            }
         }
         filterChain.doFilter(request, response);
+    }
+
+    /** Com senha provisória, só dá para ver o próprio cadastro e trocar a senha. */
+    private static boolean liberadaDuranteTrocaDeSenha(HttpServletRequest request) {
+        String rota = request.getRequestURI().substring(request.getContextPath().length());
+        return ("GET".equals(request.getMethod()) && rota.equals("/api/usuarios/me"))
+                || ("PUT".equals(request.getMethod()) && rota.equals("/api/usuarios/me/senha"));
     }
 }

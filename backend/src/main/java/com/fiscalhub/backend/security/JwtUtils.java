@@ -38,6 +38,7 @@ public class JwtUtils {
                 .claim("uid", usuario.getId())
                 .claim("escritorioId", usuario.getEscritorio().getId())
                 .claim("papel", usuario.getPapel().name())
+                .claim("tv", usuario.getVersaoToken())
                 .setIssuedAt(agora)
                 .setExpiration(new Date(agora.getTime() + jwtExpirationMs))
                 .signWith(signingKey, SignatureAlgorithm.HS256)
@@ -49,7 +50,8 @@ public class JwtUtils {
         try {
             Claims c = Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
             return Optional.of(new UsuarioAutenticado(c.get("uid", Long.class), c.getSubject(),
-                    c.get("escritorioId", Long.class), Papel.valueOf(c.get("papel", String.class))));
+                    c.get("escritorioId", Long.class), Papel.valueOf(c.get("papel", String.class)),
+                    c.get("tv", Integer.class)));
         } catch (JwtException | IllegalArgumentException | NullPointerException e) {
             logger.warn("Token JWT rejeitado: {}", e.getMessage());
             return Optional.empty();

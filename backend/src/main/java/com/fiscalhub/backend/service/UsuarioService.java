@@ -76,7 +76,10 @@ public class UsuarioService {
         if (papel != Papel.ADMIN) {
             garantirOutroAdminAtivo(usuario);
         }
-        usuario.setPapel(papel);
+        if (usuario.getPapel() != papel) {
+            usuario.setPapel(papel);
+            invalidarTokens(usuario);
+        }
         return usuario;
     }
 
@@ -85,6 +88,7 @@ public class UsuarioService {
         Usuario usuario = acessoRecursoService.usuario(usuarioId, ua);
         garantirOutroAdminAtivo(usuario);
         usuario.setAtivo(false);
+        invalidarTokens(usuario);
         return usuario;
     }
 
@@ -96,13 +100,20 @@ public class UsuarioService {
         return usuario;
     }
 
-    public void trocarSenha(UsuarioAutenticado ua, TrocaSenhaDTO dto) {
+    /** Troca a senha e invalida os tokens anteriores; quem chama emite um token novo. */
+    public Usuario trocarSenha(UsuarioAutenticado ua, TrocaSenhaDTO dto) {
         Usuario usuario = findById(ua.id());
         if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenha())) {
             throw new BusinessRuleException("Senha atual incorreta.");
         }
         usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
         usuario.setTrocarSenhaNoProximoLogin(false);
+        invalidarTokens(usuario);
+        return usuarioRepository.saveAndFlush(usuario);
+    }
+
+    private static void invalidarTokens(Usuario usuario) {
+        usuario.setVersaoToken(usuario.getVersaoToken() + 1);
     }
 
     private Usuario novoUsuario(String nome, String email, String senha, Papel papel, Escritorio escritorio) {

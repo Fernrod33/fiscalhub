@@ -65,6 +65,11 @@ public class Usuario {
     @Column(name = "trocar_senha_no_proximo_login", nullable = false)
     private Boolean trocarSenhaNoProximoLogin = false;
 
+    /** Muda na troca de senha, desativação e mudança de papel: invalida os tokens emitidos antes. */
+    @JsonIgnore
+    @Column(name = "versao_token", nullable = false)
+    private Integer versaoToken = 0;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

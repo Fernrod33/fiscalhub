@@ -30,7 +30,7 @@ class JwtUtilsTest {
         usuario.setEscritorio(escritorio);
 
         assertThat(jwtUtils.autenticar(jwtUtils.gerarToken(usuario)))
-                .contains(new UsuarioAutenticado(3L, "a@a.com", 7L, Papel.CONSULTOR));
+                .contains(new UsuarioAutenticado(3L, "a@a.com", 7L, Papel.CONSULTOR, 0));
     }
 
     @Test

@@ -111,7 +111,6 @@ public class DocumentoFiscalService {
         documento.setPeriodoInicio(dto.getPeriodoInicio());
         documento.setPeriodoFim(dto.getPeriodoFim());
         documento.setNomeOriginalArquivo(arquivo.getOriginalFilename());
-        documento.setNomeArquivoInterno(nomeArquivoInterno);
         documento.setExtensao(extensao);
         documento.setMimeType(mimeType);
         documento.setTamanhoBytes(arquivo.getSize());

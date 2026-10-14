@@ -76,11 +76,6 @@ public class DocumentoFiscal {
     private String nomeOriginalArquivo;
 
     @NotNull
-    @Size(max = 255)
-    @Column(name = "nome_arquivo_interno", nullable = false, length = 255)
-    private String nomeArquivoInterno;
-
-    @NotNull
     @Size(max = 20)
     @Column(nullable = false, length = 20)
     private String extensao;
@@ -105,10 +100,6 @@ public class DocumentoFiscal {
 
     @Column(name = "retificacao")
     private Boolean retificacao = false;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "documento_original_id")
-    private DocumentoFiscal documentoOriginal;
 
     @Size(max = 1000)
     @Column(length = 1000)

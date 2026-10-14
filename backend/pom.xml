@@ -45,6 +45,14 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- springdoc: contrato OpenAPI em /v3/api-docs (so no perfil dev) para gerar os tipos do frontend.
+             Modulo -api: sem a interface Swagger UI. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <version>2.8.13</version>
+        </dependency>
+
         <!-- Spring AOP: aspecto unico de auditoria (@Auditavel) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

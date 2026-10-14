@@ -55,7 +55,7 @@ public class ClienteController {
     @DeleteMapping("/{id}")
     @ConsultorOuAdmin
     @Auditavel(value = AcaoAuditoria.CLIENTE_EXCLUIR, idParam = "id")
-    public ResponseEntity<?> deleteCliente(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+    public ResponseEntity<Void> deleteCliente(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
         clienteService.delete(id, ua);
         return ResponseEntity.noContent().build();
     }

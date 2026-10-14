@@ -80,7 +80,9 @@ class EscritorioEPapeisTest {
         Usuario caio = usuarioRepository.findByEmail("caio@test.com").orElseThrow();
         mvc.perform(put("/api/usuarios/me/senha").header(AUTHORIZATION, dados.token(caio)).contentType(APPLICATION_JSON)
                         .content("{\"senhaAtual\":\"provisoria1\",\"novaSenha\":\"definitiva1\"}"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(false));
         assertThat(caio.getTrocarSenhaNoProximoLogin()).isFalse();
     }
 

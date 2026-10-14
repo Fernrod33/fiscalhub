@@ -1,10 +1,13 @@
 package com.fiscalhub.backend.controller;
 
 import com.fiscalhub.backend.dto.AlteracaoPapelDTO;
+import com.fiscalhub.backend.dto.JwtResponse;
 import com.fiscalhub.backend.dto.NovoUsuarioDTO;
 import com.fiscalhub.backend.dto.TrocaSenhaDTO;
 import com.fiscalhub.backend.dto.UsuarioResponseDTO;
 import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
+import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.security.JwtUtils;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.service.UsuarioService;
 import com.fiscalhub.backend.auditoria.AcaoAuditoria;
@@ -24,9 +27,11 @@ import java.util.List;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
+    private final JwtUtils jwtUtils;
 
-    UsuarioController(UsuarioService usuarioService) {
+    UsuarioController(UsuarioService usuarioService, JwtUtils jwtUtils) {
         this.usuarioService = usuarioService;
+        this.jwtUtils = jwtUtils;
     }
 
     @GetMapping("/me")
@@ -39,10 +44,11 @@ public class UsuarioController {
         return UsuarioResponseDTO.fromEntity(usuarioService.update(ua, dto));
     }
 
+    /** A troca invalida o token atual: a resposta traz um token novo. */
     @PutMapping("/me/senha")
-    public ResponseEntity<Void> trocarSenha(@Valid @RequestBody TrocaSenhaDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua) {
-        usuarioService.trocarSenha(ua, dto);
-        return ResponseEntity.noContent().build();
+    public JwtResponse trocarSenha(@Valid @RequestBody TrocaSenhaDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        Usuario usuario = usuarioService.trocarSenha(ua, dto);
+        return JwtResponse.de(jwtUtils.gerarToken(usuario), usuario);
     }
 
     /** Saída do próprio usuário: desativação (o último ADMIN ativo não pode sair). */

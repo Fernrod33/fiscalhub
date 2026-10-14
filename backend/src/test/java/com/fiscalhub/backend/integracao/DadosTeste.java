@@ -111,11 +111,10 @@ public class DadosTeste {
         d.setPeriodoInicio(LocalDate.of(2024, 1, 1));
         d.setPeriodoFim(LocalDate.of(2024, 1, 31));
         d.setNomeOriginalArquivo("dctf.pdf");
-        d.setNomeArquivoInterno("interno-" + System.nanoTime() + ".pdf");
         d.setExtensao(".pdf");
         d.setMimeType("application/pdf");
         d.setTamanhoBytes(10L);
-        d.setChaveArmazenamento("teste/" + d.getNomeArquivoInterno());
+        d.setChaveArmazenamento("teste/interno-" + System.nanoTime() + ".pdf");
         return documentoRepository.save(d);
     }
 
