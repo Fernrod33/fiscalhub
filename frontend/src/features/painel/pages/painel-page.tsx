@@ -7,25 +7,30 @@ import { AnimatedNumber, Reveal, Stagger, StaggerItem } from '@/components/motio
 import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import { TextoTruncado } from '@/components/texto-truncado';
 import * as fmt from '@/lib/formatadores';
+import type { DocumentoStatus } from '@/lib/api/tipos';
+import { STATUS_FINAL } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
 import { useSessao } from '@/features/auth/sessao';
-import { useDocumentosDoEscritorio } from '@/features/documentos/api';
+import { useClientes } from '@/features/clientes/api';
+import { useDocumentosDoEscritorio, useResumoDocumentos } from '@/features/documentos/api';
 import { StatusDocumento } from '@/features/documentos/components/status-documento';
 
 /** Painel do escritório: totais e últimos documentos importados. */
 export default function PainelPage() {
   const nome = useSessao()?.nome?.split(' ')[0];
-  const { carregando, documentos, clientes } = useDocumentosDoEscritorio();
-  const conta = (f: (s: string) => boolean) => documentos.filter((d) => f(d.status)).length;
+  const clientes = useClientes();
+  const resumo = useResumoDocumentos();
+  const ultimos = useDocumentosDoEscritorio({ pagina: 0, tamanho: 8 });
+  const carregando = clientes.isPending || resumo.isPending;
+  const porStatus = Object.entries(resumo.data ?? {});
+  const conta = (f: (s: string) => boolean) => porStatus.filter(([s]) => f(s)).reduce((total, [, n]) => total + (n ?? 0), 0);
   const kpis = [
-    { rotulo: 'Clientes', valor: clientes.length },
-    { rotulo: 'Importações', valor: documentos.length },
-    { rotulo: 'Em processamento', valor: conta((s) => s === 'RECEBIDO' || s === 'PROCESSANDO') },
+    { rotulo: 'Clientes', valor: clientes.data?.length ?? 0 },
+    { rotulo: 'Importações', valor: conta(() => true) },
+    { rotulo: 'Em processamento', valor: conta((s) => !STATUS_FINAL.includes(s as DocumentoStatus)) },
     { rotulo: 'Processadas', valor: conta((s) => s.startsWith('PROCESSADO')) },
     { rotulo: 'Com erro', valor: conta((s) => s === 'ERRO'), perigo: true },
   ];
-  const nomeCliente = new Map(clientes.map((c) => [c.id, c.razaoSocial]));
-  const ultimos = [...documentos].sort((a, b) => b.dataImportacao.localeCompare(a.dataImportacao)).slice(0, 8);
 
   return (
     <div className="grid gap-5">
@@ -45,19 +50,19 @@ export default function PainelPage() {
       <Reveal>
         <Cartao aria-labelledby="titulo-ultimos">
           <CartaoTitulo id="titulo-ultimos">Últimas importações</CartaoTitulo>
-          {carregando
+          {ultimos.isPending
             ? <div className="grid gap-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-8" />)}</div>
-            : ultimos.length === 0
+            : !ultimos.data?.content.length
               ? <EstadoVazio icone={Inbox} titulo="Nenhuma importação ainda" descricao="Abra um cliente e envie os arquivos dele na aba Importações." />
               : (
                 <Stagger as="ul" className="divide-y">
-                  {ultimos.map((d) => (
+                  {ultimos.data.content.map((d) => (
                     <StaggerItem as="li" key={d.id} className="flex items-center gap-3 py-2">
                       <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                       <div className="min-w-0 flex-1">
                         <TextoTruncado texto={d.nomeOriginalArquivo} />
                         <Link viewTransition to={`/clientes/${d.clienteId}/importacoes`} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
-                          {nomeCliente.get(d.clienteId)}
+                          {d.clienteRazaoSocial}
                         </Link>
                       </div>
                       <span className="num whitespace-nowrap text-muted-foreground">{fmt.dataHora(d.dataImportacao)}</span>

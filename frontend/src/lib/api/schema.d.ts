@@ -260,6 +260,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/resumo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["resumo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/documentos/{documentoId}": {
         parameters: {
             query?: never;
@@ -315,7 +347,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_1"];
+        get: operations["listar_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -347,7 +379,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_2"];
+        get: operations["listar_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -520,6 +552,7 @@ export interface components {
             id: number;
             /** Format: int64 */
             clienteId: number;
+            clienteRazaoSocial: string;
             /** Format: int64 */
             usuarioId: number;
             /** @enum {string} */
@@ -604,6 +637,27 @@ export interface components {
             /** Format: date-time */
             dataAtualizacao?: string;
         };
+        Pageable: {
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
+            sort: string[];
+        };
+        PageMetadata: {
+            /** Format: int64 */
+            size: number;
+            /** Format: int64 */
+            number: number;
+            /** Format: int64 */
+            totalElements: number;
+            /** Format: int64 */
+            totalPages: number;
+        };
+        PagedModelDocumentoFiscalResponseDTO: {
+            content: components["schemas"]["DocumentoFiscalResponseDTO"][];
+            page: components["schemas"]["PageMetadata"];
+        };
         StatusDocumentoDTO: {
             /** Format: int64 */
             documentoId: number;
@@ -648,13 +702,6 @@ export interface components {
             token: string;
             headerName: string;
         };
-        Pageable: {
-            /** Format: int32 */
-            page: number;
-            /** Format: int32 */
-            size: number;
-            sort: string[];
-        };
         AuditoriaEventoDTO: {
             /** Format: int64 */
             id: number;
@@ -671,16 +718,6 @@ export interface components {
             detalhes: {
                 [key: string]: unknown;
             };
-        };
-        PageMetadata: {
-            /** Format: int64 */
-            size: number;
-            /** Format: int64 */
-            number: number;
-            /** Format: int64 */
-            totalElements: number;
-            /** Format: int64 */
-            totalPages: number;
         };
         PagedModelAuditoriaEventoDTO: {
             content: components["schemas"]["AuditoriaEventoDTO"][];
@@ -1237,6 +1274,53 @@ export interface operations {
             };
         };
     };
+    listar_1: {
+        parameters: {
+            query: {
+                clienteId?: number;
+                tipo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "OUTRO";
+                status?: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO";
+                pageable: components["schemas"]["Pageable"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedModelDocumentoFiscalResponseDTO"];
+                };
+            };
+        };
+    };
+    resumo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+    };
     consultarDocumento: {
         parameters: {
             query?: never;
@@ -1327,7 +1411,7 @@ export interface operations {
             };
         };
     };
-    listar_1: {
+    listar_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -1369,7 +1453,7 @@ export interface operations {
             };
         };
     };
-    listar_2: {
+    listar_3: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];

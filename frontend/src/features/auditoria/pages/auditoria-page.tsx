@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, ScrollText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ScrollText } from 'lucide-react';
 import { DataTable, type ColumnDef } from '@/components/data-table';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
+import { Paginacao } from '@/components/paginacao';
 import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import type { EventoAuditoria, PaginaAuditoria } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
@@ -27,10 +27,9 @@ export default function AuditoriaPage() {
   const [pagina, setPagina] = useState(0);
   const eventos = useQuery({
     queryKey: ['auditoria', pagina],
-    queryFn: () => http.get<PaginaAuditoria>(`/api/auditoria?page=${pagina}&size=${TAMANHO}`),
+    queryFn: () => http.get<PaginaAuditoria>(`/api/auditoria?pagina=${pagina}&tamanho=${TAMANHO}`),
     placeholderData: keepPreviousData,
   });
-  const meta = eventos.data?.page;
 
   return (
     <Reveal className="grid gap-5">
@@ -38,13 +37,7 @@ export default function AuditoriaPage() {
       <DataTable rotulo="Eventos de auditoria" colunas={colunas} dados={eventos.data?.content} carregando={eventos.isPending}
                  filtro="Filtrar nesta página" tamanhoPagina={TAMANHO}
                  vazio={<EstadoVazio icone={ScrollText} titulo="Nenhum evento registrado" />} />
-      {meta && meta.totalPages > 1 && (
-        <nav className="flex items-center justify-end gap-2 text-muted-foreground" aria-label="Páginas da auditoria">
-          <span className="num">Página {meta.number + 1} de {meta.totalPages} · {fmt.inteiro(meta.totalElements)} eventos</span>
-          <Button variant="outline" size="icon" aria-label="Página anterior" disabled={pagina === 0} onClick={() => setPagina((p) => p - 1)}><ChevronLeft aria-hidden /></Button>
-          <Button variant="outline" size="icon" aria-label="Próxima página" disabled={pagina + 1 >= meta.totalPages} onClick={() => setPagina((p) => p + 1)}><ChevronRight aria-hidden /></Button>
-        </nav>
-      )}
+      <Paginacao meta={eventos.data?.page} aoMudar={setPagina} rotulo="Páginas da auditoria" unidade="eventos" />
     </Reveal>
   );
 }

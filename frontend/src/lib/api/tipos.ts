@@ -19,3 +19,4 @@ export type Debito = S['DebitoResponseDTO'];
 export type Simulacao = S['SimulacaoParcelamento'];
 export type EventoAuditoria = S['AuditoriaEventoDTO'];
 export type PaginaAuditoria = S['PagedModelAuditoriaEventoDTO'];
+export type PaginaDocumentos = S['PagedModelDocumentoFiscalResponseDTO'];

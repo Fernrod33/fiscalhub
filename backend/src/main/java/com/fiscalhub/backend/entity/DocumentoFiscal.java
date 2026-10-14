@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -56,6 +57,7 @@ public class DocumentoFiscal {
     @Column(nullable = false, length = 20)
     private DocumentoJuridicao juridicao;
 
+    @BatchSize(size = 100) // listas paginadas: tributos de vários documentos numa consulta só
     @ElementCollection(targetClass = TipoTributo.class)
     @CollectionTable(name = "documento_fiscal_tributos", joinColumns = @JoinColumn(name = "documento_id"))
     @Enumerated(EnumType.STRING)

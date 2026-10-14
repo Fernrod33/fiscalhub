@@ -7,6 +7,7 @@ import com.fiscalhub.backend.dto.StatusDocumentoDTO;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
+import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.DuplicateResourceException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
@@ -16,6 +17,8 @@ import com.fiscalhub.backend.storage.ArmazenamentoArquivos;
 import com.fiscalhub.backend.util.DocumentoFiscalClassificationResolver;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +28,7 @@ import java.io.InputStream;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.EnumMap;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.List;
@@ -71,6 +75,21 @@ public class DocumentoFiscalService {
                 .stream()
                 .map(DocumentoFiscalResponseDTO::fromEntity)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DocumentoFiscalResponseDTO> listarDoEscritorio(UsuarioAutenticado ua, Long clienteId, DocumentoTipo tipo,
+                                                               DocumentoStatus status, Pageable pageable) {
+        return documentoFiscalRepository.buscarDoEscritorio(ua.escritorioId(), clienteId, tipo, status, pageable)
+                .map(DocumentoFiscalResponseDTO::fromEntity);
+    }
+
+    /** Quantidade de documentos do escritório por status (KPIs do painel). */
+    @Transactional(readOnly = true)
+    public Map<DocumentoStatus, Long> resumo(UsuarioAutenticado ua) {
+        Map<DocumentoStatus, Long> resumo = new EnumMap<>(DocumentoStatus.class);
+        documentoFiscalRepository.contarPorStatus(ua.escritorioId()).forEach(c -> resumo.put(c.getStatus(), c.getTotal()));
+        return resumo;
     }
 
     public DocumentoFiscalResponseDTO consultarPorId(Long clienteId, Long documentoId, UsuarioAutenticado ua) {

@@ -1,10 +1,18 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Documento, DocumentoRequest } from '@/lib/api/tipos';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Documento, DocumentoRequest, DocumentoStatus, PaginaDocumentos } from '@/lib/api/tipos';
 import { http } from '@/lib/http';
 import { STATUS_FINAL } from '@/lib/rotulos';
-import { useClientes } from '@/features/clientes/api';
 
-const chavesDocumentos = { doCliente: (clienteId: number) => ['documentos', clienteId] as const };
+export type FiltrosDocumentos = { clienteId?: number; status?: DocumentoStatus; tipo?: Documento['tipo']; pagina: number; tamanho: number };
+export type ResumoDocumentos = Partial<Record<DocumentoStatus, number>>;
+
+/** Tudo sob ['documentos']: importar ou excluir invalida as listas do cliente, do escritório e o resumo de uma vez. */
+const chavesDocumentos = {
+  todos: ['documentos'] as const,
+  doCliente: (clienteId: number) => ['documentos', 'cliente', clienteId] as const,
+  doEscritorio: (filtros: FiltrosDocumentos) => ['documentos', 'escritorio', filtros] as const,
+  resumo: ['documentos', 'resumo'] as const,
+};
 
 /** Enquanto houver documento em processamento, consulta de novo a cada 2 s; para quando todos chegam ao status final. */
 const intervaloPolling = (docs: Documento[] | undefined) =>
@@ -18,25 +26,24 @@ export const useDocumentos = (clienteId: number) => useQuery({
   refetchInterval: (q) => intervaloPolling(q.state.data),
 });
 
-/**
- * Documentos de todos os clientes do escritório (painel e lista de importações).
- * ponytail: uma requisição por cliente; endpoint agregado no backend quando houver muitos clientes.
- */
-export function useDocumentosDoEscritorio() {
-  const clientes = useClientes();
-  return useQueries({
-    queries: (clientes.data ?? []).map((c) => ({
-      queryKey: chavesDocumentos.doCliente(c.id),
-      queryFn: () => buscarDoCliente(c.id),
-      refetchInterval: (q: { state: { data?: Documento[] } }) => intervaloPolling(q.state.data),
-    })),
-    combine: (resultados) => ({
-      carregando: clientes.isPending || resultados.some((r) => r.isPending),
-      documentos: resultados.flatMap((r) => r.data ?? []),
-      clientes: clientes.data ?? [],
-    }),
+/** Uma página dos documentos de todos os clientes do escritório, com filtros (GET /api/documentos). */
+export function useDocumentosDoEscritorio(filtros: FiltrosDocumentos) {
+  const busca = new URLSearchParams();
+  Object.entries(filtros).forEach(([chave, valor]) => valor !== undefined && busca.set(chave, String(valor)));
+  return useQuery({
+    queryKey: chavesDocumentos.doEscritorio(filtros),
+    queryFn: () => http.get<PaginaDocumentos>(`/api/documentos?${busca}`),
+    placeholderData: keepPreviousData,
+    refetchInterval: (q) => intervaloPolling(q.state.data?.content),
   });
 }
+
+/** Quantidade de documentos do escritório por status; acompanha enquanto houver algum em andamento. */
+export const useResumoDocumentos = () => useQuery({
+  queryKey: chavesDocumentos.resumo,
+  queryFn: () => http.get<ResumoDocumentos>('/api/documentos/resumo'),
+  refetchInterval: (q) => Object.keys(q.state.data ?? {}).some((s) => !STATUS_FINAL.includes(s as DocumentoStatus)) ? 2000 : false,
+});
 
 export type MetadadosImportacao = Pick<DocumentoRequest, 'tipo' | 'tributos' | 'periodoInicio' | 'periodoFim'>;
 
@@ -49,7 +56,7 @@ export function useImportarDocumento(clienteId: number) {
       corpo.append('documento', new Blob([JSON.stringify(metadados)], { type: 'application/json' }));
       return http.post<Documento>(`/api/clientes/${clienteId}/documentos`, corpo);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.doCliente(clienteId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.todos }),
   });
 }
 
@@ -57,7 +64,7 @@ export function useExcluirDocumento(clienteId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (documentoId: number) => http.delete(`/api/clientes/${clienteId}/documentos/${documentoId}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.doCliente(clienteId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.todos }),
   });
 }
 
