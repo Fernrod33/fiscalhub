@@ -148,6 +148,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -308,6 +324,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/csrf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["csrf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auditoria": {
         parameters: {
             query?: never;
@@ -344,25 +376,14 @@ export interface components {
             /** @enum {string} */
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
             trocarSenhaNoProximoLogin: boolean;
+            /** Format: int64 */
+            escritorioId: number;
             /** Format: date-time */
             dataCriacao: string;
         };
         TrocaSenhaDTO: {
             senhaAtual: string;
             novaSenha: string;
-        };
-        JwtResponse: {
-            token: string;
-            type: string;
-            /** Format: int64 */
-            id: number;
-            email: string;
-            nome: string;
-            /** Format: int64 */
-            escritorioId: number;
-            /** @enum {string} */
-            papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
-            trocarSenhaNoProximoLogin: boolean;
         };
         ClienteRequestDTO: {
             razaoSocial: string;
@@ -622,6 +643,11 @@ export interface components {
             situacao: "EM_ABERTO" | "INSCRITO_DIVIDA_ATIVA" | "PARCELADO" | "SUSPENSO";
             numeroInscricao: string;
         };
+        CsrfToken: {
+            parameterName: string;
+            token: string;
+            headerName: string;
+        };
         Pageable: {
             /** Format: int32 */
             page: number;
@@ -750,7 +776,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["JwtResponse"];
+                    "*/*": components["schemas"]["UsuarioResponseDTO"];
                 };
             };
         };
@@ -1035,6 +1061,24 @@ export interface operations {
             };
         };
     };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     authenticateUser: {
         parameters: {
             query?: never;
@@ -1054,7 +1098,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["JwtResponse"];
+                    "*/*": components["schemas"]["UsuarioResponseDTO"];
                 };
             };
         };
@@ -1302,6 +1346,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["DebitoResponseDTO"][];
                 };
+            };
+        };
+    };
+    csrf: {
+        parameters: {
+            query: {
+                token: components["schemas"]["CsrfToken"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

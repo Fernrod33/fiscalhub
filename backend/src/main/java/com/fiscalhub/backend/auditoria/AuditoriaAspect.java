@@ -1,6 +1,5 @@
 package com.fiscalhub.backend.auditoria;
 
-import com.fiscalhub.backend.dto.JwtResponse;
 import com.fiscalhub.backend.dto.LoginRequest;
 import com.fiscalhub.backend.repository.UsuarioRepository;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
@@ -78,17 +77,19 @@ public class AuditoriaAspect {
         if (auth != null && auth.getPrincipal() instanceof UsuarioAutenticado ua) {
             evento.setUsuarioId(ua.id());
             evento.setEscritorioId(ua.escritorioId());
-        } else if (corpo(resultado) instanceof JwtResponse jwt) { // login com sucesso
-            evento.setUsuarioId(jwt.id());
-            evento.setEscritorioId(jwt.escritorioId());
-            evento.setRecursoId(jwt.id());
         } else {
+            // login (ainda sem principal): identifica pelo e-mail; na falha, guarda só o e-mail tentado
             args.values().stream().filter(LoginRequest.class::isInstance).map(LoginRequest.class::cast).findFirst()
-                    .ifPresent(login -> {                         // login que falhou: só o e-mail tentado
-                        detalhes.put("email", login.getEmail());
+                    .ifPresent(login -> {
+                        if (resultado == null) {
+                            detalhes.put("email", login.getEmail());
+                        }
                         usuarioRepository.findByEmail(login.getEmail()).ifPresent(u -> {
                             evento.setUsuarioId(u.getId());
                             evento.setEscritorioId(u.getEscritorio().getId());
+                            if (resultado != null) {
+                                evento.setRecursoId(u.getId());
+                            }
                         });
                     });
         }

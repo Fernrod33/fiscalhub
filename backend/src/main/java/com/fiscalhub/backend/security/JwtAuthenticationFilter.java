@@ -20,18 +20,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final UsuarioRepository usuarioRepository;
+    private final CookieSessao cookieSessao;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils, UsuarioRepository usuarioRepository) {
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, UsuarioRepository usuarioRepository, CookieSessao cookieSessao) {
         this.jwtUtils = jwtUtils;
         this.usuarioRepository = usuarioRepository;
+        this.cookieSessao = cookieSessao;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        String header = request.getHeader("Authorization");
-        Optional<UsuarioAutenticado> autenticado = header != null && header.startsWith("Bearer ")
-                ? jwtUtils.autenticar(header.substring(7)) : Optional.empty();
+        Optional<UsuarioAutenticado> autenticado = cookieSessao.ler(request).flatMap(jwtUtils::autenticar);
         if (autenticado.isPresent()) {
             UsuarioAutenticado u = autenticado.get();
             // ponytail: uma leitura por PK a cada requisição; cache curto quando a latência do filtro JWT for relevante

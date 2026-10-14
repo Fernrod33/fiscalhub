@@ -1,6 +1,7 @@
 package com.fiscalhub.backend.integracao;
 
 import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.auditoria.AuditoriaEvento;
 import com.fiscalhub.backend.auditoria.AuditoriaEventoRepository;
 import com.fiscalhub.backend.entity.Escritorio;
@@ -18,7 +19,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,21 +37,21 @@ class AuditoriaTest {
 
     private Escritorio escritorio;
     private Usuario admin;
-    private String tokenAdmin;
+    private RequestPostProcessor tokenAdmin;
 
     @BeforeEach
     void setUp() {
         escritorio = dados.escritorio("Auditado");
         admin = dados.usuario(escritorio, "admin-aud@test.com", Papel.ADMIN);
-        tokenAdmin = dados.token(admin);
+        tokenAdmin = dados.sessao(admin);
     }
 
     @Test
     void loginComSucessoEComFalhaGeramEvento() throws Exception {
-        mvc.perform(post("/api/auth/login").contentType(APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").with(DadosTeste.CSRF).contentType(APPLICATION_JSON)
                         .content("{\"email\":\"admin-aud@test.com\",\"senha\":\"" + DadosTeste.SENHA + "\"}"))
                 .andExpect(status().isOk());
-        mvc.perform(post("/api/auth/login").contentType(APPLICATION_JSON)
+        mvc.perform(post("/api/auth/login").with(DadosTeste.CSRF).contentType(APPLICATION_JSON)
                         .content("{\"email\":\"admin-aud@test.com\",\"senha\":\"errada\"}"))
                 .andExpect(status().isUnauthorized());
 
@@ -67,13 +67,13 @@ class AuditoriaTest {
 
     @Test
     void criarClienteGeraEventoComORecurso() throws Exception {
-        String resposta = mvc.perform(post("/api/clientes").header(AUTHORIZATION, tokenAdmin).contentType(APPLICATION_JSON)
+        String resposta = mvc.perform(post("/api/clientes").with(tokenAdmin).contentType(APPLICATION_JSON)
                         .content("{\"razaoSocial\":\"Auditada Ltda\",\"cnpj\":\"11222333000181\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         long clienteId = ((Number) com.jayway.jsonpath.JsonPath.read(resposta, "$.id")).longValue();
 
-        mvc.perform(AcessoEntreEscritoriosTest.importacao(clienteId).header(AUTHORIZATION, tokenAdmin))
+        mvc.perform(AcessoEntreEscritoriosTest.importacao(clienteId).with(tokenAdmin))
                 .andExpect(status().isCreated());
 
         assertThat(eventos()).extracting(AuditoriaEvento::getAcao, AuditoriaEvento::getRecursoTipo)
@@ -87,25 +87,25 @@ class AuditoriaTest {
     @Test
     void adminSoVeAAuditoriaDoProprioEscritorioEOutrosPapeisNaoVeem() throws Exception {
         Usuario adminOutro = dados.usuario(dados.escritorio("Outro"), "admin-outro@test.com", Papel.ADMIN);
-        mvc.perform(post("/api/clientes").header(AUTHORIZATION, dados.token(adminOutro)).contentType(APPLICATION_JSON)
+        mvc.perform(post("/api/clientes").with(dados.sessao(adminOutro)).contentType(APPLICATION_JSON)
                         .content("{\"razaoSocial\":\"De Fora\",\"cnpj\":\"11222333000181\"}"))
                 .andExpect(status().isCreated());
 
-        mvc.perform(get("/api/auditoria").header(AUTHORIZATION, tokenAdmin))
+        mvc.perform(get("/api/auditoria").with(tokenAdmin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty());
-        mvc.perform(get("/api/auditoria").header(AUTHORIZATION, dados.token(adminOutro)))
+        mvc.perform(get("/api/auditoria").with(dados.sessao(adminOutro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].acao").value("CLIENTE_CRIAR"))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
 
-        String consultor = dados.token(dados.usuario(escritorio, "cons-aud@test.com", Papel.CONSULTOR));
-        mvc.perform(get("/api/auditoria").header(AUTHORIZATION, consultor)).andExpect(status().isForbidden());
+        RequestPostProcessor consultor = dados.sessao(dados.usuario(escritorio, "cons-aud@test.com", Papel.CONSULTOR));
+        mvc.perform(get("/api/auditoria").with(consultor)).andExpect(status().isForbidden());
     }
 
     @Test
     void tabelaAceitaSoInsercao() throws Exception {
-        mvc.perform(post("/api/clientes").header(AUTHORIZATION, tokenAdmin).contentType(APPLICATION_JSON)
+        mvc.perform(post("/api/clientes").with(tokenAdmin).contentType(APPLICATION_JSON)
                 .content("{\"razaoSocial\":\"X\",\"cnpj\":\"11222333000181\"}")).andExpect(status().isCreated());
         repository.flush();
 

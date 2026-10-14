@@ -1,6 +1,7 @@
 package com.fiscalhub.backend.integracao;
 
 import com.fiscalhub.backend.entity.Cliente;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.JobProcessamento;
 import com.fiscalhub.backend.entity.Usuario;
@@ -27,7 +28,6 @@ import java.util.UUID;
 import java.util.function.BooleanSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -45,7 +45,7 @@ class DocumentosEJobsTest {
     @Autowired ArmazenamentoArquivos armazenamento;
     @Autowired DespachoJobs despachoJobs;
 
-    private String token;
+    private RequestPostProcessor token;
     private Cliente cliente;
     private final String conteudo = "|0000|SPED|" + UUID.randomUUID() + "|";
 
@@ -53,7 +53,7 @@ class DocumentosEJobsTest {
     void setUp() {
         String sufixo = UUID.randomUUID().toString();
         Usuario consultor = dados.usuario(dados.escritorio("Docs " + sufixo), "docs-" + sufixo + "@test.com", Papel.CONSULTOR);
-        token = dados.token(consultor);
+        token = dados.sessao(consultor);
         cliente = dados.cliente(consultor, "11222333000181");
     }
 
@@ -65,14 +65,14 @@ class DocumentosEJobsTest {
         assertThat(armazenamento.existe(salvo.getChaveArmazenamento())).isTrue();
 
         aguardar(() -> documentoRepository.findById(id).orElseThrow().getStatus() == DocumentoStatus.PROCESSADO);
-        mvc.perform(get("/api/clientes/{c}/documentos/{d}/status", cliente.getId(), id).header(AUTHORIZATION, token))
+        mvc.perform(get("/api/clientes/{c}/documentos/{d}/status", cliente.getId(), id).with(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PROCESSADO"))
                 .andExpect(jsonPath("$.job").value("CONCLUIDO"))
                 .andExpect(jsonPath("$.tentativas").value(1));
 
         MvcResult download = mvc.perform(get("/api/clientes/{c}/documentos/{d}/arquivo", cliente.getId(), id)
-                        .header(AUTHORIZATION, token))
+                        .with(token))
                 .andExpect(request().asyncStarted())
                 .andReturn();
         mvc.perform(asyncDispatch(download))
@@ -86,7 +86,7 @@ class DocumentosEJobsTest {
     void mesmoArquivoDuasVezesNoClienteE409ApontandoOExistente() throws Exception {
         long id = importar("sped.txt", "text/plain");
 
-        mvc.perform(upload("copia.txt", "text/plain").header(AUTHORIZATION, token))
+        mvc.perform(upload("copia.txt", "text/plain").with(token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.recursoExistenteId").value(id));
         assertThat(documentoRepository.findByClienteIdOrderByDataImportacaoDesc(cliente.getId())).hasSize(1);
@@ -94,8 +94,8 @@ class DocumentosEJobsTest {
 
     @Test
     void extensaoOuTipoForaDaListaE400() throws Exception {
-        mvc.perform(upload("nota.xml", "application/xml").header(AUTHORIZATION, token)).andExpect(status().isBadRequest());
-        mvc.perform(upload("sped.txt", "application/x-msdownload").header(AUTHORIZATION, token)).andExpect(status().isBadRequest());
+        mvc.perform(upload("nota.xml", "application/xml").with(token)).andExpect(status().isBadRequest());
+        mvc.perform(upload("sped.txt", "application/x-msdownload").with(token)).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -103,7 +103,7 @@ class DocumentosEJobsTest {
         long id = importar("sped.txt", "text/plain");
         String chave = documentoRepository.findById(id).orElseThrow().getChaveArmazenamento();
 
-        mvc.perform(delete("/api/clientes/{c}/documentos/{d}", cliente.getId(), id).header(AUTHORIZATION, token))
+        mvc.perform(delete("/api/clientes/{c}/documentos/{d}", cliente.getId(), id).with(token))
                 .andExpect(status().isNoContent());
         assertThat(documentoRepository.findById(id)).isEmpty();
         assertThat(armazenamento.existe(chave)).isFalse();
@@ -125,7 +125,7 @@ class DocumentosEJobsTest {
     }
 
     private long importar(String nome, String tipo) throws Exception {
-        String resposta = mvc.perform(upload(nome, tipo).header(AUTHORIZATION, token))
+        String resposta = mvc.perform(upload(nome, tipo).with(token))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("RECEBIDO"))
                 .andReturn().getResponse().getContentAsString();

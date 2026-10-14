@@ -1,6 +1,10 @@
 package com.fiscalhub.backend.integracao;
 
+import com.fiscalhub.backend.security.CookieSessao;
+import jakarta.servlet.http.Cookie;
+
 import com.fiscalhub.backend.entity.Cliente;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
@@ -23,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,8 +49,8 @@ class AcessoEntreEscritoriosTest {
     @Autowired SimulacaoParcelamentoRepository simulacaoRepository;
     @Autowired DocumentoFiscalRepository documentoRepository;
 
-    private String tokenA;
-    private String tokenB;
+    private RequestPostProcessor tokenA;
+    private RequestPostProcessor tokenB;
     private Usuario usuarioA;
     private Usuario usuarioB;
     private Cliente clienteB;
@@ -63,15 +66,15 @@ class AcessoEntreEscritoriosTest {
         documentoB = dados.documento(clienteB);
         debitoB = dados.debito(documentoB, "1000.00", LocalDate.of(2024, 2, 20));
         simulacaoB = dados.simulacao(debitoB);
-        tokenA = dados.token(usuarioA);
-        tokenB = dados.token(usuarioB);
+        tokenA = dados.sessao(usuarioA);
+        tokenB = dados.sessao(usuarioB);
     }
 
     @Test
     void escritorioANaoLeEditaNemExcluiNadaDoB() throws Exception {
         SoftAssertions softly = new SoftAssertions();
         for (Map.Entry<String, MockHttpServletRequestBuilder> chamada : chamadasSobreRecursosDeB().entrySet()) {
-            int status = mvc.perform(chamada.getValue().header(AUTHORIZATION, tokenA)).andReturn().getResponse().getStatus();
+            int status = mvc.perform(chamada.getValue().with(tokenA)).andReturn().getResponse().getStatus();
             softly.assertThat(status).as(chamada.getKey()).isEqualTo(404);
         }
         softly.assertAll();
@@ -88,73 +91,73 @@ class AcessoEntreEscritoriosTest {
         Cliente outroClienteB = dados.cliente(usuarioB, "12345678000195");
         String corpo = simulacaoJson(outroClienteB.getId(), debitoB.getId());
 
-        mvc.perform(post("/api/simulacoes/calcular").header(AUTHORIZATION, tokenB).contentType(APPLICATION_JSON).content(corpo))
+        mvc.perform(post("/api/simulacoes/calcular").with(tokenB).contentType(APPLICATION_JSON).content(corpo))
                 .andExpect(status().isNotFound());
     }
 
     /** Controle positivo: qualquer membro do escritório B (não só quem cadastrou) enxerga os recursos dele. */
     @Test
     void membrosDoMesmoEscritorioSeEnxergam() throws Exception {
-        String colega = dados.token(dados.usuario(usuarioB.getEscritorio(), "colega-b@test.com", Papel.ASSISTENTE));
+        RequestPostProcessor colega = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "colega-b@test.com", Papel.ASSISTENTE));
         for (String url : List.of(
                 "/api/clientes",
                 "/api/clientes/" + clienteB.getId(),
                 "/api/clientes/" + clienteB.getId() + "/debitos",
                 "/api/simulacoes/" + simulacaoB.getId(),
                 "/api/clientes/" + clienteB.getId() + "/documentos/" + documentoB.getId())) {
-            mvc.perform(get(url).header(AUTHORIZATION, tokenB)).andExpect(status().isOk());
-            mvc.perform(get(url).header(AUTHORIZATION, colega)).andExpect(status().isOk());
+            mvc.perform(get(url).with(tokenB)).andExpect(status().isOk());
+            mvc.perform(get(url).with(colega)).andExpect(status().isOk());
         }
-        mvc.perform(get("/api/clientes").header(AUTHORIZATION, colega))
+        mvc.perform(get("/api/clientes").with(colega))
                 .andExpect(jsonPath("$[0].id").value(clienteB.getId().intValue()));
-        mvc.perform(get("/api/clientes").header(AUTHORIZATION, tokenA))
+        mvc.perform(get("/api/clientes").with(tokenA))
                 .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
     void assistenteLeEImportaMasNaoAlteraNemExclui() throws Exception {
-        String assistente = dados.token(dados.usuario(usuarioB.getEscritorio(), "assist-b@test.com", Papel.ASSISTENTE));
+        RequestPostProcessor assistente = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "assist-b@test.com", Papel.ASSISTENTE));
         Long c = clienteB.getId();
 
-        mvc.perform(delete("/api/clientes/{id}", c).header(AUTHORIZATION, assistente)).andExpect(status().isForbidden());
-        mvc.perform(put("/api/clientes/{id}", c).header(AUTHORIZATION, assistente)
+        mvc.perform(delete("/api/clientes/{id}", c).with(assistente)).andExpect(status().isForbidden());
+        mvc.perform(put("/api/clientes/{id}", c).with(assistente)
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isForbidden());
-        mvc.perform(post("/api/clientes").header(AUTHORIZATION, assistente)
+        mvc.perform(post("/api/clientes").with(assistente)
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isForbidden());
-        mvc.perform(delete("/api/simulacoes/{id}", simulacaoB.getId()).header(AUTHORIZATION, assistente))
+        mvc.perform(delete("/api/simulacoes/{id}", simulacaoB.getId()).with(assistente))
                 .andExpect(status().isForbidden());
 
-        mvc.perform(importacao(c).header(AUTHORIZATION, assistente)).andExpect(status().isCreated());
+        mvc.perform(importacao(c).with(assistente)).andExpect(status().isCreated());
         assertThat(clienteRepository.findById(c)).isPresent();
     }
 
     @Test
     void consultorAlteraClienteMasNaoGerenciaUsuarios() throws Exception {
-        String consultor = dados.token(dados.usuario(usuarioB.getEscritorio(), "cons-b@test.com", Papel.CONSULTOR));
+        RequestPostProcessor consultor = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "cons-b@test.com", Papel.CONSULTOR));
 
-        mvc.perform(put("/api/clientes/{id}", clienteB.getId()).header(AUTHORIZATION, consultor)
+        mvc.perform(put("/api/clientes/{id}", clienteB.getId()).with(consultor)
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isOk());
-        mvc.perform(get("/api/usuarios").header(AUTHORIZATION, consultor)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/usuarios").with(consultor)).andExpect(status().isForbidden());
     }
 
     @Test
     void doisEscritoriosCadastramOMesmoCnpjMasNaoDuasVezesNoMesmo() throws Exception {
         String mesmoCnpj = "{\"razaoSocial\":\"Mesmo Cliente\",\"cnpj\":\"" + clienteB.getCnpj() + "\"}";
 
-        mvc.perform(post("/api/clientes").header(AUTHORIZATION, tokenA).contentType(APPLICATION_JSON).content(mesmoCnpj))
+        mvc.perform(post("/api/clientes").with(tokenA).contentType(APPLICATION_JSON).content(mesmoCnpj))
                 .andExpect(status().isCreated());
-        mvc.perform(post("/api/clientes").header(AUTHORIZATION, tokenB).contentType(APPLICATION_JSON).content(mesmoCnpj))
+        mvc.perform(post("/api/clientes").with(tokenB).contentType(APPLICATION_JSON).content(mesmoCnpj))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void respostasDeUsuarioNuncaTrazemSenha() throws Exception {
-        mvc.perform(get("/api/usuarios/me").header(AUTHORIZATION, tokenA))
+        mvc.perform(get("/api/usuarios/me").with(tokenA))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("a@test.com"))
                 .andExpect(jsonPath("$.senha").doesNotExist());
 
-        String corpo = mvc.perform(put("/api/usuarios/me").header(AUTHORIZATION, tokenA)
+        String corpo = mvc.perform(put("/api/usuarios/me").with(tokenA)
                         .contentType(APPLICATION_JSON).content("{\"nome\":\"Novo Nome\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nome").value("Novo Nome"))
@@ -168,7 +171,7 @@ class AcessoEntreEscritoriosTest {
                 "/api/clientes/" + clienteB.getId() + "/debitos", "/api/simulacoes/" + simulacaoB.getId(),
                 "/api/clientes/" + clienteB.getId() + "/documentos")) {
             mvc.perform(get(url)).andExpect(status().isUnauthorized());
-            mvc.perform(get(url).header(AUTHORIZATION, "Bearer token-invalido")).andExpect(status().isUnauthorized());
+            mvc.perform(get(url).cookie(new Cookie(CookieSessao.NOME, "token-invalido"))).andExpect(status().isUnauthorized());
         }
     }
 

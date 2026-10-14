@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.integracao;
 
+
 import com.fiscalhub.backend.dto.DebitoImportado;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.Debito;
@@ -24,7 +25,11 @@ import com.fiscalhub.backend.repository.EscritorioRepository;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.repository.UsuarioRepository;
+import com.fiscalhub.backend.security.CookieSessao;
 import com.fiscalhub.backend.security.JwtUtils;
+import jakarta.servlet.http.Cookie;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.service.DebitoService;
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,6 +38,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -87,8 +93,30 @@ public class DadosTeste {
         return usuarioRepository.save(u);
     }
 
-    public String token(Usuario usuario) {
-        return "Bearer " + jwtUtils.gerarToken(usuario);
+    /**
+     * CSRF como o navegador faz (cookie XSRF-TOKEN repetido no cabeçalho X-XSRF-TOKEN), pelo repositório real.
+     * O csrf() do spring-security-test troca o repositório no contexto compartilhado e não deve ser usado.
+     */
+    public static final RequestPostProcessor CSRF = req -> {
+        adicionarCookie(req, new Cookie("XSRF-TOKEN", "csrf-de-teste"));
+        req.addHeader("X-XSRF-TOKEN", "csrf-de-teste");
+        return req;
+    };
+
+    /** Sessão do navegador: cookie com o JWT e token CSRF válido. */
+    public RequestPostProcessor sessao(Usuario usuario) {
+        Cookie jwt = new Cookie(CookieSessao.NOME, jwtUtils.gerarToken(usuario));
+        return req -> {
+            adicionarCookie(req, jwt);
+            return CSRF.postProcessRequest(req);
+        };
+    }
+
+    private static void adicionarCookie(MockHttpServletRequest req, Cookie cookie) {
+        Cookie[] atuais = req.getCookies() == null ? new Cookie[0] : req.getCookies();
+        Cookie[] todos = Arrays.copyOf(atuais, atuais.length + 1);
+        todos[atuais.length] = cookie;
+        req.setCookies(todos);
     }
 
     public Cliente cliente(Usuario criadoPor, String cnpj) {

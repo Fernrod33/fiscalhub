@@ -1,17 +1,18 @@
 package com.fiscalhub.backend.controller;
 
 import com.fiscalhub.backend.dto.AlteracaoPapelDTO;
-import com.fiscalhub.backend.dto.JwtResponse;
 import com.fiscalhub.backend.dto.NovoUsuarioDTO;
 import com.fiscalhub.backend.dto.TrocaSenhaDTO;
 import com.fiscalhub.backend.dto.UsuarioResponseDTO;
 import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
 import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.security.CookieSessao;
 import com.fiscalhub.backend.security.JwtUtils;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.service.UsuarioService;
 import com.fiscalhub.backend.auditoria.AcaoAuditoria;
 import com.fiscalhub.backend.auditoria.Auditavel;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,10 +29,12 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final JwtUtils jwtUtils;
+    private final CookieSessao cookieSessao;
 
-    UsuarioController(UsuarioService usuarioService, JwtUtils jwtUtils) {
+    UsuarioController(UsuarioService usuarioService, JwtUtils jwtUtils, CookieSessao cookieSessao) {
         this.usuarioService = usuarioService;
         this.jwtUtils = jwtUtils;
+        this.cookieSessao = cookieSessao;
     }
 
     @GetMapping("/me")
@@ -46,9 +49,11 @@ public class UsuarioController {
 
     /** A troca invalida o token atual: a resposta traz um token novo. */
     @PutMapping("/me/senha")
-    public JwtResponse trocarSenha(@Valid @RequestBody TrocaSenhaDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua) {
+    public UsuarioResponseDTO trocarSenha(@Valid @RequestBody TrocaSenhaDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua,
+                                          HttpServletResponse response) {
         Usuario usuario = usuarioService.trocarSenha(ua, dto);
-        return JwtResponse.de(jwtUtils.gerarToken(usuario), usuario);
+        cookieSessao.emitir(response, jwtUtils.gerarToken(usuario)); // a troca invalidou o token anterior
+        return UsuarioResponseDTO.fromEntity(usuario);
     }
 
     /** Saída do próprio usuário: desativação (o último ADMIN ativo não pode sair). */

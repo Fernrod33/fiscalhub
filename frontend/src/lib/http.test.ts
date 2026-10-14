@@ -12,7 +12,8 @@ const falha = (p: Promise<unknown>) => p.then(() => { throw new Error('esperava 
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  configurarSessao({ obterToken: () => null, aoExpirar: () => {} });
+  configurarSessao({ aberta: () => false, aoExpirar: () => {} });
+  document.cookie = 'XSRF-TOKEN=; max-age=0';
 });
 
 describe('cliente HTTP', () => {
@@ -39,15 +40,35 @@ describe('cliente HTTP', () => {
     expect(mensagemErro(erro, 'Sem conexão com o servidor.')).toBe('Sem conexão com o servidor.');
   });
 
-  it('401 com sessão aberta encerra a sessão; envia o token', async () => {
+  it('401 com sessão aberta encerra a sessão; o cookie vai junto e GET não leva CSRF', async () => {
     const aoExpirar = vi.fn();
-    configurarSessao({ obterToken: () => 'tok', aoExpirar });
+    configurarSessao({ aberta: () => true, aoExpirar });
     responder(401, { status: 401 });
 
     await http.get('/x').catch(() => {});
 
     expect(aoExpirar).toHaveBeenCalledOnce();
     const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(init.headers.Authorization).toBe('Bearer tok');
+    expect(init.credentials).toBe('include');
+    expect(init.headers['X-XSRF-TOKEN']).toBeUndefined();
+  });
+
+  it('alteração devolve o cookie XSRF-TOKEN no cabeçalho', async () => {
+    document.cookie = 'XSRF-TOKEN=abc%2D1';
+    responder(200, {});
+
+    await http.post('/x', {});
+
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(init.headers['X-XSRF-TOKEN']).toBe('abc-1');
+  });
+
+  it('sem o cookie CSRF, pede um à API antes de alterar', async () => {
+    responder(200, {});
+
+    await http.delete('/x').catch(() => {});
+
+    const urls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => url);
+    expect(urls).toEqual(['http://localhost:8080/api/auth/csrf', 'http://localhost:8080/x']);
   });
 });

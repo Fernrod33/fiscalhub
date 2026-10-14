@@ -112,6 +112,11 @@ public class UsuarioService {
         return usuarioRepository.saveAndFlush(usuario);
     }
 
+    /** Logout: o JWT atual (e cópias dele) deixa de valer, não só o cookie do navegador. */
+    public void encerrarSessao(UsuarioAutenticado ua) {
+        invalidarTokens(findById(ua.id()));
+    }
+
     private static void invalidarTokens(Usuario usuario) {
         usuario.setVersaoToken(usuario.getVersaoToken() + 1);
     }

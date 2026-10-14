@@ -3,7 +3,6 @@ import type { components } from './schema';
 
 type S = components['schemas'];
 
-export type Sessao = S['JwtResponse'];
 export type LoginRequest = S['LoginRequest'];
 export type SignupRequest = S['SignupRequest'];
 export type Usuario = S['UsuarioResponseDTO'];

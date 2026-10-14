@@ -1,6 +1,7 @@
 package com.fiscalhub.backend.integracao;
 
 import com.fiscalhub.backend.entity.Cliente;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
@@ -18,7 +19,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,7 +34,7 @@ class DebitosESimulacaoTest {
     @Autowired DadosTeste dados;
     @Autowired SimulacaoParcelamentoRepository simulacaoRepository;
 
-    private String token;
+    private RequestPostProcessor token;
     private Cliente cliente;
     private Debito debito1;
     private Debito debito2;
@@ -42,7 +42,7 @@ class DebitosESimulacaoTest {
     @BeforeEach
     void setUp() {
         Usuario consultor = dados.usuario(dados.escritorio("Escritorio"), "c@test.com", Papel.CONSULTOR);
-        token = dados.token(consultor);
+        token = dados.sessao(consultor);
         cliente = dados.cliente(consultor, "11222333000181");
         DocumentoFiscal origem = dados.documento(cliente);
         debito1 = dados.debito(origem, "600.00", LocalDate.of(2024, 2, 20));
@@ -51,7 +51,7 @@ class DebitosESimulacaoTest {
 
     @Test
     void debitosDoClienteTrazemODocumentoDeOrigem() throws Exception {
-        mvc.perform(get("/api/clientes/{id}/debitos", cliente.getId()).header(AUTHORIZATION, token))
+        mvc.perform(get("/api/clientes/{id}/debitos", cliente.getId()).with(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].documentoOrigemId").value(debito1.getDocumentoOrigem().getId().intValue()))
@@ -60,7 +60,7 @@ class DebitosESimulacaoTest {
 
     @Test
     void naoHaCriacaoManualDeDebito() throws Exception {
-        mvc.perform(post("/api/clientes/{id}/debitos", cliente.getId()).header(AUTHORIZATION, token)
+        mvc.perform(post("/api/clientes/{id}/debitos", cliente.getId()).with(token)
                         .contentType(APPLICATION_JSON).content("{\"valorPrincipal\":1}"))
                 .andExpect(status().isMethodNotAllowed());
     }
@@ -69,7 +69,7 @@ class DebitosESimulacaoTest {
     void salvaSimulacaoConsolidandoDoisDebitos() throws Exception {
         dados.selic(YearMonth.of(2024, 1), YearMonth.of(2024, 12), "1.00");
 
-        String resposta = mvc.perform(post("/api/simulacoes/calcular/salvar").header(AUTHORIZATION, token)
+        String resposta = mvc.perform(post("/api/simulacoes/calcular/salvar").with(token)
                         .contentType(APPLICATION_JSON).content(simulacao()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.valorOriginal").value(1000.00))
@@ -86,7 +86,7 @@ class DebitosESimulacaoTest {
 
     @Test
     void semSelicCadastradaRespondeErroClaro() throws Exception {
-        mvc.perform(post("/api/simulacoes/calcular").header(AUTHORIZATION, token)
+        mvc.perform(post("/api/simulacoes/calcular").with(token)
                         .contentType(APPLICATION_JSON).content(simulacao()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Índice SELIC ausente para 2024-03."));

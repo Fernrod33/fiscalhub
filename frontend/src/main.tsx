@@ -2,10 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './styles/globals.css'
 import { aplicarTokensDeMovimento } from './styles/motion'
-import '@/features/auth/sessao' // liga o cliente HTTP à sessão antes do primeiro render
+import { carregarSessao } from '@/features/auth/sessao'
 import App from './app/app'
 
 aplicarTokensDeMovimento()
+await carregarSessao() // os guards de rota já nascem sabendo se há sessão
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
