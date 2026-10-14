@@ -9,16 +9,23 @@ import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import type { EventoAuditoria, PaginaAuditoria } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
 import { http } from '@/lib/http';
-import { ACOES_AUDITORIA } from '@/lib/rotulos';
+import { Selo } from '@/components/selo';
+import { ACOES_AUDITORIA, RECURSOS_AUDITORIA, RESULTADOS_AUDITORIA } from '@/lib/rotulos';
 
 const TAMANHO = 50;
 
 const colunas: ColumnDef<EventoAuditoria>[] = [
   { accessorKey: 'dataHora', header: 'Data e hora', cell: ({ getValue }) => fmt.dataHora(getValue<string>()), meta: { classe: 'whitespace-nowrap' } },
   { accessorKey: 'acao', header: 'Ação', cell: ({ getValue }) => ACOES_AUDITORIA[getValue<EventoAuditoria['acao']>()] },
-  { accessorKey: 'usuarioId', header: 'Usuário', meta: { classe: 'text-right whitespace-nowrap' } },
-  { id: 'recurso', header: 'Recurso', accessorFn: (e) => (e.recursoTipo ? `${e.recursoTipo.toLowerCase()} #${e.recursoId ?? '—'}` : '—') },
-  { id: 'resultado', header: 'Resultado', accessorFn: (e) => String(e.detalhes?.resultado ?? '—'), meta: { classe: 'whitespace-nowrap' } },
+  // login que falhou com e-mail desconhecido não tem usuário: mostra o e-mail tentado
+  { id: 'usuario', header: 'Usuário', accessorFn: (e) => e.usuarioNome ?? (e.detalhes?.email ? `${e.detalhes.email} (tentativa)` : '—') },
+  { id: 'recurso', header: 'Recurso', accessorFn: (e) => (e.recursoTipo ? `${RECURSOS_AUDITORIA[e.recursoTipo] ?? e.recursoTipo} #${e.recursoId ?? '—'}` : '—'),
+    meta: { classe: 'whitespace-nowrap' } },
+  { accessorKey: 'resultado', header: 'Resultado', meta: { classe: 'whitespace-nowrap' },
+    cell: ({ getValue }) => {
+      const r = getValue<EventoAuditoria['resultado']>();
+      return r ? <Selo tom={RESULTADOS_AUDITORIA[r].tom}>{RESULTADOS_AUDITORIA[r].rotulo}</Selo> : '—';
+    } },
   { accessorKey: 'ip', header: 'IP', meta: { classe: 'whitespace-nowrap' } },
 ];
 

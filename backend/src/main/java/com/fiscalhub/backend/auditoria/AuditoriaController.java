@@ -1,5 +1,13 @@
 package com.fiscalhub.backend.auditoria;
 
+import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
@@ -14,16 +22,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuditoriaController {
 
     private final AuditoriaEventoRepository repository;
+    private final UsuarioRepository usuarioRepository;
 
-    AuditoriaController(AuditoriaEventoRepository repository) {
+    AuditoriaController(AuditoriaEventoRepository repository, UsuarioRepository usuarioRepository) {
         this.repository = repository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @GetMapping("/api/auditoria")
     @PreAuthorize("hasRole('ADMIN')")
     public PagedModel<AuditoriaEventoDTO> listar(@AuthenticationPrincipal UsuarioAutenticado ua,
                                                  @PageableDefault(size = 50) Pageable pageable) {
-        return new PagedModel<>(repository.findByEscritorioIdOrderByDataHoraDescIdDesc(ua.escritorioId(), pageable)
-                .map(AuditoriaEventoDTO::fromEntity));
+        Page<AuditoriaEvento> eventos = repository.findByEscritorioIdOrderByDataHoraDescIdDesc(ua.escritorioId(), pageable);
+        // nomes da página numa consulta só (a trilha guarda o id; o usuário pode mudar de nome depois)
+        Set<Long> ids = eventos.stream().map(AuditoriaEvento::getUsuarioId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> nomes = usuarioRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Usuario::getId, Usuario::getNome));
+        return new PagedModel<>(eventos.map(e -> AuditoriaEventoDTO.de(e, nomes.get(e.getUsuarioId()))));
     }
 }

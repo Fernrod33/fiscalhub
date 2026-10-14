@@ -97,6 +97,8 @@ class AuditoriaTest {
         mvc.perform(get("/api/auditoria").with(dados.sessao(adminOutro)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].acao").value("CLIENTE_CRIAR"))
+                .andExpect(jsonPath("$.content[0].usuarioNome").value("admin-outro@test.com"))
+                .andExpect(jsonPath("$.content[0].resultado").value("SUCESSO"))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
 
         RequestPostProcessor consultor = dados.sessao(dados.usuario(escritorio, "cons-aud@test.com", Papel.CONSULTOR));

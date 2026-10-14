@@ -1,9 +1,10 @@
 /** Rótulos dos enums da API. Tipados contra os tipos gerados: um valor novo no backend quebra o build aqui. */
+import type { Tom } from '@/components/selo';
 import type { DocumentoRequest, DocumentoStatus, EventoAuditoria, Papel, Debito } from './api/tipos';
 
 export const PAPEIS: Record<Papel, string> = { ADMIN: 'Administrador', CONSULTOR: 'Consultor', ASSISTENTE: 'Assistente' };
 
-export const STATUS_DOCUMENTO: Record<DocumentoStatus, { rotulo: string; tom: 'info' | 'warning' | 'success' | 'danger' }> = {
+export const STATUS_DOCUMENTO: Record<DocumentoStatus, { rotulo: string; tom: Tom }> = {
   RECEBIDO: { rotulo: 'Recebido', tom: 'info' },
   PROCESSANDO: { rotulo: 'Processando', tom: 'warning' },
   PROCESSADO: { rotulo: 'Processado', tom: 'success' },
@@ -43,6 +44,16 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   USUARIO_CRIAR: 'Criou usuário',
   USUARIO_ALTERAR_PAPEL: 'Alterou papel',
   USUARIO_DESATIVAR: 'Desativou usuário',
+};
+
+export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado']>, { rotulo: string; tom: Tom }> = {
+  SUCESSO: { rotulo: 'Sucesso', tom: 'success' },
+  FALHA: { rotulo: 'Falha', tom: 'danger' },
+};
+
+/** Tipo de recurso gravado na trilha (AcaoAuditoria.recurso no backend). */
+export const RECURSOS_AUDITORIA: Record<string, string> = {
+  USUARIO: 'Usuário', CLIENTE: 'Cliente', DOCUMENTO: 'Documento', SIMULACAO: 'Simulação',
 };
 
 export const SITUACAO_DEBITO: Record<Debito['situacao'], string> = {

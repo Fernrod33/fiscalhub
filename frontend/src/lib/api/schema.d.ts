@@ -707,6 +707,7 @@ export interface components {
             id: number;
             /** Format: int64 */
             usuarioId: number;
+            usuarioNome: string;
             /** @enum {string} */
             acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR";
             recursoTipo: string;
@@ -715,6 +716,8 @@ export interface components {
             /** Format: date-time */
             dataHora: string;
             ip: string;
+            /** @enum {string} */
+            resultado: "SUCESSO" | "FALHA";
             detalhes: {
                 [key: string]: unknown;
             };
