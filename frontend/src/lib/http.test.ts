@@ -72,3 +72,51 @@ describe('cliente HTTP', () => {
     expect(urls).toEqual(['http://localhost:8080/api/auth/csrf', 'http://localhost:8080/x']);
   });
 });
+
+/** XMLHttpRequest falso: guarda cabeçalhos e deixa o teste simular progresso e resposta. */
+class XhrFalso {
+  static ultimo: XhrFalso;
+  cabecalhos: Record<string, string> = {};
+  withCredentials = false;
+  status = 0;
+  responseText = '';
+  upload: { onprogress?: (e: { lengthComputable: boolean; loaded: number; total: number }) => void } = {};
+  onload?: () => void;
+  onerror?: () => void;
+  constructor() { XhrFalso.ultimo = this; }
+  open() {}
+  setRequestHeader(nome: string, valor: string) { this.cabecalhos[nome] = valor; }
+  send() {}
+  responder(status: number, corpo: unknown) { this.status = status; this.responseText = JSON.stringify(corpo); this.onload?.(); }
+}
+
+describe('upload com progresso', () => {
+  it('manda cookie e CSRF, informa o progresso e devolve o JSON', async () => {
+    document.cookie = 'XSRF-TOKEN=tok';
+    vi.stubGlobal('XMLHttpRequest', XhrFalso);
+    const progresso = vi.fn();
+
+    const envio = http.enviarComProgresso<{ id: number }>('/up', new FormData(), progresso);
+    await vi.waitFor(() => expect(XhrFalso.ultimo?.cabecalhos['X-XSRF-TOKEN']).toBe('tok'));
+    const xhr = XhrFalso.ultimo;
+    xhr.upload.onprogress?.({ lengthComputable: true, loaded: 50, total: 200 });
+    xhr.responder(201, { id: 9 });
+
+    expect(await envio).toEqual({ id: 9 });
+    expect(xhr.withCredentials).toBe(true);
+    expect(progresso).toHaveBeenCalledWith(0.25);
+  });
+
+  it('erro vira ErroApi como nas outras chamadas', async () => {
+    document.cookie = 'XSRF-TOKEN=tok';
+    vi.stubGlobal('XMLHttpRequest', XhrFalso);
+
+    const envio = falha(http.enviarComProgresso('/up', new FormData(), () => {}));
+    await vi.waitFor(() => expect(XhrFalso.ultimo?.cabecalhos['X-XSRF-TOKEN']).toBe('tok'));
+    XhrFalso.ultimo.responder(409, { status: 409, detail: 'Este arquivo já foi importado para o cliente.', recursoExistenteId: 3 });
+
+    const erro = await envio;
+    expect(erro).toBeInstanceOf(ErroApi);
+    expect(erro.recursoExistenteId).toBe(3);
+  });
+});

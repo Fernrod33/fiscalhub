@@ -73,10 +73,37 @@ async function requisitar(metodo: string, caminho: string, corpo?: unknown): Pro
 
   const resposta = await fetch(API_URL + caminho, { method: metodo, headers, body, credentials: 'include' });
   if (resposta.ok) return resposta;
+  throw falha(resposta.status, await resposta.json().catch(() => ({})));
+}
 
-  const problema = await resposta.json().catch(() => ({}));
-  if (resposta.status === 401 && sessao.aberta()) sessao.aoExpirar();
-  throw new ErroApi(resposta.status, problema);
+/** Resposta de erro -> ErroApi; 401 com sessão aberta encerra a sessão (mesma regra para fetch e XHR). */
+function falha(status: number, problema: Partial<Problema>): ErroApi {
+  if (status === 401 && sessao.aberta()) sessao.aoExpirar();
+  return new ErroApi(status, problema);
+}
+
+/**
+ * Upload com progresso: fetch não informa o andamento do envio, então só esta chamada usa XMLHttpRequest,
+ * com o mesmo cookie, CSRF e normalização de erro das demais. aoProgresso recebe a fração enviada (0 a 1).
+ */
+async function enviarComProgresso<T>(caminho: string, corpo: FormData, aoProgresso: (fracao: number) => void): Promise<T> {
+  const csrf = await tokenCsrf();
+  return new Promise<T>((resolver, rejeitar) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', API_URL + caminho);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader('Accept', 'application/json, application/problem+json');
+    if (csrf) xhr.setRequestHeader('X-XSRF-TOKEN', csrf);
+    xhr.upload.onprogress = (e) => e.lengthComputable && aoProgresso(e.loaded / e.total);
+    xhr.onload = () => {
+      let dados: unknown;
+      try { dados = JSON.parse(xhr.responseText); } catch { dados = {}; }
+      if (xhr.status >= 200 && xhr.status < 300) resolver(dados as T);
+      else rejeitar(falha(xhr.status, dados as Partial<Problema>));
+    };
+    xhr.onerror = () => rejeitar(new TypeError('Falha de rede no upload')); // mensagemErro usa o texto padrão
+    xhr.send(corpo);
+  });
 }
 
 async function json<T>(metodo: string, caminho: string, corpo?: unknown): Promise<T> {
@@ -90,6 +117,7 @@ export const http = {
   put: <T>(caminho: string, corpo?: unknown) => json<T>('PUT', caminho, corpo),
   patch: <T>(caminho: string, corpo?: unknown) => json<T>('PATCH', caminho, corpo),
   delete: (caminho: string) => json<void>('DELETE', caminho),
+  enviarComProgresso,
   /** Baixa um arquivo e devolve o conteúdo com o nome sugerido pelo servidor. */
   async baixar(caminho: string): Promise<{ blob: Blob; nome: string }> {
     const resposta = await requisitar('GET', caminho);

@@ -140,7 +140,14 @@ export function ZonaUpload({ clienteId, aoDuplicado }: { clienteId: number; aoDu
                 <FormMessage />
               </FormItem>
             )} />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              {importar.isPending && (
+                <>
+                  <progress value={importar.progresso} max={1} aria-label={`Enviando ${arquivo?.name ?? 'arquivo'}`}
+                            className="h-2 w-48 overflow-hidden rounded-full bg-muted [&::-moz-progress-bar]:bg-primary [&::-webkit-progress-bar]:bg-muted [&::-webkit-progress-value]:bg-primary [&::-webkit-progress-value]:transition-[width] [&::-webkit-progress-value]:duration-(--dur-fast)" />
+                  <span className="num w-12 text-right text-muted-foreground" aria-hidden>{fmt.progresso(importar.progresso)}</span>
+                </>
+              )}
               <Button type="submit" disabled={importar.isPending}>{importar.isPending ? 'Enviando…' : 'Importar'}</Button>
             </div>
           </form>

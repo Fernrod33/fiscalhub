@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Documento, DocumentoRequest, DocumentoStatus, PaginaDocumentos } from '@/lib/api/tipos';
 import { http } from '@/lib/http';
@@ -47,17 +48,21 @@ export const useResumoDocumentos = () => useQuery({
 
 export type MetadadosImportacao = Pick<DocumentoRequest, 'tipo' | 'tributos' | 'periodoInicio' | 'periodoFim'>;
 
+/** Envia o arquivo com os metadados; `progresso` é a fração já enviada (0 a 1). */
 export function useImportarDocumento(clienteId: number) {
   const qc = useQueryClient();
-  return useMutation({
+  const [progresso, setProgresso] = useState(0);
+  const mutacao = useMutation({
     mutationFn: ({ arquivo, metadados }: { arquivo: File; metadados: MetadadosImportacao }) => {
       const corpo = new FormData();
       corpo.append('arquivo', arquivo);
       corpo.append('documento', new Blob([JSON.stringify(metadados)], { type: 'application/json' }));
-      return http.post<Documento>(`/api/clientes/${clienteId}/documentos`, corpo);
+      setProgresso(0);
+      return http.enviarComProgresso<Documento>(`/api/clientes/${clienteId}/documentos`, corpo, setProgresso);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: chavesDocumentos.todos }),
   });
+  return { ...mutacao, progresso };
 }
 
 export function useExcluirDocumento(clienteId: number) {

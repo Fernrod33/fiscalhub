@@ -5,6 +5,7 @@ const VAZIO = '—';
 const moedaFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const percentualFmt = new Intl.NumberFormat('pt-BR', { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const inteiroFmt = new Intl.NumberFormat('pt-BR');
+const progressoFmt = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 });
 const dataFmt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'UTC' });
 const dataHoraFmt = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
@@ -14,6 +15,9 @@ export const moeda = (v: Num) => (v == null ? VAZIO : moedaFmt.format(v));
 export const inteiro = (v: Num) => (v == null ? VAZIO : inteiroFmt.format(v));
 /** Recebe o percentual como na API (1.5 = 1,5%). */
 export const percentual = (v: Num) => (v == null ? VAZIO : percentualFmt.format(v / 100));
+
+/** Andamento de 0 a 1 (upload, processamento) -> "45 %" sem casas decimais. */
+export const progresso = (fracao: number) => progressoFmt.format(fracao);
 
 /** "11222333000181" -> "11.222.333/0001-81". */
 export function cnpj(v: string | null | undefined): string {
