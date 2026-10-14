@@ -23,7 +23,8 @@ Variáveis (opcionais, em `.env.local`):
 ```
 src/
   app/          rotas (data router, código dividido por rota), guardas, providers, tema, telas de erro
-  features/     uma pasta por domínio: auth, clientes, documentos, debitos, simulacoes,
+  features/     uma pasta por domínio: auth, clientes, documentos (central de importação),
+                planilha (assistente do balancete), demonstracoes, debitos, simulacoes,
                 usuarios, auditoria, painel — cada uma com api.ts (TanStack Query),
                 components/ e pages/
   components/   compartilhados: DataTable, Cartao, EstadoVazio, TextoTruncado, Campo, Confirmar
@@ -38,7 +39,9 @@ src/
 
 Regras que valem para todo o código:
 
-- Toda chamada à API passa por `lib/http.ts`. Erros chegam como `ErroApi` (status, tipo, correlação, campos); use `mensagemErro(err, padrao)` para exibir.
+- Toda chamada à API passa por `lib/http.ts`. A sessão é o cookie `httpOnly` do backend (`credentials: 'include'`): o JS nunca vê o token, e nada de sessão fica no `localStorage`. Alterações levam o cabeçalho CSRF (`X-XSRF-TOKEN`, do cookie `XSRF-TOKEN`). O upload usa `http.enviarComProgresso` (XHR só ali, para a barra de progresso). Erros chegam como `ErroApi` (status, tipo, correlação, campos); use `mensagemErro(err, padrao)` para exibir.
+- A sessão é lida de `GET /api/usuarios/me` antes do primeiro render (`features/auth/sessao.ts`).
+- Valores contábeis seguem a convenção do backend (devedor +, credor −) e aparecem por `fmt.saldo`: valor absoluto com D/C. Nenhuma tela pede valor fiscal digitado.
 - Números, datas, CNPJ e competência sempre por `lib/formatadores.ts`.
 - Permissão na tela: `usePermissoes()` (`alterar`, `admin`). O backend é a autoridade; a tela só esconde o que daria 403.
 
@@ -78,10 +81,12 @@ Não edite `schema.d.ts`; os aliases usados no código ficam em `src/lib/api/tip
 ## Testes
 
 ```bash
-npm test                  # Vitest (jsdom): formatadores, http/ProblemDetail, DataTable,
-                          # useMovimentoReduzido, ClienteForm, paleta de comandos
+npm test                  # Vitest (jsdom): formatadores, http (ProblemDetail, CSRF, upload, 202),
+                          # DataTable, useMovimentoReduzido, ClienteForm, paleta de comandos,
+                          # tabela de demonstração (AH/AV, recolher, origem), assistente da planilha
 npx playwright install chromium   # uma vez
-npx playwright test       # e2e: fumaça + acessibilidade (axe, WCAG A/AA, dois temas)
+npx playwright test       # e2e: fumaça, ECD → Demonstrações → origem do valor,
+                          # acessibilidade (axe, WCAG A/AA, dois temas) nas telas principais
 ```
 
-O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo.
+O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo. As ECDs e planilhas de teste são as amostras sintéticas do backend (`backend/src/test/resources/amostras`).

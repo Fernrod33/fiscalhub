@@ -8,7 +8,8 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
 
 - Java 25, Spring Boot 3.5.6 (Web, Data JPA, Security, Validation, AOP)
 - PostgreSQL + Flyway (migrações versionadas)
-- JWT (JJWT 0.11) para autenticação stateless
+- JWT (JJWT 0.11) em cookie `httpOnly`, com proteção CSRF
+- Apache POI (só `poi-ooxml`, leitura em stream) para balancete em `.xlsx`
 - AWS SDK v2 (S3) para storage em produção
 - Testes: JUnit 5, Mockito, MockMvc, Testcontainers (PostgreSQL 18 e MinIO)
 
@@ -33,7 +34,7 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
 - Documentos, débitos e simulações herdam o escopo pelo cliente. Recurso de outro escritório responde **404**; papel sem permissão responde **403**.
 - Saída de usuário é **desativação** (login bloqueado; nada fica órfão). O último `ADMIN` ativo não sai nem é rebaixado.
 - O JWT carrega `uid`, `escritorioId`, `papel` e `tv` (versão do token). A cada requisição o filtro lê o usuário pela chave primária e confere se ele segue ativo e com a mesma versão. Troca de senha, desativação e mudança de papel incrementam a versão e invalidam na hora os tokens anteriores.
-- **Senha provisória**: enquanto `trocarSenhaNoProximoLogin` for verdadeiro, toda rota autenticada responde 403 com `type` `/problemas/senha-troca-obrigatoria`, exceto `GET /api/usuarios/me` e `PUT /api/usuarios/me/senha`. A troca devolve um token novo.
+- **Senha provisória**: enquanto `trocarSenhaNoProximoLogin` for verdadeiro, toda rota autenticada responde 403 com `type` `/problemas/senha-troca-obrigatoria`, exceto `GET /api/usuarios/me` e `PUT /api/usuarios/me/senha`. A troca emite um cookie de sessão novo.
 
 ## Configuração (variáveis de ambiente)
 
@@ -42,6 +43,7 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | Variável | Obrigatória | Padrão | Uso |
 |---|---|---|---|
 | `DB_PASSWORD` | sim | — | senha do PostgreSQL |
+| `COOKIE_SECURE` | não | `true` | flag `Secure` do cookie da sessão; o perfil `dev` desliga (http local) |
 | `JWT_SECRET` | sim | — | segredo HMAC do JWT, mínimo 32 bytes (`openssl rand -base64 48`). O app não sobe sem ele ou com menos de 256 bits |
 | `DB_URL` | não | `jdbc:postgresql://localhost:5432/fiscalhub` | URL JDBC |
 | `DB_USERNAME` | não | `postgres` | usuário do banco |
@@ -86,18 +88,90 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V7__auditoria.sql` | `auditoria_evento`, com trigger que impede `UPDATE` e `DELETE` |
 | `V8__indice_origem.sql` | origem e data da coleta dos índices; os antigos ficam como `LEGADO` |
 | `V9__versao_token_e_limpeza.sql` | `versao_token` no usuário (todos começam em 0); remove `documento_original_id` e `nome_arquivo_interno` |
+| `V10__remove_cnpj_unico_global.sql` | remove o `UNIQUE (cnpj)` global que o antigo `ddl-auto` criou (vale o por escritório) |
+| `V11__pipeline_de_importacao.sql` | documento com `escritorio_id` próprio e cliente/período opcionais (vêm do arquivo); duplicado por escritório; etapa e progresso no job; `inconsistencia_importacao` |
+| `V12__escrituracao_contabil.sql` | escrituração, plano de contas, saldos (com registro e linha), demonstrações e composição por conta |
+| `V13__plano_referencial.sql` | tabelas oficiais do plano referencial (carregadas pela `ImportacaoPlanoReferencial`) |
+| `V14__balancete_planilha.sql` | mapeamento de colunas por cliente e de-para referencial |
+| `V15__remove_checks_de_enum_do_ddl_auto.sql` | remove os `CHECK` de enum que o antigo `ddl-auto` criou (recusavam valores novos) |
 
 **Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
 
 **Banco de desenvolvimento criado antes do Flyway** (pelo antigo `ddl-auto=update`): `spring.flyway.baseline-on-migrate=true` marca a V1 como aplicada e executa da V2 em diante.
 
-## Importação, storage e processamento
+## Importação: upload, pipeline e processadores
 
-- **Upload** (`POST /api/clientes/{id}/documentos`, multipart): grava direto no storage por stream, calculando o **SHA-256** no caminho. O mesmo arquivo enviado de novo para o mesmo cliente responde **409** com `recursoExistenteId`.
-- Tipos aceitos: `.txt` (SPED), `.pdf`, `.csv`, `.xlsx`, com o tipo de conteúdo conferido por extensão.
-- **Download** por stream (`StreamingResponseBody`).
-- **Storage**: `ArmazenamentoArquivos`, com `ArmazenamentoLocal` (dev) e `ArmazenamentoS3` (S3/MinIO), escolhido por `fiscalhub.storage.tipo`.
-- **Jobs**: o documento entra `RECEBIDO` e um registro em `job_processamento` é despachado, depois do commit, ao pool do Spring Boot (`spring.task.execution.pool.*`). Hoje o processador só valida o arquivo e marca `PROCESSADO`; os parsers entram na Fase 1. Na subida, jobs presos em `PROCESSANDO` voltam para a fila. Acompanhe por `GET /api/clientes/{id}/documentos/{doc}/status`.
+Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Todo número gravado aponta para a origem (arquivo, registro e linha).
+
+**Upload**
+- Pela central do escritório (`POST /api/documentos`, sem cliente: o cliente sai do CNPJ do arquivo) ou dentro de um cliente (`POST /api/clientes/{id}/documentos`: o CNPJ do arquivo tem que ser o dele, senão é erro claro).
+- O arquivo vai direto para o storage por stream, com **SHA-256** no caminho. O mesmo arquivo de novo no escritório responde **409** com `recursoExistenteId`.
+- Extensões aceitas: `.txt`, `.pdf`, `.csv`, `.xlsx`. O tipo informado (`documento.tipo`, opcional) é só sugestão: vale o detectado no conteúdo, e a divergência vira alerta.
+- **Storage**: `ArmazenamentoArquivos` (`ArmazenamentoLocal` em dev, `ArmazenamentoS3` para S3/MinIO), por `fiscalhub.storage.tipo`.
+
+**Tipos reconhecidos** (`DetectorTipoDocumento`, pelo conteúdo)
+
+| Conteúdo | Tipo | Leitura |
+|---|---|---|
+| primeira linha `\|0000\|LECD\|` | `ECD` | `ProcessadorEcd` |
+| zip OOXML com extensão `.xlsx`, ou `.csv` | `BALANCETE` | `ProcessadorPlanilha` |
+| `\|0000\|LECF\|` | `ECF` | guardado, com alerta (Fase 2) |
+| PDF, SPED não reconhecido, outro | `OUTRO` | guardado, com alerta (`ProcessadorSemLeitura`) |
+
+**Pipeline** (`importacao/ProcessamentoDocumentoService`)
+- Um registro em `job_processamento` é despachado depois do commit ao pool do Spring Boot. Na subida, jobs presos voltam para a fila.
+- Etapas no job, expostas em `GET /api/documentos/{id}/status` com o percentual (bytes lidos ÷ tamanho): `RECEBIDO → LENDO → VALIDANDO → GRAVANDO → CONCLUIDO`. Etapa e progresso são gravados em transação própria (`RegistroProgresso`), para a tela acompanhar.
+- Status do documento: `RECEBIDO`, `PROCESSANDO`, `PROCESSADO`, `PROCESSADO_COM_ALERTAS` (há alerta ou erro não fatal), `ERRO`, `AGUARDANDO_CLIENTE` (CNPJ sem cliente no escritório: sugestão de cadastro com CNPJ e nome do arquivo), `AGUARDANDO_MAPEAMENTO` (planilha sem mapeamento ou período).
+- **Uma transação por documento**: erro fatal (`FalhaImportacao`) desfaz tudo o que o processador gravou e marca `ERRO`. As inconsistências (`ERRO`, `ALERTA`, `INFO`, com registro, linha e código da regra; até 1.000 por documento) são gravadas no fim, em `inconsistencia_importacao`.
+- **Reprocessar** (`POST /api/documentos/{id}/reprocessar`, ADMIN e CONSULTOR) roda de novo a partir do arquivo no storage; o processador apaga o que a execução anterior gerou.
+
+**Como adicionar um processador** (ECF e EFD na Fase 2)
+1. Acrescente a assinatura do conteúdo em `DetectorTipoDocumento.ASSINATURAS_SPED` (ou a regra do formato).
+2. Implemente `ProcessadorDocumento` como `@Component`: `suporta(tipo)` e `processar(documento, contexto)`. Pelo `ContextoProcessamento`: `abrir()` o arquivo, informar `etapa(...)` e `lidos(bytes)`, `registrar(...)` inconsistências e `cliente(cnpj, nome)` quando o arquivo identificar a empresa. Lance `FalhaImportacao` para erro fatal e `AguardandoUsuario` para decisão pendente.
+3. SPED: leia com `sped/LeitorSped` (genérico) e um leiaute por versão em `resources/sped/` (gerado do manual oficial, como o da ECD).
+4. Apague no começo o que um processamento anterior do mesmo documento gerou.
+
+**Convenção de sinal (única, em banco, API e telas)**: devedor positivo, credor negativo (`sped/Saldos`). Ativo e despesas costumam ser positivos; passivo, PL e receitas, negativos. As telas mostram o valor absoluto com o indicador D/C.
+
+## ECD (SPED Contábil)
+
+**Leiautes cobertos** (`I010.COD_VER_LC`): `7.00` (ano-calendário 2018), `8.00` (2019) e `9.00` (2020 em diante). Outra versão vira erro claro ("leiaute não coberto").
+
+**Fonte dos campos**: `src/main/resources/sped/ecd-leiautes.properties`, gerado por `scripts/sped/gerar_layout_ecd.py` a partir dos *Manuais de Orientação do Leiaute da ECD* em Word, publicados em http://sped.rfb.gov.br/pasta/show/1569 (leiaute 9, atualização de maio/2026, `arquivo/download/7989`; leiaute 8, `4217`; leiaute 7, `2855`). Nenhum índice de campo está espalhado pelo código. Diferenças relevantes entre as versões: no leiaute 7 o `0000` tem 20 campos (sem `COD_PLAN_REF`), o `I051` traz o plano no campo 2 e o `J150` tem um valor só.
+
+**Registros lidos**
+
+| Registro | Uso |
+|---|---|
+| `0000` | período, nome, CNPJ, UF, finalidade (original ou substituta), plano referencial |
+| `I010` | forma de escrituração e versão do leiaute |
+| `I050` / `I051` | plano de contas e mapeamento para o plano referencial |
+| `I150` / `I155` | saldos periódicos (Balanço) |
+| `I350` / `I355` | resultado antes do encerramento (DRE; soma as apurações do ano) |
+| `J005` / `J100` / `J150` | Balanço e DRE publicados (só `ID_DEM` = 1, demonstrações individuais) |
+| `9900` / `9999` | contagem de registros e de linhas |
+
+`I200`/`I250` e os demais são pulados olhando só o código do registro. Conteúdo depois do `9999` (assinatura do PVA) é ignorado com alerta.
+
+**Leitura**: ISO-8859-1, linha a linha, em stream (limite de 128 KB por linha). Contas e saldos são gravados em lote (JDBC batch) durante a leitura. Desempenho medido (`DesempenhoEcdTest`, opcional): ECD sintética de **314,6 MB / 6,04 milhões de linhas em 6,5 s, pico de heap 164 MB** com `-Xmx512m`.
+
+**Validações** (inconsistências com registro e linha): contagem do `9900` e do `9999`; débitos = créditos por período (`I155`); saldo inicial + débitos − créditos = saldo final; balanço fecha nos saldos (ativo + passivo + PL + resultado aberto = 0) e no `J100`; conta analítica sem `I051` (alerta com a lista); conta fora do plano.
+
+**Retificação**: uma ECD substituta (`IND_FIN_ESC` = 1) do mesmo cliente e período marca a anterior como `SUBSTITUIDA` (histórico preservado) e passa a valer.
+
+## Demonstrações referenciais
+
+- **Plano referencial oficial**: tabelas dinâmicas da RFB (portal Sped Tabelas, pacotes "Planos Referenciais" 2018 a 2021) em `src/main/resources/plano-referencial`, com fonte e SHA-256 de cada uma em `tabelas.txt`. Planos carregados: `1` PJ em geral, Lucro Real (L100_A balanço, L300_A resultado) e `2` PJ em geral, Lucro Presumido (P100, P150). A `ImportacaoPlanoReferencial` roda na subida e só recarrega a tabela que mudou. Para um ano novo: `scripts/sped/baixar_tabelas_referenciais.py` e uma linha em `tabelas.txt`. Nenhuma conta referencial é digitada no código.
+- **Montagem** (`MontagemReferencial`, usada pela ECD e pela planilha): Balanço pelos saldos finais e iniciais do exercício; DRE pelo resultado antes do encerramento. Valores agregados pela hierarquia referencial; cada linha analítica guarda as contas da empresa que a compõem. Vale a tabela do ano mais recente até o exercício.
+- **Conferência cruzada**: ativo, passivo + PL e resultado do referencial contra o publicado (`J100`/`J150`); diferença vira alerta.
+- **Comparativo** (`GET /api/clientes/{id}/demonstracoes`): um exercício por coluna (a escrituração vigente de cada ano; ECD antes de planilha), AH = (atual ÷ anterior − 1) × 100 e AV (BP sobre o total do grupo; DRE sobre a receita líquida) calculadas no backend.
+
+## Balancete em planilha
+
+- `.xlsx` em stream (POI `XSSFReader` + SAX): fórmulas pelo valor em cache, nunca avaliadas; proteção contra zip bomb (`ZipSecureFile`) e XML sem entidades externas. `.csv` com encoding (UTF-8 ou Windows-1252) e separador (`;`, `,`, tab) detectados. Limites de 100 mil linhas, 200 colunas e 128 KB por linha.
+- **Assistente**: o backend devolve as primeiras linhas e um mapeamento sugerido; o usuário aponta as colunas (código, descrição, saldo inicial, débitos, créditos, saldo final, D/C), a linha do cabeçalho, o período e o plano. O mapeamento fica salvo por cliente e é reconhecido pela assinatura do cabeçalho nos próximos uploads.
+- **De-para**: as associações salvas do cliente e o `I051` da ECD do mesmo cliente (mesmo código de conta) já vêm aplicados; o usuário associa o resto com busca no plano oficial. Conta sem associação vira alerta e fica fora do referencial.
+- Validações: débitos = créditos, saldo inicial + D − C = final, soma dos saldos analíticos igual a zero. Contas sintéticas são deduzidas pelo prefixo do código. A origem de cada valor é a aba e a linha.
 
 ## Índices: SELIC oficial
 
@@ -153,11 +227,16 @@ mvn test   # requer Docker em execução
   - isolamento entre escritórios e papéis;
   - escritório, signup e gestão de usuários;
   - débitos e simulação com vários débitos;
-  - documentos (upload, SHA-256, download por stream, jobs);
+  - documentos (upload, SHA-256, download por stream, jobs) e pipeline (tipo pelo conteúdo, inconsistências, reprocessamento);
+  - sessão em cookie e CSRF;
+  - ECD (cada leiaute, cliente pelo arquivo, retificação, cada validação, reprocessamento), demonstrações (referencial, publicada, AH/AV, conferência, origem) e balancete em planilha (assistente, de-para);
   - auditoria;
   - ProblemDetail;
   - banco do zero só com as migrações.
 - **Storage** (`storage/`): o mesmo contrato para o local e para o S3 contra MinIO real.
+- **Leitura** (`sped/`, `contabil/planilha/`, `importacao/`): `LeitorSped`, leiaute por versão, detector de tipo, `.xlsx` (fórmula, zip bomb) e `.csv`.
+- **Amostras sintéticas** em `src/test/resources/amostras/` (geradas por `scripts/sped/gerar_amostras_ecd.py` e `scripts/planilha/gerar_amostras_planilha.py`).
+- **Opcionais**: `mvn test -Dtest=DesempenhoEcdTest -Ddesempenho=true` (ECD de 300 MB); `AmostrasReaisTest` roda sozinho quando existe `amostras-locais/` na raiz (ECDs reais anonimizadas, fora do git).
 - **Motor de parcelamento** (`service/calculo/`):
   - testes de caracterização do comportamento atual;
   - testes normativos `@Disabled("Fase 5 — ...")` documentando cada divergência em relação à lei.
@@ -168,14 +247,16 @@ Todas as respostas de erro seguem o `ProblemDetail` (RFC 9457): `status`, `title
 
 ## Endpoints
 
-Todos exigem `Authorization: Bearer <token>`, exceto `/api/auth/**`. O usuário e o escritório vêm sempre do token.
+A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secure` fora do dev, `Path=/api`) com o JWT; o usuário e o escritório vêm sempre dele. Toda requisição que altera estado precisa do cabeçalho `X-XSRF-TOKEN` com o valor do cookie `XSRF-TOKEN` (sem ele: 403). Rotas públicas: `/api/auth/**`. Paginação: `?pagina=0&tamanho=20` (máximo 100).
 
 ### Autenticação (público)
 
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/api/auth/signup` | cria escritório + `ADMIN` (`nome`, `email`, `senha`, `cpf`, `telefone`, `nomeEscritorio`, `documentoEscritorio`) |
-| POST | `/api/auth/login` | devolve `{ token, type, id, email, nome, escritorioId, papel, trocarSenhaNoProximoLogin }` |
+| POST | `/api/auth/login` | emite o cookie da sessão e devolve o usuário (`id`, `nome`, `email`, `papel`, `escritorioId`, `trocarSenhaNoProximoLogin`...) |
+| POST | `/api/auth/logout` | apaga o cookie e invalida o JWT no servidor (versão do token) |
+| GET | `/api/auth/csrf` | emite o cookie `XSRF-TOKEN` |
 
 ### Usuários
 
@@ -183,7 +264,7 @@ Todos exigem `Authorization: Bearer <token>`, exceto `/api/auth/**`. O usuário 
 |---|---|---|---|
 | GET | `/api/usuarios/me` | todos | próprio cadastro (sem senha) |
 | PUT | `/api/usuarios/me` | todos | altera `nome`, `cpf`, `telefone` |
-| PUT | `/api/usuarios/me/senha` | todos | troca a senha (`senhaAtual`, `novaSenha`) e devolve um token novo (mesmo formato do login) |
+| PUT | `/api/usuarios/me/senha` | todos | troca a senha (`senhaAtual`, `novaSenha`) e emite um cookie novo |
 | DELETE | `/api/usuarios/me` | todos | desativa a própria conta |
 | GET | `/api/usuarios` | ADMIN | usuários do escritório |
 | POST | `/api/usuarios` | ADMIN | cria com senha provisória (`nome`, `email`, `papel`, `senhaProvisoria`) |
@@ -200,16 +281,40 @@ Todos exigem `Authorization: Bearer <token>`, exceto `/api/auth/**`. O usuário 
 | PUT | `/api/clientes/{id}` | ADMIN, CONSULTOR | altera |
 | DELETE | `/api/clientes/{id}` | ADMIN, CONSULTOR | exclui |
 
-### Documentos do cliente
+### Documentos
 
 | Método | Rota | Papel | Descrição |
 |---|---|---|---|
-| GET | `/api/clientes/{id}/documentos` | todos | lista |
-| GET | `/api/clientes/{id}/documentos/{doc}` | todos | metadados |
-| GET | `/api/clientes/{id}/documentos/{doc}/arquivo` | todos | baixa o original (stream) |
-| GET | `/api/clientes/{id}/documentos/{doc}/status` | todos | andamento do processamento |
-| POST | `/api/clientes/{id}/documentos` | todos | importa (multipart: `arquivo` + `documento` JSON) |
-| DELETE | `/api/clientes/{id}/documentos/{doc}` | ADMIN, CONSULTOR | exclui registro e arquivo (409 se já gerou débitos) |
+| POST | `/api/documentos` | todos | importa na central (multipart: `arquivo` + `documento` JSON opcional com `tipo`/`observacao`) |
+| POST | `/api/clientes/{id}/documentos` | todos | importa dentro do cliente |
+| GET | `/api/documentos?clienteId=&status=&tipo=&pagina=&tamanho=` | todos | documentos do escritório, paginados |
+| GET | `/api/documentos/resumo` | todos | quantidade por status |
+| GET | `/api/clientes/{id}/documentos` | todos | documentos do cliente |
+| GET | `/api/documentos/{doc}` | todos | metadados (inclui a empresa lida do arquivo) |
+| GET | `/api/documentos/{doc}/status` | todos | status, tipo detectado, etapa e progresso |
+| GET | `/api/documentos/{doc}/inconsistencias` | todos | inconsistências com severidade, registro e linha |
+| GET | `/api/documentos/{doc}/arquivo` | todos | baixa o original (stream) |
+| POST | `/api/documentos/{doc}/reprocessar` | ADMIN, CONSULTOR | processa de novo a partir do storage |
+| POST | `/api/documentos/{doc}/confirmar-cliente` | ADMIN, CONSULTOR | sem corpo: cadastra a empresa do arquivo; `{ clienteId }`: associa a um cliente |
+| DELETE | `/api/documentos/{doc}` | ADMIN, CONSULTOR | exclui registro, dados derivados e arquivo |
+
+### Planilha (balancete)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/documentos/{doc}/planilha?aba=` | abas, primeiras linhas e mapeamento sugerido ou reconhecido |
+| POST | `/api/documentos/{doc}/planilha/mapeamento` | colunas, linha do cabeçalho, período e plano (salvo para o cliente); reprocessa |
+| GET | `/api/documentos/{doc}/planilha/depara` | contas analíticas, associação atual e sugestão da ECD |
+| PUT | `/api/documentos/{doc}/planilha/depara` | grava associações (`[{ codigoConta, codigoReferencial }]`, null desassocia); reprocessa |
+| GET | `/api/referencial/contas?plano=&exercicio=&busca=` | contas referenciais analíticas (até 50) |
+
+### Demonstrações
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/clientes/{id}/escrituracoes` | escriturações importadas (vigente ou substituída) |
+| GET | `/api/clientes/{id}/demonstracoes?tipo=BP\|DRE&origem=REFERENCIAL\|PUBLICADA&exercicios=2023,2024` | comparativo com AH, AV e conferência |
+| GET | `/api/clientes/{id}/demonstracoes/linhas/{linhaId}/origem` | arquivo, registro e linha (publicada) ou contas e saldos usados (referencial) |
 
 ### Débitos (somente leitura)
 
@@ -236,13 +341,17 @@ A simulação consolida vários débitos do mesmo cliente: soma o principal e us
 
 | Método | Rota | Papel | Descrição |
 |---|---|---|---|
-| GET | `/api/auditoria?page=&size=` | ADMIN | eventos do escritório, mais recentes primeiro |
+| GET | `/api/auditoria?pagina=&tamanho=` | ADMIN | eventos do escritório, mais recentes primeiro, com o nome do usuário e o resultado |
 
 ## Estrutura
 
 ```
 src/main/java/com/fiscalhub/backend/
 ├── auditoria/    # @Auditavel, AuditoriaAspect (único ponto de gravação), consulta
+├── contabil/     # escrituração: RepositorioContabil (lote), DemonstracaoService
+│   ├── ecd/        # ProcessadorEcd + LeituraEcd
+│   ├── planilha/   # ProcessadorPlanilha, leitura .xlsx/.csv, assistente
+│   └── referencial/ # plano referencial oficial e montagem das demonstrações
 ├── controller/   # recebem a requisição e devolvem a resposta
 ├── dto/          # contratos da API; fromEntity() centraliza o mapeamento por agregado
 ├── entity/       # entidades JPA e enums
@@ -251,13 +360,18 @@ src/main/java/com/fiscalhub/backend/
 ├── security/     # JWT, UsuarioAutenticado, filtro, SecurityConfig, @ConsultorOuAdmin
 ├── service/      # regras de negócio; AcessoRecursoService = autorização por escritório
 │   └── calculo/  # motor de parcelamento (RFB e SEFA-PR)
+├── importacao/   # pipeline: detector, ProcessadorDocumento, contexto, inconsistências, jobs
+├── sped/         # LeitorSped, LayoutSped (leiaute por versão), Saldos (convenção de sinal)
 ├── storage/      # ArmazenamentoArquivos: local e S3
 └── util/
 src/main/resources/
 ├── application.properties
 ├── application-dev.properties
 ├── db/migration/ # Flyway
-└── db/dev/       # seed só do perfil dev
+├── db/dev/       # seed só do perfil dev
+├── sped/         # leiautes SPED por versão (gerados dos manuais)
+└── plano-referencial/ # tabelas oficiais + tabelas.txt (fonte e SHA-256)
+scripts/          # geração de leiaute, amostras e download das tabelas oficiais
 ```
 
 ## Segurança
@@ -265,5 +379,7 @@ src/main/resources/
 - Senhas com BCrypt; `senha` nunca sai em resposta (DTO + `@JsonIgnore`).
 - Segredos só por variável de ambiente, sem valor padrão no código.
 - Isolamento por escritório num único ponto (`AcessoRecursoService`) e papéis por `@PreAuthorize`.
-- CORS só para as origens em `CORS_ALLOWED_ORIGINS`.
+- CORS só para as origens em `CORS_ALLOWED_ORIGINS`, com credenciais (cookie). Frontend e API precisam estar no mesmo site.
+- Sessão em cookie `httpOnly` (o JS não lê o JWT) e CSRF por cookie + cabeçalho em todo método que altera estado; logout invalida o JWT no servidor.
+- Arquivos não confiáveis: limite de tamanho de linha (SPED, CSV), de linhas e colunas (planilha), zip bomb e XXE no `.xlsx`, fórmulas nunca avaliadas.
 - O `app.jwt.secret` antigo ficou no histórico do git: **gere um segredo novo** para qualquer ambiente real.
