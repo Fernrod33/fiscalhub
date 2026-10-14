@@ -1,17 +1,8 @@
-import { AlertTriangle, BookOpen, FileBarChart, Gauge } from 'lucide-react';
+import { AlertTriangle, FileBarChart, Gauge } from 'lucide-react';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
 
 /** Abas que dependem de fases futuras: estado vazio que explica o que falta. */
-export function DemonstracoesPage() {
-  return (
-    <Reveal>
-      <EstadoVazio icone={BookOpen} titulo="Importe a ECD"
-                   descricao="O balanço e a DRE aparecem aqui depois da importação da Escrituração Contábil Digital." />
-    </Reveal>
-  );
-}
-
 export function CapacidadePage() {
   return (
     <Reveal>

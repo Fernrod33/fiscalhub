@@ -3,6 +3,7 @@ import { somenteDigitos } from './cnpj';
 
 const VAZIO = '—';
 const moedaFmt = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const valorFmt = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const percentualFmt = new Intl.NumberFormat('pt-BR', { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const inteiroFmt = new Intl.NumberFormat('pt-BR');
 const progressoFmt = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 });
@@ -15,6 +16,16 @@ export const moeda = (v: Num) => (v == null ? VAZIO : moedaFmt.format(v));
 export const inteiro = (v: Num) => (v == null ? VAZIO : inteiroFmt.format(v));
 /** Recebe o percentual como na API (1.5 = 1,5%). */
 export const percentual = (v: Num) => (v == null ? VAZIO : percentualFmt.format(v / 100));
+
+/**
+ * Saldo contábil na convenção do sistema (devedor +, credor −) mostrado como valor absoluto + indicador:
+ * 1234.5 -> "1.234,50 D"; -1234.5 -> "1.234,50 C"; zero sem indicador.
+ */
+export function saldo(v: Num): string {
+  if (v == null) return VAZIO;
+  if (v === 0) return valorFmt.format(0);
+  return `${valorFmt.format(Math.abs(v))} ${v > 0 ? 'D' : 'C'}`;
+}
 
 /** Andamento de 0 a 1 (upload, processamento) -> "45 %" sem casas decimais. */
 export const progresso = (fracao: number) => progressoFmt.format(fracao);

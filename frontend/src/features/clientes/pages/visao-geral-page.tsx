@@ -11,6 +11,7 @@ import { STATUS_DOCUMENTO } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
 import { usePermissoes } from '@/features/auth/permissoes';
 import { useDocumentos } from '@/features/documentos/api';
+import { EscrituracoesCliente } from '@/features/demonstracoes/components/escrituracoes-cliente';
 import { useCliente } from '../api';
 import { ClienteDialog } from '../components/cliente-dialog';
 import { useClienteId } from '../rota';
@@ -54,6 +55,8 @@ export default function VisaoGeralPage() {
             </dl>
           )}
       </Cartao>
+
+      <EscrituracoesCliente clienteId={id} />
 
       <Cartao aria-labelledby="titulo-importacoes">
         <CartaoTitulo id="titulo-importacoes" acoes={

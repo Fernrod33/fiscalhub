@@ -1,6 +1,6 @@
 /** Rótulos dos enums da API. Tipados contra os tipos gerados: um valor novo no backend quebra o build aqui. */
 import type { Tom } from '@/components/selo';
-import type { Documento, DocumentoStatus, EventoAuditoria, Papel, Debito } from './api/tipos';
+import type { Documento, DocumentoStatus, EtapaProcessamento, EventoAuditoria, Inconsistencia, Papel, Debito } from './api/tipos';
 
 export const PAPEIS: Record<Papel, string> = { ADMIN: 'Administrador', CONSULTOR: 'Consultor', ASSISTENTE: 'Assistente' };
 
@@ -17,18 +17,45 @@ export const STATUS_DOCUMENTO: Record<DocumentoStatus, { rotulo: string; tom: To
 /** Status em que o processamento parou (terminou ou espera o usuário): o polling para. */
 export const STATUS_FINAL: DocumentoStatus[] = ['PROCESSADO', 'PROCESSADO_COM_ALERTAS', 'ERRO', 'AGUARDANDO_CLIENTE', 'AGUARDANDO_MAPEAMENTO'];
 
+/** Tipo detectado no conteúdo (rótulo curto: vai em selo e filtro). */
 export const TIPOS_DOCUMENTO: Record<Documento['tipo'], string> = {
-  ECD: 'ECD — Escrituração Contábil Digital',
-  ECF: 'ECF — Escrituração Contábil Fiscal',
+  ECD: 'ECD',
+  ECF: 'ECF',
   EFD_CONTRIBUICOES: 'EFD-Contribuições',
   EFD_ICMS_IPI: 'EFD ICMS/IPI',
   DCTF: 'DCTF',
   DCTF_WEB: 'DCTFWeb',
   DEMONSTRACAO_CONTABIL: 'Demonstração contábil',
-  BALANCETE: 'Balancete (planilha)',
+  BALANCETE: 'Balancete'
+,
   IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', ICMS: 'ICMS',
   OUTRO: 'Outro',
 };
+
+/** Etapas do processamento na ordem da linha do tempo (CONCLUIDO = pronto). */
+export const ETAPAS: { etapa: EtapaProcessamento; rotulo: string }[] = [
+  { etapa: 'RECEBIDO', rotulo: 'Recebido' },
+  { etapa: 'LENDO', rotulo: 'Lendo' },
+  { etapa: 'VALIDANDO', rotulo: 'Validando' },
+  { etapa: 'GRAVANDO', rotulo: 'Gravando' },
+  { etapa: 'CONCLUIDO', rotulo: 'Pronto' },
+];
+
+export const SEVERIDADES: Record<Inconsistencia['severidade'], { rotulo: string; plural: string; tom: Tom }> = {
+  ERRO: { rotulo: 'Erro', plural: 'Erros', tom: 'danger' },
+  ALERTA: { rotulo: 'Alerta', plural: 'Alertas', tom: 'warning' },
+  INFO: { rotulo: 'Informação', plural: 'Informações', tom: 'info' },
+};
+
+export const SITUACOES_ESCRITURACAO: Record<string, { rotulo: string; tom: Tom }> = {
+  VIGENTE: { rotulo: 'Vigente', tom: 'success' },
+  SUBSTITUIDA: { rotulo: 'Substituída', tom: 'warning' },
+};
+
+export const ORIGENS_ESCRITURACAO: Record<string, string> = { ECD: 'ECD', PLANILHA: 'Balancete em planilha' };
+
+/** 0000.COD_PLAN_REF dos planos carregados. */
+export const PLANOS_REFERENCIAIS: Record<string, string> = { 1: 'PJ em geral — Lucro Real', 2: 'PJ em geral — Lucro Presumido' };
 
 
 export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {

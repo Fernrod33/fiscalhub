@@ -21,7 +21,7 @@ const futuras = () => import('@/features/clientes/pages/abas-futuras');
 const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType>> = {
   'visao-geral': () => padrao(import('@/features/clientes/pages/visao-geral-page')),
   importacoes: () => padrao(import('@/features/documentos/pages/importacoes-cliente-page')),
-  demonstracoes: () => futuras().then((m) => m.DemonstracoesPage),
+  demonstracoes: () => padrao(import('@/features/demonstracoes/pages/demonstracoes-page')),
   tributos: () => padrao(import('@/features/debitos/pages/tributos-page')),
   capacidade: () => futuras().then((m) => m.CapacidadePage),
   simulacoes: () => padrao(import('@/features/simulacoes/pages/simulacoes-page')),
@@ -61,6 +61,7 @@ export const router = createBrowserRouter([
             ],
           },
           { path: 'importacoes', ...pagina(() => padrao(import('@/features/documentos/pages/importacoes-page')), 'Importações') },
+          { path: 'importacoes/:documentoId/planilha', ...pagina(() => padrao(import('@/features/planilha/pages/assistente-planilha-page')), 'Mapear balancete') },
           {
             path: 'configuracoes',
             element: <SoAdmin />,

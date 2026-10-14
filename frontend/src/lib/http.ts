@@ -106,9 +106,10 @@ async function enviarComProgresso<T>(caminho: string, corpo: FormData, aoProgres
   });
 }
 
+/** Corpo vazio (204, 202 Accepted...) vira undefined; o resto é JSON. */
 async function json<T>(metodo: string, caminho: string, corpo?: unknown): Promise<T> {
-  const resposta = await requisitar(metodo, caminho, corpo);
-  return (resposta.status === 204 ? undefined : await resposta.json()) as T;
+  const texto = await (await requisitar(metodo, caminho, corpo)).text();
+  return (texto ? JSON.parse(texto) : undefined) as T;
 }
 
 export const http = {

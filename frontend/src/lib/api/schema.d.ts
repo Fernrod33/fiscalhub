@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documentos/{documentoId}/planilha/depara": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["depara"];
+        put: operations["associar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{id}": {
         parameters: {
             query?: never;
@@ -126,6 +142,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["reprocessar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/planilha/mapeamento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mapear"];
         delete?: never;
         options?: never;
         head?: never;
@@ -308,6 +340,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/referencial/contas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["buscar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documentos/{documentoId}": {
         parameters: {
             query?: never;
@@ -332,6 +380,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/planilha": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["previa"];
         put?: never;
         post?: never;
         delete?: never;
@@ -380,6 +444,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["resumo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/escrituracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["escrituracoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/demonstracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["comparativo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/demonstracoes/linhas/{linhaId}/origem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["origem"];
         put?: never;
         post?: never;
         delete?: never;
@@ -464,6 +576,10 @@ export interface components {
         TrocaSenhaDTO: {
             senhaAtual: string;
             novaSenha: string;
+        };
+        Associacao: {
+            codigoConta: string;
+            codigoReferencial?: string;
         };
         ClienteRequestDTO: {
             razaoSocial: string;
@@ -615,6 +731,35 @@ export interface components {
             cnpjArquivo: string;
             nomeEmpresaArquivo: string;
         };
+        Colunas: {
+            /** Format: int32 */
+            codigo: number;
+            /** Format: int32 */
+            descricao: number;
+            /** Format: int32 */
+            saldoInicial: number;
+            /** Format: int32 */
+            debitos: number;
+            /** Format: int32 */
+            creditos: number;
+            /** Format: int32 */
+            saldoFinal: number;
+            /** Format: int32 */
+            dcInicial: number;
+            /** Format: int32 */
+            dcFinal: number;
+        };
+        PedidoMapeamento: {
+            aba?: string;
+            /** Format: int32 */
+            linhaCabecalho: number;
+            colunas: components["schemas"]["Colunas"];
+            /** Format: date */
+            periodoInicio: string;
+            /** Format: date */
+            periodoFim: string;
+            planoReferencial: string;
+        };
         ConfirmacaoCliente: {
             /** Format: int64 */
             clienteId: number;
@@ -677,6 +822,10 @@ export interface components {
             /** Format: date-time */
             dataAtualizacao?: string;
         };
+        ContaReferencial: {
+            codigo: string;
+            descricao: string;
+        };
         Pageable: {
             /** Format: int32 */
             page: number;
@@ -704,6 +853,8 @@ export interface components {
             /** @enum {string} */
             status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
             /** @enum {string} */
+            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+            /** @enum {string} */
             job: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "ERRO";
             /** @enum {string} */
             etapa: "RECEBIDO" | "LENDO" | "VALIDANDO" | "GRAVANDO" | "CONCLUIDO";
@@ -717,6 +868,38 @@ export interface components {
             /** Format: date-time */
             fim: string;
         };
+        Previa: {
+            abas: string[];
+            aba: string;
+            linhas: string[][];
+            sugestao: components["schemas"]["Sugestao"];
+            /** Format: date */
+            periodoInicio: string;
+            /** Format: date */
+            periodoFim: string;
+        };
+        Sugestao: {
+            reconhecido: boolean;
+            /** Format: int32 */
+            linhaCabecalho: number;
+            colunas: components["schemas"]["Colunas"];
+            planoReferencial: string;
+        };
+        ContaDepara: {
+            codigo: string;
+            nome: string;
+            saldoFinal: number;
+            codigoReferencial: string;
+            descricaoReferencial: string;
+            sugestaoEcd: string;
+        };
+        Depara: {
+            planoReferencial: string;
+            tabela: string;
+            contas: components["schemas"]["ContaDepara"][];
+            /** Format: int64 */
+            pendentes: number;
+        };
         InconsistenciaDTO: {
             /** Format: int64 */
             id: number;
@@ -729,6 +912,105 @@ export interface components {
             mensagem: string;
         };
         StreamingResponseBody: unknown;
+        Escrituracao: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            origem: string;
+            /** Format: date */
+            dataInicio: string;
+            /** Format: date */
+            dataFim: string;
+            versaoLeiaute: string;
+            planoReferencial: string;
+            finalidade: string;
+            situacao: string;
+        };
+        Comparativo: {
+            tipo: string;
+            origem: string;
+            exercicios: components["schemas"]["Exercicio"][];
+            linhas: components["schemas"]["LinhaComparativa"][];
+            conferencia: components["schemas"]["Conferencia"][];
+        };
+        Conferencia: {
+            /** Format: int32 */
+            exercicio: number;
+            item: string;
+            referencial: number;
+            publicada: number;
+            diferenca: number;
+        };
+        Exercicio: {
+            /** Format: int32 */
+            exercicio: number;
+            /** Format: int64 */
+            demonstracaoId: number;
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            origemDados: string;
+            /** Format: date */
+            dataInicio: string;
+            /** Format: date */
+            dataFim: string;
+            tabelaReferencial: string;
+        };
+        LinhaComparativa: {
+            codigo: string;
+            descricao: string;
+            /** Format: int32 */
+            nivel: number;
+            codigoSuperior: string;
+            totalizadora: boolean;
+            grupo: string;
+            valores: {
+                [key: string]: components["schemas"]["Valor"];
+            };
+        };
+        Valor: {
+            /** Format: int64 */
+            linhaId: number;
+            valor: number;
+            valorInicial: number;
+            av: number;
+            ah: number;
+        };
+        ContaOrigem: {
+            /** Format: int64 */
+            contaId: number;
+            codigo: string;
+            nome: string;
+            codigoReferencial: string;
+            valor: number;
+            saldos: components["schemas"]["SaldoOrigem"][];
+        };
+        Origem: {
+            /** Format: int64 */
+            linhaId: number;
+            codigo: string;
+            descricao: string;
+            tipo: string;
+            origem: string;
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            contas: components["schemas"]["ContaOrigem"][];
+        };
+        SaldoOrigem: {
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            valor: number;
+            /** Format: date */
+            dataFim: string;
+            centroCusto: string;
+        };
         DebitoResponseDTO: {
             /** Format: int64 */
             id: number;
@@ -873,6 +1155,52 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["UsuarioResponseDTO"];
                 };
+            };
+        };
+    };
+    depara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Depara"];
+                };
+            };
+        };
+    };
+    associar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Associacao"][];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1108,6 +1436,30 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["DocumentoFiscalResponseDTO"];
                 };
+            };
+        };
+    };
+    mapear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoMapeamento"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1433,6 +1785,30 @@ export interface operations {
             };
         };
     };
+    buscar: {
+        parameters: {
+            query: {
+                plano: string;
+                exercicio: number;
+                busca?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ContaReferencial"][];
+                };
+            };
+        };
+    };
     consultar: {
         parameters: {
             query?: never;
@@ -1493,6 +1869,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StatusDocumentoDTO"];
+                };
+            };
+        };
+    };
+    previa: {
+        parameters: {
+            query?: {
+                aba?: string;
+            };
+            header?: never;
+            path: {
+                documentoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Previa"];
                 };
             };
         };
@@ -1559,6 +1959,77 @@ export interface operations {
                     "*/*": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    escrituracoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Escrituracao"][];
+                };
+            };
+        };
+    };
+    comparativo: {
+        parameters: {
+            query?: {
+                tipo?: string;
+                origem?: string;
+                exercicios?: number[];
+            };
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Comparativo"];
+                };
+            };
+        };
+    };
+    origem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                linhaId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Origem"];
                 };
             };
         };
