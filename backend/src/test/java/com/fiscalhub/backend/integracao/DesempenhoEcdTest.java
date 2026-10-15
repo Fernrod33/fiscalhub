@@ -121,24 +121,24 @@ class DesempenhoEcdTest {
         Map<String, Long> contagem = new LinkedHashMap<>();
         long linhas = 0;
         try (Writer w = new BufferedWriter(Files.newBufferedWriter(arquivo, StandardCharsets.ISO_8859_1), 1 << 20)) {
-            linhas += escrever(w, contagem, "|0000|LECD|01012024|31122024|EMPRESA GRANDE LTDA|11222333000181|PR||4106902||0|0|1|0||0|0||N|N|0|0|1|");
+            linhas += escrever(w, contagem, "|0000|LECD|01012021|31122021|EMPRESA GRANDE LTDA|11222333000181|PR||4106902||0|0|1|0||0|0||N|N|0|0|1|");
             linhas += escrever(w, contagem, "|0001|0|");
             linhas += escrever(w, contagem, "|0990|3|");
             linhas += escrever(w, contagem, "|I001|0|");
             linhas += escrever(w, contagem, "|I010|G|9.00|");
-            linhas += escrever(w, contagem, "|I050|01012024|01|S|1|1||ATIVO|");
-            linhas += escrever(w, contagem, "|I050|01012024|03|S|1|3||PATRIMONIO LIQUIDO|");
-            linhas += escrever(w, contagem, "|I050|01012024|03|A|2|3.1|3|Capital|");
+            linhas += escrever(w, contagem, "|I050|01012021|01|S|1|1||ATIVO|");
+            linhas += escrever(w, contagem, "|I050|01012021|03|S|1|3||PATRIMONIO LIQUIDO|");
+            linhas += escrever(w, contagem, "|I050|01012021|03|A|2|3.1|3|Capital|");
             linhas += escrever(w, contagem, "|I051||2.03.01.01.01|");
-            linhas += escrever(w, contagem, "|I050|01012024|04|S|1|4||RESULTADO|");
+            linhas += escrever(w, contagem, "|I050|01012021|04|S|1|4||RESULTADO|");
             for (int i = 0; i < CONTAS_ANALITICAS; i++) {
                 boolean ativo = i % 2 == 0;
-                linhas += escrever(w, contagem, "|I050|01012024|" + (ativo ? "01" : "04") + "|A|2|" + conta(i) + "|"
+                linhas += escrever(w, contagem, "|I050|01012021|" + (ativo ? "01" : "04") + "|A|2|" + conta(i) + "|"
                         + (ativo ? "1" : "4") + "|Conta " + i + "|");
                 linhas += escrever(w, contagem, "|I051||" + (ativo ? "1.01.01.01.01" : "3.01.01.01.01.05") + "|");
             }
             for (int mes = 1; mes <= 12; mes++) {
-                YearMonth m = YearMonth.of(2024, mes);
+                YearMonth m = YearMonth.of(2021, mes);
                 linhas += escrever(w, contagem, "|I150|" + data(m.atDay(1).getDayOfMonth(), mes) + "|" + data(m.lengthOfMonth(), mes) + "|");
                 // ativo: 1,00 D em cada conta; capital fecha o balanço; resultado sem saldo
                 for (int i = 0; i < CONTAS_ANALITICAS; i++) {
@@ -151,11 +151,11 @@ class DesempenhoEcdTest {
             long numero = 0;
             while (BYTES.get() < TAMANHO_ALVO) {
                 numero++;
-                linhas += escrever(w, contagem, "|I200|" + numero + "|15062024|1234,56|N||");
+                linhas += escrever(w, contagem, "|I200|" + numero + "|15062021|1234,56|N||");
                 linhas += escrever(w, contagem, "|I250|" + conta(0) + "||1234,56|D||HIST|Lancamento de teste " + numero + "|");
                 linhas += escrever(w, contagem, "|I250|" + conta(2) + "||1234,56|C||HIST|Lancamento de teste " + numero + "|");
             }
-            linhas += escrever(w, contagem, "|I350|31122024|");
+            linhas += escrever(w, contagem, "|I350|31122021|");
             for (int i = 1; i < CONTAS_ANALITICAS; i += 2) {
                 linhas += escrever(w, contagem, "|I355|" + conta(i) + "||0,00|D|||");
             }
@@ -194,6 +194,6 @@ class DesempenhoEcdTest {
     }
 
     private static String data(int dia, int mes) {
-        return String.format("%02d%02d2024", dia, mes);
+        return String.format("%02d%02d2021", dia, mes);
     }
 }

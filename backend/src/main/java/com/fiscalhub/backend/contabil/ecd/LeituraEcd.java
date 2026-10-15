@@ -4,18 +4,15 @@ import com.fiscalhub.backend.contabil.RepositorioContabil;
 import com.fiscalhub.backend.contabil.RepositorioContabil.Conta;
 import com.fiscalhub.backend.contabil.RepositorioContabil.LinhaDemonstracao;
 import com.fiscalhub.backend.contabil.RepositorioContabil.Saldo;
-import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
-import com.fiscalhub.backend.entity.enums.EtapaProcessamento;
 import com.fiscalhub.backend.importacao.ContextoProcessamento;
+import com.fiscalhub.backend.importacao.Escrituracoes;
 import com.fiscalhub.backend.importacao.FalhaImportacao;
 import com.fiscalhub.backend.importacao.Inconsistencia.Severidade;
 import com.fiscalhub.backend.sped.LayoutSped;
-import com.fiscalhub.backend.sped.LeitorSped;
+import com.fiscalhub.backend.sped.LeituraSped;
 import com.fiscalhub.backend.sped.RegistroSped;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -27,31 +24,18 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * Uma leitura de ECD (estado de uma execução). Lê em stream, grava contas e saldos em lote durante a leitura e guarda
- * em memória só o que é pequeno: plano de contas, linhas das demonstrações publicadas e totais por período.
- * Lançamentos (I200/I250) e demais registros são pulados olhando só o código do registro.
+ * Uma leitura de ECD (estado de uma execução). Grava contas e saldos em lote durante a leitura e guarda em memória só
+ * o que é pequeno: plano de contas, linhas das demonstrações publicadas e totais por período. Lançamentos (I200/I250)
+ * e demais registros são pulados pelo {@link LeituraSped}.
  */
-final class LeituraEcd {
+final class LeituraEcd extends LeituraSped {
 
-    private static final Set<String> LIDOS = Set.of("0000", "I010", "I050", "I051", "I150", "I155", "I350", "I355",
-            "J005", "J100", "J150", "9900", "9999");
-    private static final int LINHAS_POR_PROGRESSO = 4096;
+    private static final Set<String> LIDOS = Set.of("I010", "I050", "I051", "I150", "I155", "I350", "I355", "J005", "J100", "J150");
     private static final BigDecimal TOLERANCIA = new BigDecimal("0.01");
 
-    private final DocumentoFiscal documento;
-    private final ContextoProcessamento contexto;
     private final RepositorioContabil repositorio;
-    private final LayoutSped layout;
 
-    private String versao;
-    private String[] campos0000;
-    private long linha0000;
-    private LocalDate inicio;
-    private LocalDate fim;
-    private String finalidade;
     private String planoReferencial;
-    private Cliente cliente;
-    private long escrituracaoId;
 
     private final List<ContaLida> contas = new ArrayList<>();
     private Map<String, Long> idsContas;
@@ -74,16 +58,10 @@ final class LeituraEcd {
     private final List<LinhaDemonstracao> balanco = new ArrayList<>();
     private final List<LinhaDemonstracao> resultado = new ArrayList<>();
 
-    private final Map<String, Long> contagem = new HashMap<>();
-    private final Map<String, long[]> declarados = new LinkedHashMap<>(); // registro -> [quantidade, linha do 9900]
-    private Long quantidadeLinhasDeclarada;
-    private long linha9999;
-
-    LeituraEcd(DocumentoFiscal documento, ContextoProcessamento contexto, RepositorioContabil repositorio, LayoutSped layout) {
-        this.documento = documento;
-        this.contexto = contexto;
+    LeituraEcd(DocumentoFiscal documento, ContextoProcessamento contexto, Escrituracoes escrituracoes,
+               RepositorioContabil repositorio, LayoutSped layout) {
+        super("ECD", "ECD", layout, LIDOS, documento, contexto, escrituracoes);
         this.repositorio = repositorio;
-        this.layout = layout;
     }
 
     /** Resultado da leitura que a montagem referencial usa. */
@@ -91,89 +69,34 @@ final class LeituraEcd {
                 List<LinhaDemonstracao> balancoPublicado, List<LinhaDemonstracao> resultadoPublicado) {
     }
 
-    Lida executar() {
-        contexto.etapa(EtapaProcessamento.LENDO);
-        try (LeitorSped leitor = new LeitorSped(contexto.abrir())) {
-            ler(leitor);
-            contexto.lidos(contexto.tamanho());
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        } catch (LeitorSped.LinhaInvalida e) {
-            throw new FalhaImportacao("LINHA_INVALIDA", "Linha " + e.linha() + ": " + e.getMessage(), null, e.linha());
-        } finally {
-            if (lote != null) {
-                lote.close();
-            }
-        }
-        contexto.etapa(EtapaProcessamento.VALIDANDO);
-        validar();
-        contexto.etapa(EtapaProcessamento.GRAVANDO);
-        gravarPublicadas();
+    Lida ler() {
+        executar();
         return new Lida(escrituracaoId, planoReferencial, inicio, fim, balanco, resultado);
     }
 
-    private void ler(LeitorSped leitor) throws IOException {
-        String linha = leitor.proximaLinha();
-        if (linha == null || !"0000".equals(LeitorSped.registro(linha))) {
-            throw new FalhaImportacao("SEM_REGISTRO_0000", "O arquivo não começa pelo registro 0000 da ECD.", "0000", 1L);
-        }
-        do {
-            String registro = LeitorSped.registro(linha);
-            long numero = leitor.numeroLinha();
-            if (numero % LINHAS_POR_PROGRESSO == 0) {
-                contexto.lidos(leitor.bytesLidos());
-            }
-            if (registro == null) {
-                if (linha.isBlank()) {
-                    continue;
+    /** I010: |I010|IND_ESC|COD_VER_LC| em todos os leiautes. */
+    @Override
+    protected String versao(String registro, String[] campos) {
+        return "I010".equals(registro) ? (campos.length > 3 ? campos[3].trim() : "") : null;
+    }
+
+    @Override
+    protected void abertura(RegistroSped r) {
+        planoReferencial = r.texto("COD_PLAN_REF");
+        abrirEscrituracao(r.texto("CNPJ"), r.texto("NOME"), r.data("DT_INI"), r.data("DT_FIN"),
+                "1".equals(r.texto("IND_FIN_ESC")), planoReferencial);
+    }
+
+    @Override
+    protected void tratar(RegistroSped r) {
+        switch (r.registro()) {
+            case "I010" -> {
+                String livro = r.texto("IND_ESC");
+                if (!"G".equals(livro) && !"R".equals(livro)) {
+                    contexto.registrar(Severidade.INFO, "I010", r.linha(), "LIVRO_AUXILIAR", "Escrituração do livro " + livro
+                            + " (auxiliar): saldos e demonstrações costumam estar no livro principal (G ou R).");
                 }
-                throw new FalhaImportacao("LINHA_FORA_DO_FORMATO", "A linha não segue o formato SPED (|REG|...|).", null, numero);
             }
-            contagem.merge(registro, 1L, Long::sum);
-            if (LIDOS.contains(registro)) {
-                tratar(registro, numero, LeitorSped.campos(linha));
-            }
-            if ("9999".equals(registro)) {
-                verificarDepoisDo9999(leitor);
-                return;
-            }
-        } while ((linha = leitor.proximaLinha()) != null);
-        throw new FalhaImportacao("SEM_REGISTRO_9999", "Arquivo incompleto: o registro 9999 (encerramento) não foi encontrado.");
-    }
-
-    /** O PVA pode anexar assinatura ou outro conteúdo depois do 9999: é ignorado, com alerta. */
-    private void verificarDepoisDo9999(LeitorSped leitor) {
-        try {
-            String depois = leitor.proximaLinha();
-            while (depois != null && depois.isBlank()) {
-                depois = leitor.proximaLinha();
-            }
-            if (depois == null) {
-                return;
-            }
-        } catch (IOException | LeitorSped.LinhaInvalida e) {
-            // bloco binário de assinatura: também é conteúdo depois do 9999
-        }
-        contexto.registrar(Severidade.ALERTA, "9999", linha9999, "CONTEUDO_APOS_9999",
-                "Há conteúdo depois do registro 9999 (ex.: bloco de assinatura do PVA). Foi ignorado.");
-    }
-
-    private void tratar(String registro, long numero, String[] campos) {
-        if ("0000".equals(registro)) {
-            campos0000 = campos;
-            linha0000 = numero;
-            return;
-        }
-        if ("I010".equals(registro)) {
-            iniciarEscrituracao(campos, numero);
-            return;
-        }
-        if (versao == null) {
-            throw new FalhaImportacao("SEM_REGISTRO_I010", "O registro " + registro
-                    + " aparece antes do I010 (versão do leiaute).", registro, numero);
-        }
-        RegistroSped r = layout.registro(versao, registro, numero, campos);
-        switch (registro) {
             case "I050" -> {
                 ultimaConta = new ContaLida(r);
                 contas.add(ultimaConta);
@@ -184,14 +107,14 @@ final class LeituraEcd {
                 }
                 if (planoReferencial == null && r.texto("COD_PLAN_REF") != null) {
                     planoReferencial = r.texto("COD_PLAN_REF"); // leiaute 7: o plano vem no I051
-                    repositorio.atualizarPlanoReferencial(escrituracaoId, planoReferencial);
+                    escrituracoes.atualizarPlanoReferencial(escrituracaoId, planoReferencial);
                 }
             }
             case "I150" -> {
                 garantirContas();
                 periodoInicio = r.data("DT_INI");
                 periodoFim = r.data("DT_FIN");
-                linhaPeriodo = numero;
+                linhaPeriodo = r.linha();
             }
             case "I155" -> saldoPeriodico(r);
             case "I350" -> {
@@ -214,46 +137,15 @@ final class LeituraEcd {
                     resultado.add(linhaPublicada(r, resultado.size() + 1, "IND_GRP_DRE"));
                 }
             }
-            case "9900" -> declarados.put(r.texto("REG_BLC"), new long[]{Long.parseLong(r.texto("QTD_REG_BLC")), numero});
-            case "9999" -> {
-                quantidadeLinhasDeclarada = Long.parseLong(r.texto("QTD_LIN"));
-                linha9999 = numero;
-            }
             default -> { }
         }
     }
 
-    /** O I010 traz a versão do leiaute: só então o 0000 guardado pode ser lido e a escrituração criada. */
-    private void iniciarEscrituracao(String[] camposI010, long numero) {
-        versao = camposI010.length > 3 ? camposI010[3].trim() : ""; // I010: |I010|IND_ESC|COD_VER_LC| em todos os leiautes
-        if (!layout.cobre(versao)) {
-            throw new FalhaImportacao("LEIAUTE_NAO_COBERTO", "Leiaute da ECD " + versao + " não coberto. Versões lidas: "
-                    + String.join(", ", layout.versoes()) + ".", "I010", numero);
+    @Override
+    protected void fimDaLeitura() {
+        if (lote != null) {
+            lote.close();
         }
-        if (campos0000 == null) {
-            throw new FalhaImportacao("SEM_REGISTRO_0000", "O registro I010 aparece antes do 0000.", "I010", numero);
-        }
-        RegistroSped r0000 = layout.registro(versao, "0000", linha0000, campos0000);
-        inicio = r0000.data("DT_INI");
-        fim = r0000.data("DT_FIN");
-        finalidade = "1".equals(r0000.texto("IND_FIN_ESC")) ? "SUBSTITUTA" : "ORIGINAL";
-        planoReferencial = r0000.texto("COD_PLAN_REF");
-        String cnpj = r0000.texto("CNPJ");
-        if (inicio == null || fim == null || cnpj == null) {
-            throw new FalhaImportacao("0000_INCOMPLETO", "O registro 0000 não tem período ou CNPJ.", "0000", linha0000);
-        }
-        cliente = contexto.cliente(cnpj, r0000.texto("NOME"));
-        documento.setPeriodoInicio(inicio);
-        documento.setPeriodoFim(fim);
-
-        String livro = camposI010.length > 2 ? camposI010[2].trim() : "";
-        if (!"G".equals(livro) && !"R".equals(livro)) {
-            contexto.registrar(Severidade.INFO, "I010", numero, "LIVRO_AUXILIAR", "Escrituração do livro " + livro
-                    + " (auxiliar): saldos e demonstrações costumam estar no livro principal (G ou R).");
-        }
-        repositorio.apagarDoDocumento(documento.getId());
-        escrituracaoId = repositorio.inserirEscrituracao(new RepositorioContabil.NovaEscrituracao(documento.getId(),
-                cliente.getId(), "ECD", inicio, fim, versao, planoReferencial, finalidade));
     }
 
     /** O plano de contas vem antes dos saldos: grava tudo de uma vez quando o primeiro saldo aparece. */
@@ -343,8 +235,8 @@ final class LeituraEcd {
         return d.length() > 500 ? d.substring(0, 500) : d;
     }
 
-    private void validar() {
-        validarContagem();
+    @Override
+    protected void validar() {
         somasPorPeriodo.forEach((periodo, somas) -> {
             BigDecimal debitos = (BigDecimal) somas[0];
             BigDecimal creditos = (BigDecimal) somas[1];
@@ -357,24 +249,6 @@ final class LeituraEcd {
         validarBalancoDosSaldos();
         validarBalancoPublicado();
         validarMapeamentoReferencial();
-        tratarRetificacao();
-    }
-
-    private void validarContagem() {
-        declarados.forEach((registro, declarado) -> {
-            long lidos = contagem.getOrDefault(registro, 0L);
-            if (lidos != declarado[0]) {
-                contexto.registrar(Severidade.ERRO, "9900", declarado[1], "CONTAGEM_9900", "O 9900 declara "
-                        + declarado[0] + " registro(s) " + registro + ", mas o arquivo tem " + lidos + ".");
-            }
-        });
-        contagem.keySet().stream().filter(r -> !declarados.containsKey(r)).sorted().forEach(r ->
-                contexto.registrar(Severidade.ERRO, "9900", null, "CONTAGEM_9900",
-                        "O registro " + r + " aparece no arquivo, mas não está na contagem do bloco 9."));
-        if (quantidadeLinhasDeclarada != null && quantidadeLinhasDeclarada != linha9999) {
-            contexto.registrar(Severidade.ERRO, "9999", linha9999, "QUANTIDADE_LINHAS", "O 9999 declara "
-                    + quantidadeLinhasDeclarada + " linhas, mas o arquivo tem " + linha9999 + " até o 9999.");
-        }
     }
 
     /** Ativo + passivo + PL + resultado ainda não encerrado = 0 nos saldos finais do exercício (devedor +, credor −). */
@@ -430,26 +304,8 @@ final class LeituraEcd {
         }
     }
 
-    /**
-     * Retificação: a ECD substituta passa a valer e a anterior do mesmo cliente e período fica SUBSTITUIDA (histórico
-     * preservado). Uma original importada depois da substituta já nasce substituída.
-     */
-    private void tratarRetificacao() {
-        for (RepositorioContabil.Vigente anterior : repositorio.vigentesDoPeriodo(cliente.getId(), "ECD", inicio, fim, escrituracaoId)) {
-            if ("ORIGINAL".equals(finalidade) && "SUBSTITUTA".equals(anterior.finalidade())) {
-                repositorio.marcarSituacao(escrituracaoId, "SUBSTITUIDA");
-                contexto.registrar(Severidade.ALERTA, "0000", linha0000, "ORIGINAL_JA_SUBSTITUIDA", "Já existe uma ECD "
-                        + "substituta para o período (documento " + anterior.documentoId() + "). Esta fica como substituída.");
-                return;
-            }
-            repositorio.marcarSituacao(anterior.id(), "SUBSTITUIDA");
-            contexto.registrar("SUBSTITUTA".equals(finalidade) ? Severidade.INFO : Severidade.ALERTA, "0000", linha0000,
-                    "RETIFICACAO", "Esta ECD substitui a do documento " + anterior.documentoId()
-                            + " para o mesmo período, que fica como substituída.");
-        }
-    }
-
-    private void gravarPublicadas() {
+    @Override
+    protected void gravar() {
         LocalDate fimPublicada = fimDemonstracao != null ? fimDemonstracao : fim;
         if (!balanco.isEmpty()) {
             long id = repositorio.inserirDemonstracao(escrituracaoId, "BP", "PUBLICADA", inicioDemonstracao, fimPublicada, null);

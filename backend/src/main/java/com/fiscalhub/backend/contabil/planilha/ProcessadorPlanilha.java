@@ -13,6 +13,7 @@ import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.entity.enums.EtapaProcessamento;
 import com.fiscalhub.backend.importacao.AguardandoUsuario;
 import com.fiscalhub.backend.importacao.ContextoProcessamento;
+import com.fiscalhub.backend.importacao.Escrituracoes;
 import com.fiscalhub.backend.importacao.FalhaImportacao;
 import com.fiscalhub.backend.importacao.Inconsistencia.Severidade;
 import com.fiscalhub.backend.importacao.ProcessadorDocumento;
@@ -42,8 +43,11 @@ public class ProcessadorPlanilha implements ProcessadorDocumento {
     private final RepositorioPlanilha planilhas;
     private final RepositorioContabil repositorio;
     private final MontagemReferencial montagem;
+    private final Escrituracoes escrituracoes;
 
-    public ProcessadorPlanilha(RepositorioPlanilha planilhas, RepositorioContabil repositorio, MontagemReferencial montagem) {
+    public ProcessadorPlanilha(RepositorioPlanilha planilhas, RepositorioContabil repositorio, Escrituracoes escrituracoes,
+                               MontagemReferencial montagem) {
+        this.escrituracoes = escrituracoes;
         this.planilhas = planilhas;
         this.repositorio = repositorio;
         this.montagem = montagem;
@@ -207,8 +211,8 @@ public class ProcessadorPlanilha implements ProcessadorDocumento {
         referencial.putAll(planilhas.deparaSalvo(cliente.getId()));
         String registro = registro(m);
 
-        repositorio.apagarDoDocumento(documento.getId());
-        long escrituracaoId = repositorio.inserirEscrituracao(new RepositorioContabil.NovaEscrituracao(documento.getId(),
+        escrituracoes.apagarDoDocumento(documento.getId());
+        long escrituracaoId = escrituracoes.inserir(new Escrituracoes.Nova(documento.getId(),
                 cliente.getId(), "PLANILHA", documento.getPeriodoInicio(), documento.getPeriodoFim(), null,
                 m.planoReferencial(), "ORIGINAL"));
         Map<String, Long> ids = repositorio.inserirContas(escrituracaoId, linhas.stream().map(l -> new Conta(l.codigo(), null,
@@ -227,12 +231,9 @@ public class ProcessadorPlanilha implements ProcessadorDocumento {
                     + "associação ao plano referencial ficam fora das demonstrações referenciais: "
                     + String.join(", ", semDepara.subList(0, Math.min(30, semDepara.size()))) + (semDepara.size() > 30 ? " e outras." : "."));
         }
-        for (RepositorioContabil.Vigente anterior : repositorio.vigentesDoPeriodo(cliente.getId(), "PLANILHA",
-                documento.getPeriodoInicio(), documento.getPeriodoFim(), escrituracaoId)) {
-            repositorio.marcarSituacao(anterior.id(), "SUBSTITUIDA");
-            contexto.registrar(Severidade.INFO, registro, null, "RETIFICACAO", "Este balancete substitui o do documento "
-                    + anterior.documentoId() + " para o mesmo período.");
-        }
+        // um balancete novo do mesmo período sempre substitui o anterior (não há indicação de original no arquivo)
+        escrituracoes.retificar(contexto, escrituracaoId, cliente.getId(), "PLANILHA", documento.getPeriodoInicio(),
+                documento.getPeriodoFim(), "SUBSTITUTA", "planilha de balancete", registro, null);
         montagem.montar(new MontagemReferencial.Pedido(escrituracaoId, m.planoReferencial(), documento.getPeriodoInicio(),
                 documento.getPeriodoFim(), "PLANILHA", "PLANILHA", List.of(), List.of()), contexto);
     }

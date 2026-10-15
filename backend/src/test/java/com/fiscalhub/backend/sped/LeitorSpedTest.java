@@ -30,6 +30,22 @@ class LeitorSpedTest {
     }
 
     @Test
+    void registrosForaDoInteressePuladosMasContados() throws IOException {
+        String longa = "|C170|" + "x".repeat(LeitorSped.LIMITE_LINHA * 2) + "|"; // pulada: nem o limite de linha vale
+        String texto = "|0000|006|\r\n|C100|1|\r\n" + longa + "\r\n|E110|10,00|\r\n\r\nlixo\n|9999|7|";
+        LeitorSped l = new LeitorSped(new ByteArrayInputStream(texto.getBytes(StandardCharsets.ISO_8859_1)),
+                java.util.Set.of("0000", "E110", "9999"));
+        assertThat(l.proximaLinha()).isEqualTo("|0000|006|");
+        assertThat(l.proximaLinha()).isEqualTo("|E110|10,00|");
+        assertThat(l.numeroLinha()).isEqualTo(4);
+        assertThat(l.proximaLinha()).isEmpty(); // linha em branco e fora do formato voltam para quem lê decidir
+        assertThat(l.proximaLinha()).isEqualTo("lixo");
+        assertThat(l.proximaLinha()).isEqualTo("|9999|7|");
+        assertThat(l.numeroLinha()).isEqualTo(7);
+        assertThat(l.contagem()).containsEntry("C100", 1L).containsEntry("C170", 1L).containsEntry("E110", 1L).containsEntry("9999", 1L);
+    }
+
+    @Test
     void registroSaiSemQuebrarALinhaECamposSeguemANumeracaoDoManual() {
         assertThat(LeitorSped.registro("|I250|1.1|...|")).isEqualTo("I250");
         assertThat(LeitorSped.registro("lixo")).isNull();

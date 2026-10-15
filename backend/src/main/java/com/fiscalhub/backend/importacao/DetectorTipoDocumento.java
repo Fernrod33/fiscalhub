@@ -7,8 +7,8 @@ import java.util.Arrays;
 
 /**
  * Tipo do documento pelo conteúdo (a extensão e o tipo informado no upload são só pistas).
- * SPED: a primeira linha |0000|...| identifica a escrituração. Para reconhecer um novo SPED (EFD-Contribuições,
- * EFD ICMS/IPI na Fase 2), acrescente a assinatura em {@link #ASSINATURAS_SPED}.
+ * SPED: a primeira linha |0000|...| identifica a escrituração: ECD e ECF pelo nome no campo 2 ({@link #ASSINATURAS_SPED});
+ * as EFD pela estrutura do 0000 ({@link #efd}).
  */
 public final class DetectorTipoDocumento {
 
@@ -38,6 +38,10 @@ public final class DetectorTipoDocumento {
                 return a.tipo();
             }
         }
+        DocumentoTipo efd = efd(texto);
+        if (efd != null) {
+            return efd;
+        }
         if (".xlsx".equals(extensao) && inicio.length >= 4 && Arrays.equals(inicio, 0, 4, ZIP, 0, 4)) {
             return DocumentoTipo.BALANCETE;
         }
@@ -45,5 +49,21 @@ public final class DetectorTipoDocumento {
             return DocumentoTipo.BALANCETE;
         }
         return DocumentoTipo.OUTRO; // PDF, SPED ainda não reconhecido ou conteúdo desconhecido
+    }
+
+    /**
+     * As duas EFD começam por |0000|COD_VER (3 dígitos)| e se distinguem pela posição das datas no 0000 (Guias Práticos):
+     * ICMS/IPI |0000|COD_VER|COD_FIN|DT_INI|DT_FIN|...; Contribuições |0000|COD_VER|TIPO_ESCRIT|IND_SIT_ESP|NUM_REC_ANTERIOR|DT_INI|DT_FIN|...
+     */
+    private static DocumentoTipo efd(String texto) {
+        int fim = texto.indexOf('\n');
+        String[] f = (fim < 0 ? texto : texto.substring(0, fim)).trim().split("\\|", -1);
+        if (f.length < 8 || !"0000".equals(f[1]) || !f[2].matches("\\d{3}")) {
+            return null;
+        }
+        if (f[4].matches("\\d{8}") && f[5].matches("\\d{8}")) {
+            return DocumentoTipo.EFD_ICMS_IPI;
+        }
+        return f[6].matches("\\d{8}") && f[7].matches("\\d{8}") ? DocumentoTipo.EFD_CONTRIBUICOES : null;
     }
 }

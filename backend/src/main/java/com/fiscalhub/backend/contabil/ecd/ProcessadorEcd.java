@@ -5,6 +5,7 @@ import com.fiscalhub.backend.contabil.referencial.MontagemReferencial;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.importacao.ContextoProcessamento;
+import com.fiscalhub.backend.importacao.Escrituracoes;
 import com.fiscalhub.backend.importacao.ProcessadorDocumento;
 import com.fiscalhub.backend.sped.LayoutSped;
 import org.springframework.stereotype.Component;
@@ -21,10 +22,12 @@ public class ProcessadorEcd implements ProcessadorDocumento {
     static final LayoutSped LAYOUT = LayoutSped.carregar("sped/ecd-leiautes.properties");
 
     private final RepositorioContabil repositorio;
+    private final Escrituracoes escrituracoes;
     private final MontagemReferencial montagem;
 
-    public ProcessadorEcd(RepositorioContabil repositorio, MontagemReferencial montagem) {
+    public ProcessadorEcd(RepositorioContabil repositorio, Escrituracoes escrituracoes, MontagemReferencial montagem) {
         this.repositorio = repositorio;
+        this.escrituracoes = escrituracoes;
         this.montagem = montagem;
     }
 
@@ -35,7 +38,7 @@ public class ProcessadorEcd implements ProcessadorDocumento {
 
     @Override
     public void processar(DocumentoFiscal documento, ContextoProcessamento contexto) {
-        LeituraEcd.Lida lida = new LeituraEcd(documento, contexto, repositorio, LAYOUT).executar();
+        LeituraEcd.Lida lida = new LeituraEcd(documento, contexto, escrituracoes, repositorio, LAYOUT).ler();
         montagem.montar(new MontagemReferencial.Pedido(lida.escrituracaoId(), lida.planoReferencial(), lida.inicio(),
                 lida.fim(), "I155", "I355", lida.balancoPublicado(), lida.resultadoPublicado()), contexto);
     }

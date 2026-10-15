@@ -20,10 +20,6 @@ public class RepositorioContabil {
 
     static final int TAMANHO_LOTE = 1000;
 
-    public record NovaEscrituracao(long documentoId, long clienteId, String origem, LocalDate inicio, LocalDate fim,
-                                   String versaoLeiaute, String planoReferencial, String finalidade) {
-    }
-
     public record Conta(String codigo, String codigoSuperior, Integer nivel, String natureza, boolean sintetica,
                         String nome, String codigoReferencial, String registro, long linha) {
     }
@@ -39,28 +35,10 @@ public class RepositorioContabil {
                                     String registro, Long linha, boolean derivada) {
     }
 
-    /** Escrituração vigente do mesmo cliente e período (para a retificação). */
-    public record Vigente(long id, long documentoId, String finalidade) {
-    }
-
     private final JdbcTemplate jdbc;
 
     public RepositorioContabil(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-    }
-
-    /** O que um processamento anterior do documento gerou (cascata para contas, saldos e demonstrações). */
-    public void apagarDoDocumento(long documentoId) {
-        jdbc.update("DELETE FROM escrituracao_contabil WHERE documento_id = ?", documentoId);
-    }
-
-    public long inserirEscrituracao(NovaEscrituracao e) {
-        return jdbc.queryForObject("""
-                INSERT INTO escrituracao_contabil (documento_id, cliente_id, origem, data_inicio, data_fim, versao_leiaute,
-                                                   plano_referencial, finalidade, situacao)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'VIGENTE') RETURNING id""", Long.class,
-                e.documentoId(), e.clienteId(), e.origem(), Date.valueOf(e.inicio()), Date.valueOf(e.fim()),
-                e.versaoLeiaute(), e.planoReferencial(), e.finalidade());
     }
 
     /** Insere o plano de contas e devolve código -> id. */
@@ -180,15 +158,6 @@ public class RepositorioContabil {
                 });
     }
 
-    /** Escriturações vigentes da mesma origem (ECD ou planilha), cliente e período: candidatas a substituídas. */
-    public List<Vigente> vigentesDoPeriodo(long clienteId, String origem, LocalDate inicio, LocalDate fim, long excetoEscrituracao) {
-        return jdbc.query("""
-                        SELECT id, documento_id, finalidade FROM escrituracao_contabil
-                        WHERE cliente_id = ? AND origem = ? AND data_inicio = ? AND data_fim = ? AND situacao = 'VIGENTE' AND id <> ?""",
-                (rs, i) -> new Vigente(rs.getLong(1), rs.getLong(2), rs.getString(3)),
-                clienteId, origem, Date.valueOf(inicio), Date.valueOf(fim), excetoEscrituracao);
-    }
-
     /** Código referencial nas contas da escrituração (de-para da planilha), em lote. */
     public void atualizarReferenciais(long escrituracaoId, Map<String, String> referencialPorConta) {
         jdbc.batchUpdate("UPDATE conta_contabil SET codigo_referencial = ? WHERE escrituracao_id = ? AND codigo = ?",
@@ -199,12 +168,4 @@ public class RepositorioContabil {
                 });
     }
 
-    /** Leiaute 7: o plano referencial só aparece no I051, depois da escrituração criada. */
-    public void atualizarPlanoReferencial(long escrituracaoId, String planoReferencial) {
-        jdbc.update("UPDATE escrituracao_contabil SET plano_referencial = ? WHERE id = ?", planoReferencial, escrituracaoId);
-    }
-
-    public void marcarSituacao(long escrituracaoId, String situacao) {
-        jdbc.update("UPDATE escrituracao_contabil SET situacao = ? WHERE id = ?", situacao, escrituracaoId);
-    }
 }
