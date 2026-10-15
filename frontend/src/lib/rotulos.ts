@@ -23,12 +23,13 @@ export const TIPOS_DOCUMENTO: Record<Documento['tipo'], string> = {
   ECF: 'ECF',
   EFD_CONTRIBUICOES: 'EFD-Contribuições',
   EFD_ICMS_IPI: 'EFD ICMS/IPI',
+  BALANCETE: 'Balancete',
+  RELATORIO_SITUACAO_FISCAL: 'Relatório de Situação Fiscal',
+  EXTRATO_PGFN: 'Extrato PGFN',
   DCTF: 'DCTF',
-  DCTF_WEB: 'DCTFWeb',
-  DEMONSTRACAO_CONTABIL: 'Demonstração contábil',
-  BALANCETE: 'Balancete'
-,
-  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', ICMS: 'ICMS',
+  DCTFWEB: 'DCTFWeb',
+  COMPROVANTE_ARRECADACAO: 'Comprovante de arrecadação',
+  EXTRATO_DIVIDA_ATIVA_PR: 'Dívida ativa PR',
   OUTRO: 'Outro',
 };
 
@@ -65,6 +66,8 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   DOCUMENTO_EXCLUIR: 'Excluiu documento',
   DOCUMENTO_REPROCESSAR: 'Reprocessou documento',
   DOCUMENTO_CONFIRMAR_CLIENTE: 'Confirmou cliente do documento',
+  PLANILHA_MAPEAR_COLUNAS: 'Mapeou colunas da planilha',
+  PLANILHA_SALVAR_DEPARA: 'Salvou de-para da planilha',
   CLIENTE_CRIAR: 'Cadastrou cliente',
   CLIENTE_EDITAR: 'Editou cliente',
   CLIENTE_EXCLUIR: 'Excluiu cliente',

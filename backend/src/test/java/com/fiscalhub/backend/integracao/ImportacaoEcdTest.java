@@ -74,8 +74,8 @@ class ImportacaoEcdTest {
         mvc.perform(get("/api/documentos/{d}", id).with(sessao))
                 .andExpect(jsonPath("$.clienteId").value(criado.getId().intValue()))
                 .andExpect(jsonPath("$.tipo").value("ECD"))
-                .andExpect(jsonPath("$.periodoInicio").value("2024-01-01"))
-                .andExpect(jsonPath("$.periodoFim").value("2024-12-31"));
+                .andExpect(jsonPath("$.periodoInicio").value("2021-01-01"))
+                .andExpect(jsonPath("$.periodoFim").value("2021-12-31"));
         mvc.perform(get("/api/documentos/{d}/inconsistencias", id).with(sessao)).andExpect(jsonPath("$").isEmpty());
     }
 

@@ -98,9 +98,20 @@ class ImportacaoPlanilhaTest {
         // mesma montagem referencial da ECD
         mvc.perform(get("/api/clientes/{c}/demonstracoes", cliente.getId()).param("tipo", "DRE").with(sessao))
                 .andExpect(jsonPath("$.exercicios[0].origemDados").value("PLANILHA"))
-                .andExpect(jsonPath("$.linhas[0].valores['2024'].valor").value(-4500.00));
-        mvc.perform(get("/api/clientes/{c}/demonstracoes", cliente.getId()).param("tipo", "BP").with(sessao))
-                .andExpect(jsonPath("$.linhas[0].valores['2024'].valor").value(6000.00));
+                .andExpect(jsonPath("$.linhas[0].valores['2021'].valor").value(-4500.00));
+        // balancete antes do encerramento: o resultado do período entra no PL como linha derivada e o balanço fecha
+        String bp = mvc.perform(get("/api/clientes/{c}/demonstracoes", cliente.getId()).param("tipo", "BP").with(sessao))
+                .andExpect(jsonPath("$.linhas[0].valores['2021'].valor").value(6000.00))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2')].valores['2021'].valor").value(-6000.00))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2.03.RNE')].descricao").value("Resultado do período não encerrado"))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2.03.RNE')].derivada").value(true))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2.03.RNE')].valores['2021'].valor").value(-4500.00))
+                .andReturn().getResponse().getContentAsString();
+        List<Number> derivada = JsonPath.read(bp, "$.linhas[?(@.codigo == '2.03.RNE')].valores['2021'].linhaId");
+        mvc.perform(get("/api/clientes/{c}/demonstracoes/linhas/{l}/origem", cliente.getId(), derivada.get(0).longValue()).with(sessao))
+                .andExpect(jsonPath("$.derivada").value(true))
+                .andExpect(jsonPath("$.contas[*].codigo").value(org.hamcrest.Matchers.contains("4.1", "4.2")))
+                .andExpect(jsonPath("$.contas[0].saldos[0].registro").value("Aba Balancete"));
     }
 
     @Test
@@ -176,14 +187,14 @@ class ImportacaoPlanilhaTest {
 
     @Test
     void buscaNoPlanoReferencialSoAnaliticas() throws Exception {
-        mvc.perform(get("/api/referencial/contas").param("plano", "1").param("exercicio", "2024").param("busca", "caixa").with(sessao))
+        mvc.perform(get("/api/referencial/contas").param("plano", "1").param("exercicio", "2021").param("busca", "caixa").with(sessao))
                 .andExpect(jsonPath("$[?(@.codigo == '1.01.01.01.01')].descricao").value("Caixa Matriz"))
                 .andExpect(jsonPath("$[?(@.codigo == '1.01.01.01')]").isEmpty()); // sintética fica de fora
     }
 
     private void mapear(long id, String aba, int linhaCabecalho, String colunas) throws Exception {
         mvc.perform(post("/api/documentos/{d}/planilha/mapeamento", id).with(sessao).contentType(APPLICATION_JSON).content("""
-                        {"aba":%s,"linhaCabecalho":%d,"colunas":%s,"periodoInicio":"2024-01-01","periodoFim":"2024-12-31",
+                        {"aba":%s,"linhaCabecalho":%d,"colunas":%s,"periodoInicio":"2021-01-01","periodoFim":"2021-12-31",
                          "planoReferencial":"1"}""".formatted(aba == null ? "null" : "\"" + aba + "\"", linhaCabecalho, colunas)))
                 .andExpect(status().isAccepted());
     }

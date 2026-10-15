@@ -215,7 +215,7 @@ public class PlanilhaService {
     private List<String> tabelas(String plano, int exercicio) {
         Map<String, String> t = montagem.tabelas(plano, exercicio);
         if (t.size() != 2) {
-            throw new BusinessRuleException("Plano referencial " + plano + " não carregado.");
+            throw new BusinessRuleException(montagem.semTabelas(plano, exercicio));
         }
         return List.of(t.get("BP"), t.get("DRE"));
     }

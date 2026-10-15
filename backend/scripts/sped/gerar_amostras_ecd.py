@@ -1,7 +1,9 @@
 """
 Gera as ECDs sintéticas de src/test/resources/amostras/ (ISO-8859-1, contagens 9900/9999 calculadas).
 Empresa fictícia; valores pequenos e coerentes: ativo 6.000 D = passivo 1.000 C + PL 5.000 C; lucro 4.500 C.
-Os códigos referenciais (I051) existem nas tabelas oficiais L100_A/L300_A de 2018 a 2021.
+Exercício 2021 (o mais recente com tabela oficial do plano referencial carregada) e 2020 para o comparativo. Os
+códigos referenciais (I051) existem nas tabelas oficiais L100_A/L300_A de 2018 a 2021. ecd-2024-l9.txt é a mesma ECD em
+2024, exercício sem tabela referencial: só a demonstração publicada fica disponível.
 
 Uso (na pasta backend/): python -I scripts/sped/gerar_amostras_ecd.py
 """
@@ -48,28 +50,28 @@ J150 = [  # código, T/D, nível, superior, descrição, final, D/C, grupo
 ]
 
 
-def ecd(versao, finalidade='0', cabecalho='Demonstrações contábeis de 2024', saldos=SALDOS, j100=J100,
+def ecd(versao, finalidade='0', cabecalho='Demonstrações contábeis de 2021', saldos=SALDOS, j100=J100,
         contas=CONTAS, ajuste_9900=None):
     l7 = versao == '7.00'
     plano = '' if l7 else '1'
-    campos0000 = ['0000', 'LECD', '01012024', '31122024', 'EMPRESA EXEMPLO LTDA', CNPJ, 'PR', '', '4106902', '', '0', '0',
+    campos0000 = ['0000', 'LECD', '01012021', '31122021', 'EMPRESA EXEMPLO LTDA', CNPJ, 'PR', '', '4106902', '', '0', '0',
                   '1', finalidade, 'A' * 40 if finalidade == '1' else '', '0', '0', '', 'N', 'N']
     if not l7:
         campos0000 += ['0', '0', plano]
     linhas = ['|' + '|'.join(campos0000) + '|', '|0001|0|', '|0990|3|', '|I001|0|', f'|I010|G|{versao}|']
     for cod, sup, nivel, nat, ind, nome, ref in contas:
-        linhas.append(f'|I050|01012024|{nat}|{ind}|{nivel}|{cod}|{sup}|{nome}|')
+        linhas.append(f'|I050|01012021|{nat}|{ind}|{nivel}|{cod}|{sup}|{nome}|')
         if ref:
             linhas.append(f'|I051|1||{ref}|' if l7 else f'|I051||{ref}|')
-    linhas.append('|I150|01012024|31122024|')
+    linhas.append('|I150|01012021|31122021|')
     for cod, si, dci, deb, cred, sf, dcf in saldos:
         linhas.append(f'|I155|{cod}||{si}|{dci}|{deb}|{cred}|{sf}|{dcf}|||||||')
     # lançamentos: a leitura pula, mas eles contam no 9900
-    linhas += ['|I200|1|15032024|2000,00|N||', '|I250|1.1.02||2000,00|D||||', '|I250|1.1.01||2000,00|C||||',
-               '|I200|2|31122024|8000,00|E||', '|I250|4.1||8000,00|D||||', '|I250|3.2||8000,00|C||||']
-    linhas += ['|I350|31122024|', '|I355|4.1||8000,00|C|||', '|I355|4.2||3500,00|D|||']
+    linhas += ['|I200|1|15032021|2000,00|N||', '|I250|1.1.02||2000,00|D||||', '|I250|1.1.01||2000,00|C||||',
+               '|I200|2|31122021|8000,00|E||', '|I250|4.1||8000,00|D||||', '|I250|3.2||8000,00|C||||']
+    linhas += ['|I350|31122021|', '|I355|4.1||8000,00|C|||', '|I355|4.2||3500,00|D|||']
     linhas.append(f'|I990|{sum(1 for l in linhas if l.startswith("|I")) + 1}|')
-    bloco_j = ['|J001|0|', f'|J005|01012024|31122024|1|{cabecalho}|']
+    bloco_j = ['|J001|0|', f'|J005|01012021|31122021|1|{cabecalho}|']
     for cod, ind, nivel, sup, grp, desc, vi, dci, vf, dcf in j100:
         bloco_j.append(f'|J100|{cod}|{ind}|{nivel}|{sup}|{grp}|{desc}|{vi}|{dci}|{vf}|{dcf}||')
     for ordem, (cod, ind, nivel, sup, desc, vf, dcf, grp) in enumerate(J150, start=1):
@@ -102,7 +104,7 @@ def gravar(nome, conteudo):
 
 for v in ('9.00', '8.00', '7.00'):
     gravar(f'ecd-minima-l{v[0]}.txt', ecd(v))
-gravar('ecd-retificadora-l9.txt', ecd('9.00', finalidade='1', cabecalho='Demonstrações contábeis de 2024 (substituta)'))
+gravar('ecd-retificadora-l9.txt', ecd('9.00', finalidade='1', cabecalho='Demonstrações contábeis de 2021 (substituta)'))
 gravar('ecd-balanco-nao-fecha-l9.txt', ecd('9.00',
        saldos=[('1.1.01', '1000,00', 'D', '6000,00', '3200,00', '3800,00', 'D')] + SALDOS[1:],
        j100=J100[:2] + [('2', 'T', 1, '', 'P', 'PASSIVO E PATRIMÔNIO LÍQUIDO', '1000,00', 'C', '5800,00', 'C'), J100[3],
@@ -118,4 +120,5 @@ def metade(m):
 
 # exercício anterior para o comparativo (AH): mesmos lançamentos com metade dos valores (relações lineares: D = C e
 # balanço continuam fechando)
-gravar('ecd-2023-l9.txt', re.sub(r'(\d+),(\d\d)', metade, ecd('9.00')).replace('2024', '2023'))
+gravar('ecd-2020-l9.txt', re.sub(r'(\d+),(\d\d)', metade, ecd('9.00')).replace('2021', '2020'))
+gravar('ecd-2024-l9.txt', ecd('9.00').replace('2021', '2024'))

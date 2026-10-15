@@ -28,6 +28,8 @@ import java.util.Map;
 public class MontagemReferencial {
 
     private static final BigDecimal TOLERANCIA = new BigDecimal("0.01");
+    /** Linha derivada do BP montado de balancete antes do encerramento (não existe no plano oficial). */
+    public static final String RESULTADO_NAO_ENCERRADO = "2.03.RNE";
 
     /** Pedido de montagem: o que ler (origens dos saldos) e o que conferir (publicadas, quando houver). */
     public record Pedido(long escrituracaoId, String plano, LocalDate inicio, LocalDate fim, String origemBalanco,
@@ -52,10 +54,11 @@ public class MontagemReferencial {
             return; // sem plano referencial: o alerta já foi registrado na leitura
         }
         Map<String, String> tabelas = tabelas(pedido.plano(), pedido.fim().getYear());
-        if (tabelas.isEmpty()) {
-            contexto.registrar(Severidade.ALERTA, "0000", null, "PLANO_REFERENCIAL_NAO_CARREGADO", "O plano referencial "
-                    + pedido.plano() + " não está carregado (disponíveis: 1 - PJ em geral, Lucro Real; 2 - PJ em geral, "
-                    + "Lucro Presumido). As demonstrações referenciais não foram montadas.");
+        if (tabelas.size() != 2) {
+            boolean suportado = !anos(pedido.plano()).isEmpty();
+            contexto.registrar(Severidade.ALERTA, "0000", null,
+                    suportado ? "TABELA_REFERENCIAL_AUSENTE" : "PLANO_REFERENCIAL_NAO_SUPORTADO",
+                    semTabelas(pedido.plano(), pedido.fim().getYear()));
             return;
         }
         Map<Long, String> referencialDaConta = new HashMap<>();
@@ -73,7 +76,24 @@ public class MontagemReferencial {
                     + "que não existem nas tabelas " + tabelas.values() + " ficaram fora das demonstrações referenciais: "
                     + String.join(", ", foraDasTabelas.subList(0, Math.min(30, foraDasTabelas.size()))));
         }
-        BigDecimal[] totaisBp = montarUma("BP", tabelas.get("BP"), planoBp, pedido, referencialDaConta,
+        Map<String, ContaRef> planoDoBalanco = planoBp;
+        Map<Long, String> referencialNoBalanco = referencialDaConta;
+        if ("PLANILHA".equals(pedido.origemResultado())) {
+            // balancete antes do encerramento: o lucro do período ainda está nas contas de resultado, não no PL. Entra no
+            // PL como linha derivada, composta pelas contas de resultado do próprio balancete (as mapeadas na DRE).
+            ContaRef pl = planoBp.values().stream().filter(r -> "03".equals(r.natureza()))
+                    .min(Comparator.comparingInt(ContaRef::nivel)).orElse(null);
+            if (pl != null) {
+                int ordem = planoBp.values().stream().filter(r -> r.codigo().startsWith(pl.codigo()))
+                        .mapToInt(ContaRef::ordem).max().orElse(pl.ordem());
+                planoDoBalanco = new LinkedHashMap<>(planoBp);
+                planoDoBalanco.put(RESULTADO_NAO_ENCERRADO, new ContaRef(RESULTADO_NAO_ENCERRADO,
+                        "Resultado do período não encerrado", pl.codigo(), pl.nivel() + 1, ordem, false, "03"));
+                referencialNoBalanco = new HashMap<>(referencialDaConta);
+                referencialNoBalanco.replaceAll((conta, ref) -> planoDre.containsKey(ref) ? RESULTADO_NAO_ENCERRADO : ref);
+            }
+        }
+        BigDecimal[] totaisBp = montarUma("BP", tabelas.get("BP"), planoDoBalanco, pedido, referencialNoBalanco,
                 valores(pedido.escrituracaoId(), pedido.origemBalanco(), pedido.fim(), true),
                 valores(pedido.escrituracaoId(), pedido.origemBalanco(), pedido.inicio(), false));
         BigDecimal[] totaisDre = montarUma("DRE", tabelas.get("DRE"), planoDre, pedido, referencialDaConta, resultado(pedido), null);
@@ -94,16 +114,31 @@ public class MontagemReferencial {
     }
 
     /**
-     * Tabelas do plano para o exercício (demonstração BP/DRE -> tabela): a do ano mais recente até o exercício (ou a mais
-     * antiga, se não houver). Único ponto dessa escolha.
+     * Tabelas do plano para o exercício (demonstração BP/DRE -> tabela). Só a tabela oficial do próprio ano: a de outro
+     * exercício nunca é reaproveitada. Único ponto dessa escolha.
      */
     public Map<String, String> tabelas(String plano, int exercicio) {
         Map<String, String> escolhidas = new HashMap<>();
-        jdbc.query("""
-                SELECT demonstracao, tabela FROM tabela_referencial WHERE plano = ?
-                ORDER BY CASE WHEN ano <= ? THEN 0 ELSE 1 END, CASE WHEN ano <= ? THEN -ano ELSE ano END""",
-                rs -> { escolhidas.putIfAbsent(rs.getString(1), rs.getString(2)); }, plano, exercicio, exercicio);
+        jdbc.query("SELECT demonstracao, tabela FROM tabela_referencial WHERE plano = ? AND ano = ?",
+                rs -> { escolhidas.put(rs.getString(1), rs.getString(2)); }, plano, exercicio);
         return escolhidas;
+    }
+
+    /** Por que não há tabelas para o plano e o exercício (mensagem do alerta e do assistente da planilha). */
+    public String semTabelas(String plano, int exercicio) {
+        List<Integer> anos = anos(plano);
+        if (anos.isEmpty()) {
+            return "O plano referencial " + plano + " não é suportado (carregados: 1 - PJ em geral, Lucro Real; 2 - PJ em "
+                    + "geral, Lucro Presumido). Planos de instituições financeiras, seguradoras e entidades imunes ou isentas "
+                    + "estão fora do escopo. Só a demonstração publicada fica disponível.";
+        }
+        return "Não há tabela oficial do plano referencial " + plano + " carregada para o exercício " + exercicio
+                + " (carregadas: " + anos.getFirst() + " a " + anos.getLast() + "). Só a demonstração publicada fica "
+                + "disponível; o referencial será montado ao reprocessar quando a tabela oficial do ano for carregada.";
+    }
+
+    private List<Integer> anos(String plano) {
+        return jdbc.queryForList("SELECT DISTINCT ano FROM tabela_referencial WHERE plano = ? ORDER BY ano", Integer.class, plano);
     }
 
     /** BP: saldo por conta na data (final: saldo final do período que termina no fim; inicial: saldo inicial do primeiro). */
@@ -156,7 +191,8 @@ public class MontagemReferencial {
         List<LinhaDemonstracao> linhas = valores.keySet().stream().map(plano::get)
                 .sorted(Comparator.comparingInt(ContaRef::ordem))
                 .map(r -> new LinhaDemonstracao(r.codigo(), r.descricao(), r.nivel(), r.superior(), r.ordem(), r.sintetica(),
-                        grupo(tipo, r), valores.get(r.codigo())[0], valores.get(r.codigo())[1], null, null))
+                        grupo(tipo, r), valores.get(r.codigo())[0], valores.get(r.codigo())[1], null, null,
+                        RESULTADO_NAO_ENCERRADO.equals(r.codigo())))
                 .toList();
         long demonstracaoId = repositorio.inserirDemonstracao(pedido.escrituracaoId(), tipo, "REFERENCIAL",
                 pedido.inicio(), pedido.fim(), tabela);

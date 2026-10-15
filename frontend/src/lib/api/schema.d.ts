@@ -698,7 +698,7 @@ export interface components {
         };
         DocumentoFiscalRequestDTO: {
             /** @enum {string} */
-            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
             observacao: string;
         };
         DocumentoFiscalResponseDTO: {
@@ -710,9 +710,9 @@ export interface components {
             /** Format: int64 */
             usuarioId: number;
             /** @enum {string} */
-            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
             /** @enum {string} */
-            tipoInformado: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+            tipoInformado: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
             /** Format: date */
             periodoInicio: string;
             /** Format: date */
@@ -853,7 +853,7 @@ export interface components {
             /** @enum {string} */
             status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
             /** @enum {string} */
-            tipo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
             /** @enum {string} */
             job: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "ERRO";
             /** @enum {string} */
@@ -966,6 +966,7 @@ export interface components {
             codigoSuperior: string;
             totalizadora: boolean;
             grupo: string;
+            derivada: boolean;
             valores: {
                 [key: string]: components["schemas"]["Valor"];
             };
@@ -994,6 +995,7 @@ export interface components {
             descricao: string;
             tipo: string;
             origem: string;
+            derivada: boolean;
             /** Format: int64 */
             documentoId: number;
             arquivo: string;
@@ -1046,7 +1048,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR";
+            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -1200,7 +1202,11 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": {
+                        [key: string]: number;
+                    };
+                };
             };
         };
     };
@@ -1368,7 +1374,7 @@ export interface operations {
         parameters: {
             query: {
                 clienteId?: number;
-                tipo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "DCTF" | "DCTF_WEB" | "EFD_CONTRIBUICOES" | "ECD" | "ECF" | "EFD_ICMS_IPI" | "ICMS" | "DEMONSTRACAO_CONTABIL" | "BALANCETE" | "OUTRO";
+                tipo?: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
                 status?: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
                 pageable: components["schemas"]["Pageable"];
             };

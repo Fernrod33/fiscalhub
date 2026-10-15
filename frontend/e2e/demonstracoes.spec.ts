@@ -16,7 +16,7 @@ test('ECD sintética → processado → Demonstrações → total do Ativo → o
   await expect(page.getByRole('table', { name: 'Documentos importados' }).getByText('Processado', { exact: true })).toBeVisible();
 
   await page.getByRole('navigation', { name: 'Seções do cliente' }).getByRole('link', { name: 'Demonstrações', exact: true }).click();
-  const ativo = page.getByRole('button', { name: /Origem de ATIVO em 2024/ });
+  const ativo = page.getByRole('button', { name: /Origem de ATIVO em 2021/ });
   await expect(ativo).toHaveText('6.000,00 D');
 
   await ativo.click();

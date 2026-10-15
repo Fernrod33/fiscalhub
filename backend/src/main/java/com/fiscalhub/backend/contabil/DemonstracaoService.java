@@ -43,8 +43,9 @@ public class DemonstracaoService {
     public record Valor(long linhaId, BigDecimal valor, BigDecimal valorInicial, BigDecimal av, BigDecimal ah) {
     }
 
+    /** derivada: calculada pelo sistema (ex.: resultado do período não encerrado do balancete); a origem lista as contas. */
     public record LinhaComparativa(String codigo, String descricao, Integer nivel, String codigoSuperior, boolean totalizadora,
-                                   String grupo, Map<Integer, Valor> valores) {
+                                   String grupo, boolean derivada, Map<Integer, Valor> valores) {
     }
 
     public record Conferencia(int exercicio, String item, BigDecimal referencial, BigDecimal publicada, BigDecimal diferenca) {
@@ -61,8 +62,8 @@ public class DemonstracaoService {
                               List<SaldoOrigem> saldos) {
     }
 
-    public record Origem(long linhaId, String codigo, String descricao, String tipo, String origem, long documentoId,
-                         String arquivo, String registro, Long linha, List<ContaOrigem> contas) {
+    public record Origem(long linhaId, String codigo, String descricao, String tipo, String origem, boolean derivada,
+                         long documentoId, String arquivo, String registro, Long linha, List<ContaOrigem> contas) {
     }
 
     public record Escrituracao(long id, long documentoId, String arquivo, String origem, LocalDate dataInicio, LocalDate dataFim,
@@ -110,7 +111,7 @@ public class DemonstracaoService {
         for (int i = anos.size() - 1; i >= 0; i--) {
             for (LinhaDemonstracao l : linhasPorAno.get(anos.get(i))) {
                 mescladas.computeIfAbsent(l.codigo(), c -> new LinhaComparativa(l.codigo(), l.descricao(), l.nivel(),
-                        l.codigoSuperior(), l.totalizadora(), l.grupo(), new TreeMap<>()));
+                        l.codigoSuperior(), l.totalizadora(), l.grupo(), l.derivada(), new TreeMap<>()));
                 ordem.putIfAbsent(l.codigo(), l.ordem());
             }
         }
@@ -153,12 +154,12 @@ public class DemonstracaoService {
     private List<LinhaDemonstracao> linhas(long demonstracaoId, Map<String, Long> ids) {
         return jdbc.query("""
                 SELECT id, codigo, descricao, nivel, codigo_superior, ordem, totalizadora, grupo, valor_inicial, valor_final,
-                       registro, linha
+                       registro, linha, derivada
                 FROM linha_demonstracao WHERE demonstracao_id = ? ORDER BY ordem, id""", (rs, i) -> {
             ids.put(rs.getString(2), rs.getLong(1));
             return new LinhaDemonstracao(rs.getString(2), rs.getString(3), (Integer) rs.getObject(4), rs.getString(5),
                     rs.getInt(6), rs.getBoolean(7), rs.getString(8), rs.getBigDecimal(9), rs.getBigDecimal(10),
-                    rs.getString(11), (Long) rs.getObject(12));
+                    rs.getString(11), (Long) rs.getObject(12), rs.getBoolean(13));
         }, demonstracaoId);
     }
 
@@ -236,7 +237,7 @@ public class DemonstracaoService {
         acesso.cliente(clienteId, ua);
         Map<String, Object> l = jdbc.queryForList("""
                 SELECT l.id, l.codigo, l.descricao, d.tipo, d.origem, e.documento_id, doc.nome_original_arquivo, l.registro,
-                       l.linha, d.id AS demonstracao_id, d.data_fim, e.id AS escrituracao_id
+                       l.linha, d.id AS demonstracao_id, d.data_fim, e.id AS escrituracao_id, l.derivada
                 FROM linha_demonstracao l
                 JOIN demonstracao d ON d.id = l.demonstracao_id
                 JOIN escrituracao_contabil e ON e.id = d.escrituracao_id
@@ -249,7 +250,7 @@ public class DemonstracaoService {
                 ((java.sql.Date) l.get("data_fim")).toLocalDate())
                 : List.of();
         return new Origem(linhaId, (String) l.get("codigo"), (String) l.get("descricao"), tipo, (String) l.get("origem"),
-                (Long) l.get("documento_id"), (String) l.get("nome_original_arquivo"), (String) l.get("registro"),
+                (Boolean) l.get("derivada"), (Long) l.get("documento_id"), (String) l.get("nome_original_arquivo"), (String) l.get("registro"),
                 (Long) l.get("linha"), contas);
     }
 

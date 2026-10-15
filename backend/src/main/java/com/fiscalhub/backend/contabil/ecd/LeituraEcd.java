@@ -335,7 +335,7 @@ final class LeituraEcd {
         return new LinhaDemonstracao(r.texto("COD_AGL"), descricao(r.texto("DESCR_COD_AGL")),
                 nivel == null ? null : Integer.valueOf(nivel), r.texto("COD_AGL_SUP"),
                 numeroOrdem == null ? ordem : Integer.parseInt(numeroOrdem), "T".equals(r.texto("IND_COD_AGL")),
-                r.texto(campoGrupo), inicial, valorFinal, r.registro(), r.linha());
+                r.texto(campoGrupo), inicial, valorFinal, r.registro(), r.linha(), false);
     }
 
     private static String descricao(String texto) {

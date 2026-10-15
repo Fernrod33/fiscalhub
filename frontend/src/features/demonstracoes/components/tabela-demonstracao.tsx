@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapse } from '@/components/motion';
+import { Selo } from '@/components/selo';
 import type { Comparativo, LinhaComparativa } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
 import { cn } from '@/lib/utils';
@@ -60,6 +61,7 @@ const { anos, grade, recolhidos, alternar, sinal, mostrarAh, mostrarAv, clienteI
               </button>
             : <span className="size-5 shrink-0" aria-hidden />}
           <span className="truncate" title={`${l.codigo} · ${l.descricao}`}>{l.descricao}</span>
+          {l.derivada && <Selo tom="info">derivada</Selo>}
         </div>
         {anos.map((ano, i) => {
           const v = l.valores[ano];

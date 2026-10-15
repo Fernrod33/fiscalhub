@@ -1,5 +1,5 @@
 """
-Gera os balancetes sintéticos de src/test/resources/amostras/ (mesma empresa fictícia das ECDs, 2024, antes do
+Gera os balancetes sintéticos de src/test/resources/amostras/ (mesma empresa fictícia das ECDs, 2021, antes do
 encerramento: saldos das contas de resultado ainda abertos; a soma dos saldos finais dá zero).
 
   balancete.xlsx           cabeçalho na linha 3, valores numéricos e colunas D/C separadas
@@ -28,7 +28,7 @@ CONTAS = [  # código, descrição, saldo anterior, D/C, débitos, créditos, sa
     ('4.1', 'Receita de vendas de mercadorias', 0, 'C', 0, 8000, 8000, 'C'),
     ('4.2', 'Custo das mercadorias vendidas', 0, 'D', 3500, 0, 3500, 'D'),
 ]
-TITULO = ['Balancete de verificação - EMPRESA EXEMPLO LTDA', 'Período: 01/01/2024 a 31/12/2024']
+TITULO = ['Balancete de verificação - EMPRESA EXEMPLO LTDA', 'Período: 01/01/2021 a 31/12/2021']
 
 
 def sinal(valor, dc):
@@ -82,7 +82,7 @@ def xlsx(nome, linhas):
     # data fixa nas entradas do zip: o arquivo gerado é sempre igual (sha estável)
     with zipfile.ZipFile(SAIDA / nome, 'w', zipfile.ZIP_DEFLATED) as z:
         for caminho, xml in partes.items():
-            z.writestr(zipfile.ZipInfo(caminho, date_time=(2024, 12, 31, 0, 0, 0)), xml)
+            z.writestr(zipfile.ZipInfo(caminho, date_time=(2021, 12, 31, 0, 0, 0)), xml)
     print(SAIDA / nome)
 
 

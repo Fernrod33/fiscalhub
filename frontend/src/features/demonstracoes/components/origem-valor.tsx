@@ -39,6 +39,10 @@ export function OrigemValor({ clienteId, linhaId, valor, descricao, exercicio, d
               <Link to={`/clientes/${clienteId}/importacoes`} viewTransition className="flex items-center gap-1.5 text-primary underline-offset-4 hover:underline">
                 <FileText className="size-4 shrink-0" aria-hidden /><span className="truncate">{o.arquivo}</span>
               </Link>
+              {o.derivada && (
+                <p className="text-muted-foreground">Valor derivado: soma das contas de resultado do balancete (receitas − custos
+                  − despesas), que ainda não foram encerradas no patrimônio líquido.</p>
+              )}
               {o.origem === 'PUBLICADA'
                 ? <p className="num">Registro {o.registro} · linha {fmt.inteiro(o.linha)}</p>
                 : o.contas.length === 0
