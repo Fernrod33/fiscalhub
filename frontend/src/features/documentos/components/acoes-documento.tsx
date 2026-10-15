@@ -37,7 +37,7 @@ export function AcoesDocumento({ documento }: { documento: DocumentoAcoes }) {
 
   return (
     <div className="flex justify-end gap-0.5">
-      {documento.tipo === 'BALANCETE' && (
+      {alterar && documento.tipo === 'BALANCETE' && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" asChild>

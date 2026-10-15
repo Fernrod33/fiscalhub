@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { TIPOS_DOCUMENTO } from '@/lib/rotulos';
 import { chavesDocumentos, enviarDocumento, useDocumento, useStatusDocumento } from '../api';
 import { ClienteDoArquivo } from './cliente-do-arquivo';
 import { LinhaDoTempo } from './linha-do-tempo';
+import { MapearPlanilha } from './mapear-planilha';
 import { PainelInconsistencias } from './painel-inconsistencias';
 import { ZonaUpload } from './zona-upload';
 
@@ -117,8 +117,7 @@ function ItemFila({ item, aoRemover }: { item: Item; aoRemover: () => void }) {
         )}
       {s?.status === 'AGUARDANDO_CLIENTE' && doc && <ClienteDoArquivoAtual documentoId={doc.id} />}
       {s?.status === 'AGUARDANDO_MAPEAMENTO' && doc && (
-        <p>Planilha recebida. <Link className="font-medium text-primary underline-offset-4 hover:underline" viewTransition
-                                     to={`/importacoes/${doc.id}/planilha`}>Mapear colunas e período</Link></p>
+        <MapearPlanilha documentoId={doc.id} prefixo="Planilha recebida. " />
       )}
       {(s?.status === 'PROCESSADO_COM_ALERTAS' || s?.status === 'ERRO') && doc && (
         <div>

@@ -23,9 +23,11 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Assistente do balancete em planilha: prévia das primeiras linhas, mapeamento de colunas + período (salvo por cliente)
@@ -159,8 +161,8 @@ public class PlanilhaService {
         return new Depara(plano, String.join(", ", tabelas), contas, pendentes);
     }
 
-    /** Grava as associações do cliente (vazio = desassociar) e reprocessa o balancete com elas. */
-    public void associar(long documentoId, List<Associacao> associacoes, UsuarioAutenticado ua) {
+    /** Grava as associações do cliente (vazio = desassociar) e reprocessa o balancete; devolve quantas contas mudaram. */
+    public int associar(long documentoId, List<Associacao> associacoes, UsuarioAutenticado ua) {
         DocumentoFiscal d = planilha(documentoId, ua);
         if (d.getCliente() == null) {
             throw new BusinessRuleException("Confirme o cliente do documento antes do de-para.");
@@ -168,14 +170,21 @@ public class PlanilhaService {
         processamento.exigirParado(d.getId());
         Depara atual = depara(documentoId, ua);
         List<String> tabelas = tabelas(atual.planoReferencial(), anoDoDocumento(d));
+        Map<String, String> antes = new HashMap<>();
+        atual.contas().forEach(c -> antes.put(c.codigo(), c.codigoReferencial()));
+        int alteradas = 0;
         for (Associacao a : associacoes) {
             String ref = a.codigoReferencial() == null || a.codigoReferencial().isBlank() ? null : a.codigoReferencial().trim();
             if (ref != null && !existeAnalitica(ref, tabelas)) {
                 throw new BusinessRuleException("A conta referencial " + ref + " não existe (ou é sintética) nas tabelas " + tabelas + ".");
             }
             planilhas.salvarDepara(d.getCliente().getId(), a.codigoConta(), ref);
+            if (!Objects.equals(antes.get(a.codigoConta()), ref)) {
+                alteradas++;
+            }
         }
         processamento.enfileirar(d);
+        return alteradas;
     }
 
     /** Busca de contas referenciais analíticas (por código ou descrição) para o de-para. */

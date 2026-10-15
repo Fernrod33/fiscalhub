@@ -63,6 +63,9 @@ public class AuditoriaAspect {
             if (args.get("clienteId") instanceof Long clienteId) {
                 detalhes.put("clienteId", clienteId);
             }
+            if (corpo(resultado) instanceof Map<?, ?> resumo) { // resumo devolvido pela operação (ex.: contas alteradas)
+                resumo.forEach((k, v) -> detalhes.put(String.valueOf(k), v));
+            }
             identificarQuem(evento, resultado, args, detalhes);
             evento.setDetalhes(detalhes);
             repository.save(evento);

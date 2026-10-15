@@ -16,6 +16,7 @@ import { useDocumentosDoEscritorio, type FiltrosDocumentos } from '../api';
 import { AcoesDocumento } from '../components/acoes-documento';
 import { CentralImportacao } from '../components/central-importacao';
 import { ClienteDoArquivo } from '../components/cliente-do-arquivo';
+import { MapearPlanilha } from '../components/mapear-planilha';
 import { StatusDocumento } from '../components/status-documento';
 import { Cartao, CartaoTitulo } from '@/components/cartao';
 
@@ -47,8 +48,7 @@ function AguardandoVoce() {
             <div className="flex items-center gap-2"><TextoTruncado texto={d.nomeOriginalArquivo} /><StatusDocumento status={d.status} /></div>
             {d.status === 'AGUARDANDO_CLIENTE'
               ? <ClienteDoArquivo documento={d} />
-              : <p><Link viewTransition to={`/importacoes/${d.id}/planilha`} className="font-medium text-primary underline-offset-4 hover:underline">
-                  Mapear colunas e período</Link></p>}
+              : <MapearPlanilha documentoId={d.id} />}
           </li>
         ))}
       </ul>

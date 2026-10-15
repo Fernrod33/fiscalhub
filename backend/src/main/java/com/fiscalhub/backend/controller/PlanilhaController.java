@@ -1,6 +1,9 @@
 package com.fiscalhub.backend.controller;
 
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
 import com.fiscalhub.backend.contabil.planilha.PlanilhaService;
+import com.fiscalhub.backend.security.ConsultorOuAdmin;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -8,8 +11,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
-/** Assistente do balancete em planilha (colunas, período e de-para) e busca no plano referencial. */
+/**
+ * Assistente do balancete em planilha (colunas, período e de-para) e busca no plano referencial. Mapear e associar
+ * reprocessam o documento e mudam os números: ADMIN e CONSULTOR, com auditoria. O ASSISTENTE importa e consulta.
+ */
 @RestController
 public class PlanilhaController {
 
@@ -25,6 +32,8 @@ public class PlanilhaController {
         return service.previa(documentoId, aba, ua);
     }
 
+    @ConsultorOuAdmin
+    @Auditavel(value = AcaoAuditoria.PLANILHA_MAPEAR_COLUNAS, idParam = "documentoId")
     @PostMapping("/api/documentos/{documentoId}/planilha/mapeamento")
     public ResponseEntity<Void> mapear(@PathVariable long documentoId, @Valid @RequestBody PlanilhaService.PedidoMapeamento pedido,
                                        @AuthenticationPrincipal UsuarioAutenticado ua) {
@@ -37,11 +46,14 @@ public class PlanilhaController {
         return service.depara(documentoId, ua);
     }
 
+    /** Devolve {"contasAlteradas": n}, que também vai para os detalhes da auditoria. */
+    @ConsultorOuAdmin
+    @Auditavel(value = AcaoAuditoria.PLANILHA_SALVAR_DEPARA, idParam = "documentoId")
     @PutMapping("/api/documentos/{documentoId}/planilha/depara")
-    public ResponseEntity<Void> associar(@PathVariable long documentoId, @Valid @RequestBody List<PlanilhaService.Associacao> associacoes,
-                                         @AuthenticationPrincipal UsuarioAutenticado ua) {
-        service.associar(documentoId, associacoes, ua);
-        return ResponseEntity.accepted().build();
+    public ResponseEntity<Map<String, Integer>> associar(@PathVariable long documentoId,
+                                                         @Valid @RequestBody List<PlanilhaService.Associacao> associacoes,
+                                                         @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.accepted().body(Map.of("contasAlteradas", service.associar(documentoId, associacoes, ua)));
     }
 
     /** Contas referenciais analíticas do plano (1 Lucro Real, 2 Lucro Presumido) vigente no exercício. */

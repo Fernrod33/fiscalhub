@@ -43,14 +43,15 @@ class ImportacaoPlanilhaTest {
     @Autowired JdbcTemplate jdbc;
 
     private RequestPostProcessor sessao;
+    private Usuario consultor;
     private Cliente cliente;
 
     @BeforeEach
     void setUp() {
         String sufixo = UUID.randomUUID().toString();
-        Usuario u = dados.usuario(dados.escritorio("Planilha " + sufixo), "plan-" + sufixo + "@test.com", Papel.CONSULTOR);
-        sessao = dados.sessao(u);
-        cliente = dados.cliente(u, "11222333000181");
+        consultor = dados.usuario(dados.escritorio("Planilha " + sufixo), "plan-" + sufixo + "@test.com", Papel.CONSULTOR);
+        sessao = dados.sessao(consultor);
+        cliente = dados.cliente(consultor, "11222333000181");
     }
 
     @Test
@@ -86,8 +87,13 @@ class ImportacaoPlanilhaTest {
                          {"codigoConta":"2.1","codigoReferencial":"2.01.01.03.01"},{"codigoConta":"3.1","codigoReferencial":"2.03.01.01.01"},
                          {"codigoConta":"3.2","codigoReferencial":"2.03.04.01.01"},{"codigoConta":"4.1","codigoReferencial":"3.01.01.01.01.05"},
                          {"codigoConta":"4.2","codigoReferencial":"3.01.01.03.01.02"}]"""))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.contasAlteradas").value(7));
         aguardarStatus(id, DocumentoStatus.PROCESSADO); // o de-para reprocessa com as associações salvas
+        assertThat(jdbc.queryForList("""
+                SELECT acao || ':' || recurso_id || ':' || coalesce(detalhes ->> 'contasAlteradas', '-') FROM auditoria_evento
+                WHERE recurso_id = ? AND acao LIKE 'PLANILHA%' ORDER BY id""", String.class, id))
+                .containsExactly("PLANILHA_MAPEAR_COLUNAS:" + id + ":-", "PLANILHA_SALVAR_DEPARA:" + id + ":7");
 
         // mesma montagem referencial da ECD
         mvc.perform(get("/api/clientes/{c}/demonstracoes", cliente.getId()).param("tipo", "DRE").with(sessao))
@@ -95,6 +101,23 @@ class ImportacaoPlanilhaTest {
                 .andExpect(jsonPath("$.linhas[0].valores['2024'].valor").value(-4500.00));
         mvc.perform(get("/api/clientes/{c}/demonstracoes", cliente.getId()).param("tipo", "BP").with(sessao))
                 .andExpect(jsonPath("$.linhas[0].valores['2024'].valor").value(6000.00));
+    }
+
+    @Test
+    void assistenteImportaEConsultaMasNaoMapeiaNemAssocia() throws Exception {
+        long id = enviar("balancete.xlsx", null);
+        aguardarStatus(id, DocumentoStatus.AGUARDANDO_MAPEAMENTO);
+        RequestPostProcessor assistente = dados.sessao(dados.usuario(consultor.getEscritorio(),
+                "assist-" + UUID.randomUUID() + "@test.com", Papel.ASSISTENTE));
+
+        mvc.perform(get("/api/documentos/{d}/planilha", id).with(assistente)).andExpect(status().isOk());
+        mvc.perform(post("/api/documentos/{d}/planilha/mapeamento", id).with(assistente).contentType(APPLICATION_JSON).content("""
+                        {"linhaCabecalho":3,"colunas":%s,"periodoInicio":"2021-01-01","periodoFim":"2021-12-31","planoReferencial":"1"}"""
+                        .formatted(COLUNAS_XLSX)))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/documentos/{d}/planilha/depara", id).with(assistente).contentType(APPLICATION_JSON).content("[]"))
+                .andExpect(status().isForbidden());
+        assertThat(documentoRepository.findById(id).orElseThrow().getStatus()).isEqualTo(DocumentoStatus.AGUARDANDO_MAPEAMENTO);
     }
 
     @Test
