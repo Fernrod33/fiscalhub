@@ -22,7 +22,7 @@ const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType
   'visao-geral': () => padrao(import('@/features/clientes/pages/visao-geral-page')),
   importacoes: () => padrao(import('@/features/documentos/pages/importacoes-cliente-page')),
   demonstracoes: () => padrao(import('@/features/demonstracoes/pages/demonstracoes-page')),
-  tributos: () => padrao(import('@/features/debitos/pages/tributos-page')),
+  tributos: () => padrao(import('@/features/tributos/pages/tributos-page')),
   capacidade: () => futuras().then((m) => m.CapacidadePage),
   simulacoes: () => padrao(import('@/features/simulacoes/pages/simulacoes-page')),
   'pontos-de-atencao': () => futuras().then((m) => m.PontosAtencaoPage),

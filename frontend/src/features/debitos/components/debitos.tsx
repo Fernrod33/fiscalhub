@@ -3,7 +3,6 @@ import { Landmark } from 'lucide-react';
 import { Cartao, CartaoTitulo } from '@/components/cartao';
 import { DataTable, type ColumnDef } from '@/components/data-table';
 import { EstadoVazio } from '@/components/estado-vazio';
-import { Reveal } from '@/components/motion';
 import type { Debito } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
 import { http } from '@/lib/http';
@@ -29,17 +28,15 @@ const colunas: ColumnDef<Debito>[] = [
   { accessorKey: 'referenciaOrigem', header: 'Origem' },
 ];
 
-/** Débitos do cliente (somente leitura: vêm da importação de arquivos). */
-export default function TributosPage() {
+/** Débitos em aberto do cliente (somente leitura: vêm da importação do Relatório de Situação Fiscal, Fase 2b). */
+export function Debitos() {
   const debitos = useDebitos(useClienteId());
   return (
-    <Reveal>
       <Cartao aria-labelledby="titulo-debitos">
-        <CartaoTitulo id="titulo-debitos">Débitos</CartaoTitulo>
+        <CartaoTitulo id="titulo-debitos">Débitos em aberto</CartaoTitulo>
         <DataTable rotulo="Débitos do cliente" colunas={colunas} dados={debitos.data} carregando={debitos.isPending} filtro="Filtrar débitos"
                    vazio={<EstadoVazio icone={Landmark} titulo="Nenhum débito"
                                        descricao="Os débitos aparecem quando o Relatório de Situação Fiscal for importado." />} />
       </Cartao>
-    </Reveal>
   );
 }

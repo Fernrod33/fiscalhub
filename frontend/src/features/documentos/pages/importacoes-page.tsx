@@ -99,7 +99,7 @@ export default function ImportacoesPage() {
       </div>
       <DataTable rotulo="Importações do escritório" colunas={colunas} dados={documentos.data?.content} carregando={documentos.isPending}
                  tamanhoPagina={filtros.tamanho}
-                 vazio={<EstadoVazio icone={Upload} titulo="Nenhuma importação" descricao="Envie a ECD ou o balancete acima." />} />
+                 vazio={<EstadoVazio icone={Upload} titulo="Nenhuma importação" descricao="Envie a ECD, a ECF, as EFD ou o balancete acima." />} />
       <Paginacao meta={documentos.data?.page} aoMudar={(pagina) => setFiltros((f) => ({ ...f, pagina }))} rotulo="Páginas das importações" unidade="importações" />
     </Reveal>
   );

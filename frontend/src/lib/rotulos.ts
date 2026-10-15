@@ -92,3 +92,30 @@ export const SITUACAO_DEBITO: Record<Debito['situacao'], string> = {
 };
 
 export const ORGAO_CREDOR: Record<Debito['orgaoCredor'], string> = { RFB: 'RFB', PGFN: 'PGFN', SEFA_PR: 'SEFA-PR', PGE_PR: 'PGE-PR' };
+
+/** Tributos apurados (TipoTributo), na ordem da matriz dentro de cada esfera. */
+export const TRIBUTOS: Record<string, string> = {
+  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI',
+  ICMS: 'ICMS', ICMS_ST: 'ICMS-ST', ICMS_DIFAL: 'ICMS DIFAL', ICMS_FCP: 'FCP',
+};
+
+export const ESFERAS: Record<string, string> = { FEDERAL: 'Federais', ESTADUAL: 'Estaduais' };
+
+export const REGIMES: Record<string, string> = {
+  LUCRO_REAL: 'Lucro Real', LUCRO_PRESUMIDO: 'Lucro Presumido', LUCRO_ARBITRADO: 'Lucro Arbitrado',
+  NAO_CUMULATIVO: 'Não cumulativo', CUMULATIVO: 'Cumulativo',
+};
+
+/** Saldos que passam de um período para outro (saldo_fiscal.tipo). */
+export const SALDOS_FISCAIS: Record<string, string> = {
+  PREJUIZO_FISCAL: 'Prejuízo fiscal', BASE_NEGATIVA_CSLL: 'Base negativa da CSLL',
+  CREDITO_PIS: 'Créditos de PIS', CREDITO_COFINS: 'Créditos de COFINS',
+  SALDO_CREDOR_ICMS: 'Saldo credor de ICMS', SALDO_CREDOR_ICMS_ST: 'Saldo credor de ICMS-ST',
+  SALDO_CREDOR_DIFAL: 'Saldo credor de DIFAL', SALDO_CREDOR_FCP: 'Saldo credor de FCP', SALDO_CREDOR_IPI: 'Saldo credor de IPI',
+};
+
+/** Campos de valor de uma apuração (chaves de Apuracao.origem). */
+export const CAMPOS_APURACAO: [campo: 'baseCalculo' | 'valorApurado' | 'deducoes' | 'valorARecolher' | 'saldoCredor', rotulo: string][] = [
+  ['baseCalculo', 'Base de cálculo'], ['valorApurado', 'Apurado'], ['deducoes', 'Deduções e créditos'],
+  ['valorARecolher', 'A recolher'], ['saldoCredor', 'Saldo credor'],
+];

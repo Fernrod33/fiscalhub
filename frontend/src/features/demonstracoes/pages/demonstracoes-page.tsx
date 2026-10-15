@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, BookOpen } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alternador } from '@/components/alternador';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Cartao } from '@/components/cartao';
 import { EstadoVazio } from '@/components/estado-vazio';
@@ -11,23 +12,6 @@ import { cn } from '@/lib/utils';
 import { useClienteId } from '@/features/clientes/rota';
 import { useComparativo, useEscrituracoes, type OrigemDemonstracao, type TipoDemonstracao } from '../api';
 import { TabelaDemonstracao } from '../components/tabela-demonstracao';
-
-/** Grupo de botões com uma escolha (radiogroup acessível). */
-function Alternador<T extends string>({ rotulo, valor, opcoes, aoMudar }: {
-  rotulo: string; valor: T; opcoes: [T, string][]; aoMudar: (v: T) => void;
-}) {
-  return (
-    <div role="radiogroup" aria-label={rotulo} className="inline-flex rounded-md border bg-surface p-0.5">
-      {opcoes.map(([v, r]) => (
-        <button key={v} type="button" role="radio" aria-checked={valor === v} onClick={() => aoMudar(v)}
-                className={cn('rounded-sm px-3 py-1 text-sm transition-colors duration-(--dur-fast)',
-                  valor === v ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}>
-          {r}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 /** Aba Demonstrações: Balanço e DRE (referencial ou publicada), exercícios lado a lado, AH/AV e origem de cada valor. */
 export default function DemonstracoesPage() {

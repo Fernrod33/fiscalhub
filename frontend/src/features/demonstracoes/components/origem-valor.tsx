@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ValorOrigem } from '@/components/valor-origem';
 import * as fmt from '@/lib/formatadores';
-import { cn } from '@/lib/utils';
 import { useOrigem } from '../api';
 
 /**
@@ -14,20 +12,18 @@ import { useOrigem } from '../api';
 export function OrigemValor({ clienteId, linhaId, valor, descricao, exercicio, destaque }: {
   clienteId: number; linhaId: number; valor: number | null | undefined; descricao: string; exercicio: number; destaque?: boolean;
 }) {
-  const [aberto, setAberto] = useState(false);
+  return (
+    <ValorOrigem rotulo={`Origem de ${descricao} em ${exercicio}: ${fmt.saldo(valor)}`} texto={fmt.saldo(valor)} destaque={destaque}>
+      {(aberto) => <Conteudo clienteId={clienteId} linhaId={linhaId} exercicio={exercicio} aberto={aberto} />}
+    </ValorOrigem>
+  );
+}
+
+function Conteudo({ clienteId, linhaId, exercicio, aberto }: { clienteId: number; linhaId: number; exercicio: number; aberto: boolean }) {
   const origem = useOrigem(clienteId, linhaId, aberto);
   const o = origem.data;
-
   return (
-    <Popover open={aberto} onOpenChange={setAberto}>
-      <PopoverTrigger asChild>
-        <button type="button" aria-label={`Origem de ${descricao} em ${exercicio}: ${fmt.saldo(valor)}`}
-                className={cn('num w-full whitespace-nowrap rounded-sm px-1 text-right underline-offset-4 hover:bg-accent hover:underline focus-visible:outline-2',
-                  destaque && 'font-semibold')}>
-          {fmt.saldo(valor)}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-96 max-w-[calc(100vw-2rem)]" align="end">
+    <>
         {origem.isPending || !o
           ? <div className="grid gap-2"><Skeleton className="h-4 w-48" /><Skeleton className="h-16" /></div>
           : (
@@ -68,7 +64,6 @@ export function OrigemValor({ clienteId, linhaId, valor, descricao, exercicio, d
                   )}
             </div>
           )}
-      </PopoverContent>
-    </Popover>
+    </>
   );
 }

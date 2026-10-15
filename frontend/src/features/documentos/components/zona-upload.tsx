@@ -47,7 +47,7 @@ export function ZonaUpload({ aoEscolher }: { aoEscolher: (arquivos: File[]) => v
         <Upload aria-hidden /> Escolher arquivos
       </Button>
       <p className="text-xs text-muted-foreground">
-        ECD (SPED Contábil), balancete em planilha, PDF · {UPLOAD.extensoes.join(', ')} · até {fmt.tamanhoArquivo(UPLOAD.limiteBytes)} cada
+        ECD, ECF, EFD-Contribuições, EFD ICMS/IPI, balancete em planilha, PDF · {UPLOAD.extensoes.join(', ')} · até {fmt.tamanhoArquivo(UPLOAD.limiteBytes)} cada
       </p>
       <input ref={entrada} type="file" multiple className="sr-only" tabIndex={-1} aria-hidden accept={UPLOAD.extensoes.join(',')}
              onChange={(e) => escolher(e.target.files)} />

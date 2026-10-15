@@ -50,6 +50,11 @@ test('central de importação, demonstrações e assistente da planilha sem viol
   await expect(page.getByRole('table', { name: 'Balanço patrimonial' })).toBeVisible();
   await verificar(page, 'demonstrações');
 
+  await page.getByRole('navigation', { name: 'Seções do cliente' }).getByRole('link', { name: 'Tributos', exact: true }).click();
+  await expect(page).toHaveURL(/\/tributos$/);
+  await expect(page.getByRole('heading', { name: 'Apurado a recolher por competência' })).toBeVisible();
+  await verificar(page, 'tributos (sem apurações)');
+
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: 'Importações' }).click();
   await expect(page).toHaveURL(/\/importacoes$/);
   await verificar(page, 'central do escritório');

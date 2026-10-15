@@ -452,6 +452,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clientes/{clienteId}/saldos-fiscais": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["saldos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/escrituracoes": {
         parameters: {
             query?: never;
@@ -508,6 +524,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["listar_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/apuracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["apuracoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/apuracoes/{apuracaoId}/detalhe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detalhe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/apuracoes/alertas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["alertas"];
         put?: never;
         post?: never;
         delete?: never;
@@ -666,7 +730,7 @@ export interface components {
             /** @enum {string} */
             modalidade: "ORDINARIO_RFB" | "PERT_RFB" | "REFIS" | "ORDINARIO_SEFA_PR" | "ESPECIAL_SEFA_PR";
             /** @enum {string} */
-            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
             clienteRazaoSocial: string;
             clienteCnpj: string;
             valorOriginal: number;
@@ -912,6 +976,26 @@ export interface components {
             mensagem: string;
         };
         StreamingResponseBody: unknown;
+        SaldoFiscal: {
+            /** Format: int64 */
+            id: number;
+            tipo: string;
+            uf: string;
+            codigo: string;
+            descricao: string;
+            /** Format: date */
+            dataInicio: string;
+            /** Format: date */
+            dataFim: string;
+            saldoInicial: number;
+            saldoFinal: number;
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+        };
         Escrituracao: {
             /** Format: int64 */
             id: number;
@@ -1024,7 +1108,7 @@ export interface components {
             /** @enum {string} */
             orgaoCredor: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
             /** @enum {string} */
-            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
             /** Format: date */
             competencia: string;
             /** Format: date */
@@ -1035,6 +1119,67 @@ export interface components {
             /** @enum {string} */
             situacao: "EM_ABERTO" | "INSCRITO_DIVIDA_ATIVA" | "PARCELADO" | "SUSPENSO";
             numeroInscricao: string;
+        };
+        Apuracao: {
+            /** Format: int64 */
+            id: number;
+            tributo: string;
+            esfera: string;
+            uf: string;
+            /** Format: date */
+            dataInicio: string;
+            /** Format: date */
+            dataFim: string;
+            periodicidade: string;
+            regime: string;
+            descricao: string;
+            baseCalculo: number;
+            valorApurado: number;
+            deducoes: number;
+            valorARecolher: number;
+            saldoCredor: number;
+            origem: {
+                [key: string]: components["schemas"]["Origem"];
+            };
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            escrituracao: string;
+        };
+        Detalhamento: {
+            apuracao: components["schemas"]["Apuracao"];
+            linhas: components["schemas"]["Detalhe"][];
+            obrigacoes: components["schemas"]["Obrigacao"][];
+        };
+        Detalhe: {
+            grupo: string;
+            codigo: string;
+            descricao: string;
+            valor: number;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+        };
+        Obrigacao: {
+            codigoObrigacao: string;
+            codigoReceita: string;
+            /** Format: date */
+            vencimento: string;
+            valor: number;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+        };
+        Alerta: {
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            severidade: string;
+            regra: string;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            mensagem: string;
         };
         CsrfToken: {
             parameterName: string;
@@ -1969,6 +2114,28 @@ export interface operations {
             };
         };
     };
+    saldos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SaldoFiscal"][];
+                };
+            };
+        };
+    };
     escrituracoes: {
         parameters: {
             query?: never;
@@ -2058,6 +2225,77 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DebitoResponseDTO"][];
+                };
+            };
+        };
+    };
+    apuracoes: {
+        parameters: {
+            query?: {
+                tributo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+                de?: string;
+                ate?: string;
+            };
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Apuracao"][];
+                };
+            };
+        };
+    };
+    detalhe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                apuracaoId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Detalhamento"];
+                };
+            };
+        };
+    };
+    alertas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Alerta"][];
                 };
             };
         };
