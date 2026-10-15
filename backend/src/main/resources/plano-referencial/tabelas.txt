@@ -3,7 +3,8 @@
 #   pacote "SpedContabil - Pacote de Planos Referenciais <ano>" -> tabela -> "Baixar tabela" (baixadas em 2026-10-14).
 # Planos (0000.COD_PLAN_REF): 1 = PJ em Geral - Lucro Real (L100_A balanço, L300_A resultado);
 #                            2 = PJ em Geral - Lucro Presumido (P100 balanço, P150 resultado).
-# A tabela de 2021 vale para os anos seguintes enquanto o portal não publicar outra.
+# Vale só a tabela do próprio exercício. O portal não publicou pacotes depois de 2021 (consultado em 2026-10-15,
+#   SpedContabil e SpedEcf): ECD de 2022 em diante gera alerta e fica só com a demonstração publicada.
 # Para atualizar: scripts/sped/baixar_tabelas_referenciais.py e uma linha nova aqui. A importação (reexecutável)
 # compara o SHA-256 e só recarrega a tabela que mudou.
 # tabela|ano|plano|demonstracao|id do pacote|id da tabela|arquivo baixado|sha256

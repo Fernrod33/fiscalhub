@@ -24,10 +24,12 @@ Variáveis (opcionais, em `.env.local`):
 src/
   app/          rotas (data router, código dividido por rota), guardas, providers, tema, telas de erro
   features/     uma pasta por domínio: auth, clientes, documentos (central de importação),
-                planilha (assistente do balancete), demonstracoes, debitos, simulacoes,
+                planilha (assistente do balancete), demonstracoes, tributos (apurado: matriz,
+                demonstração do lucro, saldos fiscais), debitos, simulacoes,
                 usuarios, auditoria, painel — cada uma com api.ts (TanStack Query),
                 components/ e pages/
-  components/   compartilhados: DataTable, Cartao, EstadoVazio, TextoTruncado, Campo, Confirmar
+  components/   compartilhados: DataTable, Cartao, EstadoVazio, TextoTruncado, Campo, Confirmar, Alternador,
+                ValorOrigem (número que abre a origem: arquivo, registro e linha)
     layout/     AppShell, menu lateral, cabeçalho, trilha, paleta de comandos (Ctrl+K)
     motion/     componentes de movimento (abaixo)
     ui/         shadcn/ui ajustado aos tokens — não editar sem necessidade
@@ -43,7 +45,15 @@ Regras que valem para todo o código:
 - A sessão é lida de `GET /api/usuarios/me` antes do primeiro render (`features/auth/sessao.ts`).
 - Valores contábeis seguem a convenção do backend (devedor +, credor −) e aparecem por `fmt.saldo`: valor absoluto com D/C. Nenhuma tela pede valor fiscal digitado.
 - Números, datas, CNPJ e competência sempre por `lib/formatadores.ts`.
-- Permissão na tela: `usePermissoes()` (`alterar`, `admin`). O backend é a autoridade; a tela só esconde o que daria 403.
+- Permissão na tela: `usePermissoes()` (`alterar`, `admin`). O backend é a autoridade; a tela só esconde o que daria 403 (ex.: mapear planilha e de-para, só ADMIN e CONSULTOR).
+- Todo número de origem fiscal ou contábil abre a origem pelo `ValorOrigem` (arquivo, registro e linha).
+
+## Aba Tributos
+
+- **Matriz** (`features/tributos/components/matriz-tributos.tsx`): tributos por esfera (estaduais por UF) × competências (mensal, trimestral ou anual, pela data final do período); a célula soma o valor a recolher das apurações dela e abre a gaveta de detalhe (base, apurado, deduções e créditos, a recolher, origem, linhas do cálculo, obrigações). As colunas de cada competência são `Metrica`s (`features/tributos/matriz.ts`): para o declarado, o pago e a diferença da Fase 2b, basta passar mais métricas.
+- **IRPJ e CSLL**: por período de apuração (ajuste anual ou trimestre), regime e demonstração em cascata (lucro, adições, exclusões, compensação, base presumida, cálculo).
+- **Saldos fiscais**: cards do saldo mais recente de cada tipo e a evolução por período.
+- **Alertas de conferência**: as inconsistências das escriturações fiscais e a conferência ECD × ECF.
 
 ## Design system
 
@@ -83,10 +93,12 @@ Não edite `schema.d.ts`; os aliases usados no código ficam em `src/lib/api/tip
 ```bash
 npm test                  # Vitest (jsdom): formatadores, http (ProblemDetail, CSRF, upload, 202),
                           # DataTable, useMovimentoReduzido, ClienteForm, paleta de comandos,
-                          # tabela de demonstração (AH/AV, recolher, origem), assistente da planilha
+                          # tabela de demonstração (AH/AV, recolher, origem), assistente da planilha,
+                          # aba Tributos (matriz e periodicidade, detalhe da célula, lucro real, estados vazios)
 npx playwright install chromium   # uma vez
 npx playwright test       # e2e: fumaça, ECD → Demonstrações → origem do valor,
+                          # ECD + ECF + EFD → Tributos → célula → origem,
                           # acessibilidade (axe, WCAG A/AA, dois temas) nas telas principais
 ```
 
-O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo. As ECDs e planilhas de teste são as amostras sintéticas do backend (`backend/src/test/resources/amostras`).
+O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo. Os arquivos de teste (ECD, ECF, EFD, planilhas) são as amostras sintéticas do backend (`backend/src/test/resources/amostras`).

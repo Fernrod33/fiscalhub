@@ -28,7 +28,7 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
 |---|---|
 | `ADMIN` | tudo, inclusive gerenciar os usuários do escritório e consultar a auditoria |
 | `CONSULTOR` | tudo o que envolve clientes (cadastrar, alterar, excluir, simular), sem gerenciar usuários |
-| `ASSISTENTE` | ler e importar arquivos; não altera nem exclui nada e não gerencia usuários |
+| `ASSISTENTE` | ler e importar arquivos; não altera nem exclui nada, não mapeia planilha nem salva de-para (reprocessam e mudam números) e não gerencia usuários |
 
 - **Cliente** pertence ao escritório (qualquer membro o enxerga); quem cadastrou fica em `criado_por`. CNPJ é único **por escritório**.
 - Documentos, débitos e simulações herdam o escopo pelo cliente. Recurso de outro escritório responde **404**; papel sem permissão responde **403**.
@@ -94,6 +94,9 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V13__plano_referencial.sql` | tabelas oficiais do plano referencial (carregadas pela `ImportacaoPlanoReferencial`) |
 | `V14__balancete_planilha.sql` | mapeamento de colunas por cliente e de-para referencial |
 | `V15__remove_checks_de_enum_do_ddl_auto.sql` | remove os `CHECK` de enum que o antigo `ddl-auto` criou (recusavam valores novos) |
+| `V16__remove_campos_legados_do_documento.sql` | remove `esfera`, `juridicao`, `retificacao` e `documento_fiscal_tributos`; tipos com nome de tributo viram `OUTRO`, `DCTF_WEB` vira `DCTFWEB` |
+| `V17__linha_demonstracao_derivada.sql` | `linha_demonstracao.derivada` (linha calculada pelo sistema, ex.: resultado do período não encerrado) |
+| `V18__apuracao_tributos.sql` | modelo único de apuração: `apuracao_tributo`, `detalhe_apuracao`, `obrigacao_recolher`, `saldo_fiscal`; CNPJ do estabelecimento na escrituração (preenchido com o do cliente nas existentes) |
 
 **Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
 
@@ -114,9 +117,13 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 | Conteúdo | Tipo | Leitura |
 |---|---|---|
 | primeira linha `\|0000\|LECD\|` | `ECD` | `ProcessadorEcd` |
+| `\|0000\|LECF\|` | `ECF` | `ProcessadorFiscal` (`LeituraEcf`) |
+| `\|0000\|COD_VER\|` com as datas nos campos 6 e 7 (`TIPO_ESCRIT\|IND_SIT_ESP\|NUM_REC_ANTERIOR\|DT_INI\|DT_FIN`) | `EFD_CONTRIBUICOES` | `ProcessadorFiscal` (`LeituraEfdContribuicoes`) |
+| `\|0000\|COD_VER\|` com as datas nos campos 4 e 5 (`COD_FIN\|DT_INI\|DT_FIN`) | `EFD_ICMS_IPI` | `ProcessadorFiscal` (`LeituraEfdIcmsIpi`) |
 | zip OOXML com extensão `.xlsx`, ou `.csv` | `BALANCETE` | `ProcessadorPlanilha` |
-| `\|0000\|LECF\|` | `ECF` | guardado, com alerta (Fase 2) |
 | PDF, SPED não reconhecido, outro | `OUTRO` | guardado, com alerta (`ProcessadorSemLeitura`) |
+
+Reservados para a Fase 2b (ainda sem detecção): `RELATORIO_SITUACAO_FISCAL`, `EXTRATO_PGFN`, `DCTF`, `DCTFWEB`, `COMPROVANTE_ARRECADACAO`, `EXTRATO_DIVIDA_ATIVA_PR`.
 
 **Pipeline** (`importacao/ProcessamentoDocumentoService`)
 - Um registro em `job_processamento` é despachado depois do commit ao pool do Spring Boot. Na subida, jobs presos voltam para a fila.
@@ -125,11 +132,14 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 - **Uma transação por documento**: erro fatal (`FalhaImportacao`) desfaz tudo o que o processador gravou e marca `ERRO`. As inconsistências (`ERRO`, `ALERTA`, `INFO`, com registro, linha e código da regra; até 1.000 por documento) são gravadas no fim, em `inconsistencia_importacao`.
 - **Reprocessar** (`POST /api/documentos/{id}/reprocessar`, ADMIN e CONSULTOR) roda de novo a partir do arquivo no storage; o processador apaga o que a execução anterior gerou.
 
-**Como adicionar um processador** (ECF e EFD na Fase 2)
-1. Acrescente a assinatura do conteúdo em `DetectorTipoDocumento.ASSINATURAS_SPED` (ou a regra do formato).
-2. Implemente `ProcessadorDocumento` como `@Component`: `suporta(tipo)` e `processar(documento, contexto)`. Pelo `ContextoProcessamento`: `abrir()` o arquivo, informar `etapa(...)` e `lidos(bytes)`, `registrar(...)` inconsistências e `cliente(cnpj, nome)` quando o arquivo identificar a empresa. Lance `FalhaImportacao` para erro fatal e `AguardandoUsuario` para decisão pendente.
-3. SPED: leia com `sped/LeitorSped` (genérico) e um leiaute por versão em `resources/sped/` (gerado do manual oficial, como o da ECD).
-4. Apague no começo o que um processamento anterior do mesmo documento gerou.
+**Como adicionar um tipo SPED novo**
+1. Baixe o manual oficial (Word ou PDF) no portal do SPED e gere o leiaute: acrescente o tipo, os registros e a fonte em `scripts/sped/gerar_layout_sped.py` e rode-o (`resources/sped/<tipo>-leiautes.properties`). Nenhum índice de campo no código.
+2. Ensine o `DetectorTipoDocumento` a reconhecer o `0000` (assinatura em `ASSINATURAS_SPED` ou regra de estrutura, como a das EFD) e acrescente o valor em `DocumentoTipo`.
+3. Escreva a leitura estendendo `sped/LeituraSped`: declare os registros de interesse (os demais são pulados sem virar campos e entram na contagem do 9900), diga onde está a versão (`versao`), leia o 0000 (`abertura` → `abrirEscrituracao(cnpj, nome, início, fim, substituta, plano)`), trate os registros (`tratar`) e, se precisar, `validar` e `gravar`. A base já faz o progresso, a contagem 9900/9999, o conteúdo após o 9999, o cliente pelo CNPJ (ou pela raiz, para filial), a escrituração e a retificação.
+4. Grave no modelo existente: apurações em `RepositorioApuracao` (com a origem de cada valor), dados contábeis em `RepositorioContabil`. Ligue a leitura num `ProcessadorDocumento` (`ProcessadorFiscal` para escriturações fiscais).
+5. Gere amostras sintéticas pelo leiaute (`scripts/sped/gerar_amostras_fiscais.py`) e cubra o tipo no teste de integração.
+
+Tipo que não é SPED: implemente `ProcessadorDocumento` como `@Component` (`suporta`, `processar`) e use o `ContextoProcessamento` (`abrir()`, `etapa`, `lidos`, `registrar`, `cliente`, `clienteObrigatorio`). Erro fatal: `FalhaImportacao`; decisão pendente: `AguardandoUsuario`. Apague no começo o que um processamento anterior do mesmo documento gerou (`Escrituracoes.apagarDoDocumento`).
 
 **Convenção de sinal (única, em banco, API e telas)**: devedor positivo, credor negativo (`sped/Saldos`). Ativo e despesas costumam ser positivos; passivo, PL e receitas, negativos. As telas mostram o valor absoluto com o indicador D/C.
 
@@ -137,7 +147,7 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 
 **Leiautes cobertos** (`I010.COD_VER_LC`): `7.00` (ano-calendário 2018), `8.00` (2019) e `9.00` (2020 em diante). Outra versão vira erro claro ("leiaute não coberto").
 
-**Fonte dos campos**: `src/main/resources/sped/ecd-leiautes.properties`, gerado por `scripts/sped/gerar_layout_ecd.py` a partir dos *Manuais de Orientação do Leiaute da ECD* em Word, publicados em http://sped.rfb.gov.br/pasta/show/1569 (leiaute 9, atualização de maio/2026, `arquivo/download/7989`; leiaute 8, `4217`; leiaute 7, `2855`). Nenhum índice de campo está espalhado pelo código. Diferenças relevantes entre as versões: no leiaute 7 o `0000` tem 20 campos (sem `COD_PLAN_REF`), o `I051` traz o plano no campo 2 e o `J150` tem um valor só.
+**Fonte dos campos**: `src/main/resources/sped/ecd-leiautes.properties`, gerado por `scripts/sped/gerar_layout_sped.py ecd` a partir dos *Manuais de Orientação do Leiaute da ECD* em Word, publicados em http://sped.rfb.gov.br/pasta/show/1569 (leiaute 9, atualização de maio/2026, `arquivo/download/7989`; leiaute 8, `4217`; leiaute 7, `2855`). Nenhum índice de campo está espalhado pelo código. Diferenças relevantes entre as versões: no leiaute 7 o `0000` tem 20 campos (sem `COD_PLAN_REF`), o `I051` traz o plano no campo 2 e o `J150` tem um valor só.
 
 **Registros lidos**
 
@@ -153,15 +163,56 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 
 `I200`/`I250` e os demais são pulados olhando só o código do registro. Conteúdo depois do `9999` (assinatura do PVA) é ignorado com alerta.
 
-**Leitura**: ISO-8859-1, linha a linha, em stream (limite de 128 KB por linha). Contas e saldos são gravados em lote (JDBC batch) durante a leitura. Desempenho medido (`DesempenhoEcdTest`, opcional): ECD sintética de **314,6 MB / 6,04 milhões de linhas em 6,5 s, pico de heap 164 MB** com `-Xmx512m`.
+**Leitura**: ISO-8859-1, linha a linha, em stream (limite de 128 KB por linha). Contas e saldos são gravados em lote (JDBC batch) durante a leitura. Desempenho medido (`DesempenhoEcdTest`, opcional): ECD sintética de **314,6 MB / 6,04 milhões de linhas em 4,7 s, pico de heap 175 MB**.
 
 **Validações** (inconsistências com registro e linha): contagem do `9900` e do `9999`; débitos = créditos por período (`I155`); saldo inicial + débitos − créditos = saldo final; balanço fecha nos saldos (ativo + passivo + PL + resultado aberto = 0) e no `J100`; conta analítica sem `I051` (alerta com a lista); conta fora do plano.
 
-**Retificação**: uma ECD substituta (`IND_FIN_ESC` = 1) do mesmo cliente e período marca a anterior como `SUBSTITUIDA` (histórico preservado) e passa a valer.
+**Retificação**: uma ECD substituta (`IND_FIN_ESC` = 1) do mesmo cliente e período marca a anterior como `SUBSTITUIDA` (histórico preservado) e passa a valer. A regra é a mesma para todos os tipos (`importacao/Escrituracoes.retificar`).
+
+**Conferência com a ECF**: havendo ECF vigente do mesmo exercício, a ECD é conferida com ela (ver *Escriturações fiscais*).
+
+## Escriturações fiscais (ECF, EFD-Contribuições, EFD ICMS/IPI)
+
+Leiautes gerados por `scripts/sped/gerar_layout_sped.py` a partir dos manuais oficiais baixados do portal do SPED em 2026-10-15 (fonte e data no cabeçalho de cada `.properties`):
+
+| Tipo | Versões (`0000.COD_VER`) | Fonte |
+|---|---|---|
+| ECF | `0008` a `0012` (anos-calendário 2021 a 2025) | Manuais de Orientação do Leiaute 8 a 12 (Word), http://sped.rfb.gov.br/item/show/1644 (`arquivo/download/5971`, `7145`, `7306`, `7626`, `8004`) |
+| EFD-Contribuições | `005` (2019) e `006` (2020 em diante) | Guia Prático 1.35 (Word, o mais recente publicado), http://sped.rfb.gov.br/item/show/1989 (`arquivo/download/5837`) |
+| EFD ICMS/IPI | `016` a `020` (2022 a 2026) | Guia Prático 3.2.2, fev/2026 (PDF), http://sped.rfb.gov.br/item/show/1573 (`arquivo/download/8112`) |
+
+Os registros lidos têm os mesmos campos em todas as versões cobertas de cada tipo. Os códigos das linhas da ECF (base, alíquota, adicional, a pagar; Parte B de prejuízo fiscal e base negativa) vêm das tabelas dinâmicas oficiais ("Tabelas Dinâmicas e Planos de Contas Referenciais", leiautes 8 a 12, iguais em todos).
+
+**Registros lidos** (todo o resto, inclusive os blocos de documentos A, C, D, F, G, H e K, é pulado sem virar campos)
+
+| Tipo | Registros | Grava |
+|---|---|---|
+| ECF | `0010`; `L030`/`L300` e `P030`/`P150` (DRE declarada); `M010`, `M030`, `M300`, `M350`, `M500` (e-Lalur/e-Lacs); `N030`, `N500`, `N620`, `N630`, `N650`, `N660`, `N670` (Lucro Real); `P200` a `P500` (Lucro Presumido) | IRPJ e CSLL por período (estimativas mensais, ajuste anual ou trimestres), com a demonstração do lucro no detalhe; prejuízo fiscal e base negativa (Parte B, códigos 1000–1004) |
+| EFD-Contribuições | `0110`, `M100`, `M200`, `M210`, `M500`, `M600`, `M610`, `1100`, `1500` | PIS e COFINS mensais por parte do regime (não cumulativo, cumulativo), créditos no detalhe, saldos de crédito |
+| EFD ICMS/IPI | `E100`/`E110`/`E111`/`E116`, `E200`/`E210`/`E250`, `E300`/`E310`/`E316`, `E500`/`E520`/`E530` | ICMS próprio, ICMS-ST e DIFAL/FCP por UF e IPI, com ajustes no detalhe, obrigações a recolher (código de receita, vencimento, valor) e saldos credores |
+
+**Validações** (inconsistências com registro e linha): contagem `9900`/`9999` (inclusive dos registros pulados); ECF: base do IRPJ e da CSLL (`N500`/`N650`) × e-Lalur/e-Lacs pela fórmula oficial (`M300`/`M350` linhas 175 e 349); EFD-Contribuições: campos 05, 08, 12 e 13 do `M200`/`M600` e consolidação × `M210`/`M610` e créditos; EFD ICMS/IPI: campos de saldo do `E110`, `E210`, `E310` e `E520` como no guia, ajustes `E111`/`E530` × totais e soma das obrigações = a recolher + extra-apuração.
+
+**Conferência ECD × ECF** (`fiscal/ConferenciaEcdEcf`, no processamento de quem chegar por último): receita bruta (`3.01.01.01.01`) e resultado antes do IRPJ e da CSLL (`3.01`) da DRE referencial da ECD × DRE declarada da ECF (mesmos códigos do L300A/P150A); sem DRE referencial na ECD, o resultado líquido (soma do `I355` × linha `3` da ECF). Diferença vira alerta `CONFERENCIA_ECD_ECF` com os dois valores e as duas origens.
+
+**Limites conhecidos**: Lucro Arbitrado (bloco T da ECF) não é lido (alerta); a descrição oficial dos códigos de ajuste do E111 (tabela 5.1.1 de cada UF) não está carregada: o detalhe mostra o código e a descrição complementar do arquivo.
+
+**Desempenho** (`DesempenhoEfdTest`, opcional, `@Tag("desempenho")`): EFD ICMS/IPI sintética de **1 GB / 6,9 milhões de linhas em 3,3 s, pico de heap 149 MB com `-Xmx256m`**.
+
+## Modelo de apuração
+
+Um modelo só para todos os tributos e fontes (`fiscal/RepositorioApuracao`):
+
+- `apuracao_tributo`: cliente, documento e escrituração de origem; tributo (`TipoTributo`: IRPJ, CSLL, PIS, COFINS, IPI, ICMS, ICMS_ST, ICMS_DIFAL, ICMS_FCP), esfera e UF; período e periodicidade (MENSAL, TRIMESTRAL, ANUAL); regime; descrição; base de cálculo, valor apurado, deduções e créditos, **valor a recolher**, saldo credor a transportar; e `origem` (JSON campo → registro e linha).
+- `detalhe_apuracao`: linhas que compõem o cálculo (grupo, código, descrição, valor, registro, linha).
+- `obrigacao_recolher`: obrigações do E116/E250/E316, para a conciliação com o declarado e o pago (Fase 2b).
+- `saldo_fiscal`: saldos que passam de período (prejuízo fiscal, base negativa, créditos de PIS/COFINS, saldos credores), por período, com origem.
+
+Valores positivos, como no arquivo (a convenção D/C vale para os dados contábeis). Tudo pende da escrituração: reprocessar ou excluir o documento apaga o que ele gerou; só escriturações vigentes aparecem na API.
 
 ## Demonstrações referenciais
 
-- **Plano referencial oficial**: tabelas dinâmicas da RFB (portal Sped Tabelas, pacotes "Planos Referenciais" 2018 a 2021) em `src/main/resources/plano-referencial`, com fonte e SHA-256 de cada uma em `tabelas.txt`. Planos carregados: `1` PJ em geral, Lucro Real (L100_A balanço, L300_A resultado) e `2` PJ em geral, Lucro Presumido (P100, P150). A `ImportacaoPlanoReferencial` roda na subida e só recarrega a tabela que mudou. Para um ano novo: `scripts/sped/baixar_tabelas_referenciais.py` e uma linha em `tabelas.txt`. Nenhuma conta referencial é digitada no código.
+- **Plano referencial oficial**: tabelas dinâmicas da RFB (portal Sped Tabelas, pacotes "Planos Referenciais" 2018 a 2021) em `src/main/resources/plano-referencial`, com fonte e SHA-256 de cada uma em `tabelas.txt`. **Só a tabela do próprio exercício é usada**: exercício sem tabela carregada gera o alerta `TABELA_REFERENCIAL_AUSENTE` e só a demonstração publicada fica disponível; plano fora dos carregados (instituições financeiras, seguradoras, imunes/isentas) gera `PLANO_REFERENCIAL_NAO_SUPORTADO`. O Sped Tabelas não publica pacotes depois de 2021 (consultado em 2026-10-15, sistemas SpedContabil e SpedEcf); as tabelas de 2022 a 2025 aguardam fonte oficial confirmada. Planos carregados: `1` PJ em geral, Lucro Real (L100_A balanço, L300_A resultado) e `2` PJ em geral, Lucro Presumido (P100, P150). A `ImportacaoPlanoReferencial` roda na subida e só recarrega a tabela que mudou. Para um ano novo: `scripts/sped/baixar_tabelas_referenciais.py` e uma linha em `tabelas.txt`. Nenhuma conta referencial é digitada no código.
 - **Montagem** (`MontagemReferencial`, usada pela ECD e pela planilha): Balanço pelos saldos finais e iniciais do exercício; DRE pelo resultado antes do encerramento. Valores agregados pela hierarquia referencial; cada linha analítica guarda as contas da empresa que a compõem. Vale a tabela do ano mais recente até o exercício.
 - **Conferência cruzada**: ativo, passivo + PL e resultado do referencial contra o publicado (`J100`/`J150`); diferença vira alerta.
 - **Comparativo** (`GET /api/clientes/{id}/demonstracoes`): um exercício por coluna (a escrituração vigente de cada ano; ECD antes de planilha), AH = (atual ÷ anterior − 1) × 100 e AV (BP sobre o total do grupo; DRE sobre a receita líquida) calculadas no backend.
@@ -172,6 +223,8 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 - **Assistente**: o backend devolve as primeiras linhas e um mapeamento sugerido; o usuário aponta as colunas (código, descrição, saldo inicial, débitos, créditos, saldo final, D/C), a linha do cabeçalho, o período e o plano. O mapeamento fica salvo por cliente e é reconhecido pela assinatura do cabeçalho nos próximos uploads.
 - **De-para**: as associações salvas do cliente e o `I051` da ECD do mesmo cliente (mesmo código de conta) já vêm aplicados; o usuário associa o resto com busca no plano oficial. Conta sem associação vira alerta e fica fora do referencial.
 - Validações: débitos = créditos, saldo inicial + D − C = final, soma dos saldos analíticos igual a zero. Contas sintéticas são deduzidas pelo prefixo do código. A origem de cada valor é a aba e a linha.
+- **Antes do encerramento**: no Balanço referencial, o PL ganha a linha derivada "Resultado do período não encerrado" (`2.03.RNE`, `derivada = true`), composta pelas contas de resultado do próprio balancete (as mapeadas na DRE); o balanço fecha e a origem lista essas contas.
+- Mapear colunas e salvar o de-para são de `ADMIN` e `CONSULTOR` e ficam na auditoria (o de-para com a quantidade de contas alteradas).
 
 ## Índices: SELIC oficial
 
@@ -184,6 +237,7 @@ A UPF/UFPR do Paraná ainda não tem fonte oficial automatizada (Fase 5). Em `de
 Toda gravação passa pela anotação `@Auditavel` e pelo `AuditoriaAspect`. São auditados:
 - login (sucesso e falha);
 - importação, download e exclusão de documento;
+- mapeamento de colunas e de-para da planilha (documento e contas alteradas);
 - criação, edição e exclusão de cliente;
 - criação de simulação;
 - gestão de usuários.
@@ -229,14 +283,15 @@ mvn test   # requer Docker em execução
   - débitos e simulação com vários débitos;
   - documentos (upload, SHA-256, download por stream, jobs) e pipeline (tipo pelo conteúdo, inconsistências, reprocessamento);
   - sessão em cookie e CSRF;
-  - ECD (cada leiaute, cliente pelo arquivo, retificação, cada validação, reprocessamento), demonstrações (referencial, publicada, AH/AV, conferência, origem) e balancete em planilha (assistente, de-para);
+  - ECD (cada leiaute, cliente pelo arquivo, retificação, cada validação, reprocessamento), demonstrações (referencial, publicada, AH/AV, conferência, origem, exercício sem tabela, plano não suportado) e balancete em planilha (assistente, de-para, papéis, auditoria, resultado não encerrado);
+  - ECF, EFD-Contribuições e EFD ICMS/IPI (`ImportacaoFiscalTest`: apurações e origem, detalhe, saldos, fórmulas, contagem de registro pulado, conferência ECD × ECF nos dois sentidos, retificação, filial, isolamento);
   - auditoria;
   - ProblemDetail;
   - banco do zero só com as migrações.
 - **Storage** (`storage/`): o mesmo contrato para o local e para o S3 contra MinIO real.
 - **Leitura** (`sped/`, `contabil/planilha/`, `importacao/`): `LeitorSped`, leiaute por versão, detector de tipo, `.xlsx` (fórmula, zip bomb) e `.csv`.
-- **Amostras sintéticas** em `src/test/resources/amostras/` (geradas por `scripts/sped/gerar_amostras_ecd.py` e `scripts/planilha/gerar_amostras_planilha.py`).
-- **Opcionais**: `mvn test -Dtest=DesempenhoEcdTest -Ddesempenho=true` (ECD de 300 MB); `AmostrasReaisTest` roda sozinho quando existe `amostras-locais/` na raiz (ECDs reais anonimizadas, fora do git).
+- **Amostras sintéticas** em `src/test/resources/amostras/` (geradas por `scripts/sped/gerar_amostras_ecd.py`, `scripts/sped/gerar_amostras_fiscais.py`, que monta cada linha pelo leiaute, e `scripts/planilha/gerar_amostras_planilha.py`). ECD de 2021/2020 (anos com tabela referencial) e de 2024 (sem tabela); ECF Lucro Real 2021 com prejuízo compensado e Presumido 2024; EFD-Contribuições não cumulativa e cumulativa; EFD ICMS/IPI com ST, DIFAL/FCP, IPI e saldo credor; variantes retificadora, fórmula que não fecha e contagem errada.
+- **Opcionais**: `mvn test -Dtest=DesempenhoEcdTest -Ddesempenho=true` (ECD de 300 MB) e `mvn test -Dtest=DesempenhoEfdTest -Ddesempenho=true -DargLine=-Xmx256m` (EFD de 1 GB, `@Tag("desempenho")`); `AmostrasReaisTest` roda sozinho quando existe `amostras-locais/` na raiz (ECD, ECF e EFD reais anonimizadas, fora do git).
 - **Motor de parcelamento** (`service/calculo/`):
   - testes de caracterização do comportamento atual;
   - testes normativos `@Disabled("Fase 5 — ...")` documentando cada divergência em relação à lei.
@@ -303,9 +358,9 @@ A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secur
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/documentos/{doc}/planilha?aba=` | abas, primeiras linhas e mapeamento sugerido ou reconhecido |
-| POST | `/api/documentos/{doc}/planilha/mapeamento` | colunas, linha do cabeçalho, período e plano (salvo para o cliente); reprocessa |
+| POST | `/api/documentos/{doc}/planilha/mapeamento` | ADMIN, CONSULTOR: colunas, linha do cabeçalho, período e plano (salvo para o cliente); reprocessa; auditado |
 | GET | `/api/documentos/{doc}/planilha/depara` | contas analíticas, associação atual e sugestão da ECD |
-| PUT | `/api/documentos/{doc}/planilha/depara` | grava associações (`[{ codigoConta, codigoReferencial }]`, null desassocia); reprocessa |
+| PUT | `/api/documentos/{doc}/planilha/depara` | ADMIN, CONSULTOR: grava associações (`[{ codigoConta, codigoReferencial }]`, null desassocia); reprocessa; devolve e audita `{ contasAlteradas }` |
 | GET | `/api/referencial/contas?plano=&exercicio=&busca=` | contas referenciais analíticas (até 50) |
 
 ### Demonstrações
@@ -316,13 +371,22 @@ A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secur
 | GET | `/api/clientes/{id}/demonstracoes?tipo=BP\|DRE&origem=REFERENCIAL\|PUBLICADA&exercicios=2023,2024` | comparativo com AH, AV e conferência |
 | GET | `/api/clientes/{id}/demonstracoes/linhas/{linhaId}/origem` | arquivo, registro e linha (publicada) ou contas e saldos usados (referencial) |
 
+### Apurações (somente leitura)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/clientes/{id}/apuracoes?tributo=&de=&ate=` | apurações das escriturações vigentes (tributo, período, regime, base, apurado, deduções, a recolher, saldo credor, origem de cada valor, arquivo) |
+| GET | `/api/clientes/{id}/apuracoes/{apuracaoId}/detalhe` | a apuração, as linhas do cálculo e as obrigações a recolher, com registro e linha |
+| GET | `/api/clientes/{id}/apuracoes/alertas` | alertas e erros das escriturações fiscais e conferências entre arquivos |
+| GET | `/api/clientes/{id}/saldos-fiscais` | prejuízo fiscal, base negativa, créditos e saldos credores por período |
+
 ### Débitos (somente leitura)
 
 | Método | Rota | Descrição |
 |---|---|---|
 | GET | `/api/clientes/{id}/debitos` | débitos do cliente, cada um com o documento e o trecho de origem |
 
-Não há criação manual: os débitos são gerados pela importação (parsers da Fase 2).
+Não há criação manual: os débitos são gerados pela importação (Relatório de Situação Fiscal e extratos, Fase 2b).
 
 ### Simulações de parcelamento
 
@@ -360,8 +424,9 @@ src/main/java/com/fiscalhub/backend/
 ├── security/     # JWT, UsuarioAutenticado, filtro, SecurityConfig, @ConsultorOuAdmin
 ├── service/      # regras de negócio; AcessoRecursoService = autorização por escritório
 │   └── calculo/  # motor de parcelamento (RFB e SEFA-PR)
-├── importacao/   # pipeline: detector, ProcessadorDocumento, contexto, inconsistências, jobs
-├── sped/         # LeitorSped, LayoutSped (leiaute por versão), Saldos (convenção de sinal)
+├── fiscal/       # ECF, EFD-Contribuições, EFD ICMS/IPI: leituras, ProcessadorFiscal, modelo de apuração, conferência ECD × ECF
+├── importacao/   # pipeline: detector, ProcessadorDocumento, contexto, inconsistências, jobs, Escrituracoes (retificação)
+├── sped/         # LeitorSped (stream, registros de interesse), LeituraSped (base comum), LayoutSped, Saldos
 ├── storage/      # ArmazenamentoArquivos: local e S3
 └── util/
 src/main/resources/

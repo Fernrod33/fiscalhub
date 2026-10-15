@@ -5,19 +5,25 @@ Uso (na pasta backend/):
     python -I scripts/sped/baixar_tabelas_referenciais.py listar                  # pacotes do SpedContabil
     python -I scripts/sped/baixar_tabelas_referenciais.py listar 112              # tabelas de um pacote
     python -I scripts/sped/baixar_tabelas_referenciais.py baixar 112 1494 destino # baixa uma tabela
+    SPED_SISTEMA=SpedEcf python -I scripts/sped/baixar_tabelas_referenciais.py listar  # pacotes da ECF
+
+Em 2026-10-15 os dois sistemas (SpedContabil e SpedEcf) só tinham pacotes até 2021: rode de novo para ver se os de
+2022 em diante foram publicados. Não use a tabela de outro ano para um exercício sem tabela oficial.
 
 Depois de baixar, copie o arquivo para src/main/resources/plano-referencial/<NOME_OFICIAL>.txt e acrescente a linha
 em tabelas.txt (com o SHA-256: sha256sum). A importação roda na subida do backend.
 O portal só responde em http (o https recusa conexão).
 """
 import html
+import os
 import http.cookiejar
 import re
 import sys
 import urllib.parse
 import urllib.request
 
-URL = 'http://www.sped.fazenda.gov.br/spedtabelas/AppConsulta/publico/aspx/ConsultaTabelasExternas.aspx?CodSistema=SpedContabil'
+URL = ('http://www.sped.fazenda.gov.br/spedtabelas/AppConsulta/publico/aspx/ConsultaTabelasExternas.aspx?CodSistema='
+       + os.environ.get('SPED_SISTEMA', 'SpedContabil'))
 abrir = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 abrir.addheaders = [('User-Agent', 'Mozilla/5.0')]
 
