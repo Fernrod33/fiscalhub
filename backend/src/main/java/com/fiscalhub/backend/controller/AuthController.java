@@ -52,7 +52,11 @@ public class AuthController {
         return UsuarioResponseDTO.fromEntity(usuario);
     }
 
-    /** Apaga o cookie e invalida o JWT no servidor (versão do token). Sem sessão válida, só apaga o cookie. */
+    /**
+     * Apaga o cookie e invalida o JWT no servidor (versão do token). Sem sessão válida, só apaga o cookie.
+     * ponytail: a versão do token é por usuário, então o logout encerra as sessões de todos os dispositivos; trocar por
+     * sessão por dispositivo (id da sessão no JWT + tabela de sessões revogadas) se houver pedido de logout por dispositivo.
+     */
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal UsuarioAutenticado ua, HttpServletResponse response) {
         if (ua != null) {
