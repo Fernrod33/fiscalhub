@@ -4,6 +4,7 @@ import com.fiscalhub.backend.contabil.RepositorioContabil;
 import com.fiscalhub.backend.contabil.referencial.MontagemReferencial;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
+import com.fiscalhub.backend.fiscal.ConferenciaEcdEcf;
 import com.fiscalhub.backend.importacao.ContextoProcessamento;
 import com.fiscalhub.backend.importacao.Escrituracoes;
 import com.fiscalhub.backend.importacao.ProcessadorDocumento;
@@ -14,7 +15,7 @@ import org.springframework.stereotype.Component;
  * ECD (SPED Contábil): plano de contas (I050/I051), saldos periódicos (I155), resultado antes do encerramento
  * (I350/I355), demonstrações publicadas (J005/J100/J150) e contagem (9900/9999). Leiautes cobertos e fonte de cada
  * campo: src/main/resources/sped/ecd-leiautes.properties (gerado dos manuais oficiais). Depois da leitura, monta o
- * Balanço e a DRE referenciais e confere com as publicadas.
+ * Balanço e a DRE referenciais, confere com as publicadas e, havendo ECF do mesmo exercício, com ela.
  */
 @Component
 public class ProcessadorEcd implements ProcessadorDocumento {
@@ -24,8 +25,11 @@ public class ProcessadorEcd implements ProcessadorDocumento {
     private final RepositorioContabil repositorio;
     private final Escrituracoes escrituracoes;
     private final MontagemReferencial montagem;
+    private final ConferenciaEcdEcf conferencia;
 
-    public ProcessadorEcd(RepositorioContabil repositorio, Escrituracoes escrituracoes, MontagemReferencial montagem) {
+    public ProcessadorEcd(RepositorioContabil repositorio, Escrituracoes escrituracoes, MontagemReferencial montagem,
+                          ConferenciaEcdEcf conferencia) {
+        this.conferencia = conferencia;
         this.repositorio = repositorio;
         this.escrituracoes = escrituracoes;
         this.montagem = montagem;
@@ -41,5 +45,6 @@ public class ProcessadorEcd implements ProcessadorDocumento {
         LeituraEcd.Lida lida = new LeituraEcd(documento, contexto, escrituracoes, repositorio, LAYOUT).ler();
         montagem.montar(new MontagemReferencial.Pedido(lida.escrituracaoId(), lida.planoReferencial(), lida.inicio(),
                 lida.fim(), "I155", "I355", lida.balancoPublicado(), lida.resultadoPublicado()), contexto);
+        conferencia.conferir(documento.getCliente().getId(), lida.fim().getYear(), contexto);
     }
 }

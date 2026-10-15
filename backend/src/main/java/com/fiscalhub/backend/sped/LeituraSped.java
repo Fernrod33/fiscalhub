@@ -102,7 +102,7 @@ public abstract class LeituraSped {
         contexto.etapa(EtapaProcessamento.VALIDANDO);
         validarContagem();
         validar();
-        escrituracoes.retificar(contexto, escrituracaoId, cliente.getId(), origem, inicio, fim, finalidade, nome, "0000", linha0000);
+        escrituracoes.retificar(contexto, escrituracaoId, finalidade, nome, "0000", linha0000);
         contexto.etapa(EtapaProcessamento.GRAVANDO);
         gravar();
     }
@@ -205,8 +205,8 @@ public abstract class LeituraSped {
         documento.setPeriodoInicio(inicio);
         documento.setPeriodoFim(fim);
         escrituracoes.apagarDoDocumento(documento.getId());
-        escrituracaoId = escrituracoes.inserir(new Escrituracoes.Nova(documento.getId(), cliente.getId(), origem, inicio, fim,
-                versao, planoReferencial, finalidade));
+        escrituracaoId = escrituracoes.inserir(new Escrituracoes.Nova(documento.getId(), cliente.getId(), cnpj, origem, inicio,
+                fim, versao, planoReferencial, finalidade));
     }
 
     private void validarContagem() {

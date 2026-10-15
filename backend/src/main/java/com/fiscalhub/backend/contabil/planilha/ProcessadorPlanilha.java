@@ -213,7 +213,7 @@ public class ProcessadorPlanilha implements ProcessadorDocumento {
 
         escrituracoes.apagarDoDocumento(documento.getId());
         long escrituracaoId = escrituracoes.inserir(new Escrituracoes.Nova(documento.getId(),
-                cliente.getId(), "PLANILHA", documento.getPeriodoInicio(), documento.getPeriodoFim(), null,
+                cliente.getId(), cliente.getCnpj(), "PLANILHA", documento.getPeriodoInicio(), documento.getPeriodoFim(), null,
                 m.planoReferencial(), "ORIGINAL"));
         Map<String, Long> ids = repositorio.inserirContas(escrituracaoId, linhas.stream().map(l -> new Conta(l.codigo(), null,
                 null, null, grupos.contains(l.codigo()), l.nome(), grupos.contains(l.codigo()) ? null : referencial.get(l.codigo()),
@@ -232,8 +232,7 @@ public class ProcessadorPlanilha implements ProcessadorDocumento {
                     + String.join(", ", semDepara.subList(0, Math.min(30, semDepara.size()))) + (semDepara.size() > 30 ? " e outras." : "."));
         }
         // um balancete novo do mesmo período sempre substitui o anterior (não há indicação de original no arquivo)
-        escrituracoes.retificar(contexto, escrituracaoId, cliente.getId(), "PLANILHA", documento.getPeriodoInicio(),
-                documento.getPeriodoFim(), "SUBSTITUTA", "planilha de balancete", registro, null);
+        escrituracoes.retificar(contexto, escrituracaoId, "SUBSTITUTA", "planilha de balancete", registro, null);
         montagem.montar(new MontagemReferencial.Pedido(escrituracaoId, m.planoReferencial(), documento.getPeriodoInicio(),
                 documento.getPeriodoFim(), "PLANILHA", "PLANILHA", List.of(), List.of()), contexto);
     }

@@ -4,7 +4,7 @@ http://sped.rfb.gov.br). Nada é digitado: a ordem dos campos sai das tabelas de
 
 Uso (na pasta backend/):
     python -I scripts/sped/gerar_layout_sped.py ecd 9.00=manual-l9.docx 8.00=manual-l8.docx 7.00=manual-l7.docx
-    python -I scripts/sped/gerar_layout_sped.py ecf 0012=ecf-l12.docx 0011=ecf-l11.docx ...
+    python -I scripts/sped/gerar_layout_sped.py ecf 0012=ecf-l12.docx 0011=ecf-l11.docx ... 0008=ecf-l8.docx
     python -I scripts/sped/gerar_layout_sped.py efd-contribuicoes 006=guia-1.35.docx 005=guia-1.35.docx
     python -I scripts/sped/gerar_layout_sped.py efd-icms-ipi 020=guia-3.2.2.pdf 019=guia-3.2.2.pdf ...
 
@@ -50,6 +50,7 @@ FONTES = {
         '  0011: Leiaute 11 (29/09/2025), arquivo/download/7626 - ano-calendário 2024',
         '  0010: Leiaute 10 (21/12/2023), arquivo/download/7306 - ano-calendário 2023',
         '  0009: Leiaute 9 (12/12/2022), arquivo/download/7145 - ano-calendário 2022',
+        '  0008: Leiaute 8 (janeiro/2022), arquivo/download/5971 - ano-calendário 2021',
     ],
     'efd-contribuicoes': [
         'Leiaute dos registros da EFD-Contribuições lidos pelo FiscalHub, por versão (0000.COD_VER).',
@@ -89,7 +90,7 @@ def linhas_pdf(caminho):
                            text=True, encoding='utf-8').stdout
     linhas = texto.split('\n')
     for i, l in enumerate(linhas):
-        m = re.match(r'^(\d{2}) ([A-Z][A-ZÀ-Ý_0-9]*)(?: (.*))?$', l.strip())
+        m = re.match(r'^(\d{2}) ([A-Z][A-ZÀ-Ý_0-9]*)\*?(?: (.*))?$', l.strip())  # MES_REF*: campo marcado no guia
         if not m:
             yield l
             continue
@@ -126,7 +127,7 @@ def campos_por_registro(caminho, registros):
                 if not l.strip() or re.match(r'^\s*(observa|n[íi]vel hier|campo 0?1\b|exemplo)', l, re.I):
                     aberta = None
                     continue
-                m = re.match(r'^(\d{1,3})\s*\|\s*([A-Z][A-ZÀ-Ý_0-9 ]*?)\s*\|\s*(\S*)', l)
+                m = re.match(r'^(\d{1,3})\s*\|\s*([A-Z][A-ZÀ-Ý_0-9 ]*?)\*?\s*\|\s*(\S*)', l)
                 if not m or 'REGRA_' in m.group(2) + m.group(3)[:6]:  # tabela de regras de validação: numeração própria
                     continue
                 numero, nome = int(m.group(1)), nome_campo(m.group(2))

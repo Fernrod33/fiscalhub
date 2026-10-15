@@ -7,7 +7,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-/** Último da fila: tipos ainda sem leitura (PDF, ECF, EFD...) ficam guardados no storage, com um alerta. */
+/** Último da fila: tipos ainda sem leitura (PDF, documentos da Fase 2b...) ficam guardados no storage, com um alerta. */
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class ProcessadorSemLeitura implements ProcessadorDocumento {

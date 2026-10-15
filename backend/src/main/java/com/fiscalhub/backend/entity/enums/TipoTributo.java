@@ -11,8 +11,14 @@ public enum TipoTributo {
     IRPF,
     INSS,
     FGTS,
-    // Estaduais (PR)
+    // Estaduais
     ICMS,
+    /** ICMS retido por substituição tributária (EFD ICMS/IPI, E200/E210), por UF. */
+    ICMS_ST,
+    /** Diferencial de alíquotas da EC 87/2015 (E300/E310), por UF. */
+    ICMS_DIFAL,
+    /** Fundo de Combate à Pobreza apurado com o DIFAL (E310, campos _FCP), por UF. */
+    ICMS_FCP,
     ITCMD,
     IPVA,
     // Municipais

@@ -16,8 +16,9 @@ import java.util.List;
 @Repository
 public class Escrituracoes {
 
-    public record Nova(long documentoId, long clienteId, String origem, LocalDate inicio, LocalDate fim, String versaoLeiaute,
-                       String planoReferencial, String finalidade) {
+    /** cnpj: do estabelecimento (a EFD ICMS/IPI é por estabelecimento; nas demais, o da empresa). */
+    public record Nova(long documentoId, long clienteId, String cnpj, String origem, LocalDate inicio, LocalDate fim,
+                       String versaoLeiaute, String planoReferencial, String finalidade) {
     }
 
     private record Vigente(long id, long documentoId, String finalidade) {
@@ -36,10 +37,10 @@ public class Escrituracoes {
 
     public long inserir(Nova e) {
         return jdbc.queryForObject("""
-                INSERT INTO escrituracao_contabil (documento_id, cliente_id, origem, data_inicio, data_fim, versao_leiaute,
-                                                   plano_referencial, finalidade, situacao)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'VIGENTE') RETURNING id""", Long.class,
-                e.documentoId(), e.clienteId(), e.origem(), Date.valueOf(e.inicio()), Date.valueOf(e.fim()),
+                INSERT INTO escrituracao_contabil (documento_id, cliente_id, cnpj, origem, data_inicio, data_fim,
+                                                   versao_leiaute, plano_referencial, finalidade, situacao)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'VIGENTE') RETURNING id""", Long.class,
+                e.documentoId(), e.clienteId(), e.cnpj(), e.origem(), Date.valueOf(e.inicio()), Date.valueOf(e.fim()),
                 e.versaoLeiaute(), e.planoReferencial(), e.finalidade());
     }
 
@@ -49,16 +50,18 @@ public class Escrituracoes {
     }
 
     /**
-     * Retificação: a escrituração nova do mesmo cliente, origem e período passa a valer e a anterior fica SUBSTITUIDA
-     * (histórico preservado). Uma original importada depois de uma substituta já nasce substituída.
+     * Retificação: a escrituração nova do mesmo cliente, estabelecimento (CNPJ), origem e período passa a valer e a
+     * anterior fica SUBSTITUIDA (histórico preservado). Uma original importada depois de uma substituta já nasce substituída.
      */
-    public void retificar(ContextoProcessamento contexto, long escrituracaoId, long clienteId, String origem, LocalDate inicio,
-                          LocalDate fim, String finalidade, String nome, String registro, Long linha) {
+    public void retificar(ContextoProcessamento contexto, long escrituracaoId, String finalidade, String nome, String registro,
+                          Long linha) {
         List<Vigente> anteriores = jdbc.query("""
-                        SELECT id, documento_id, finalidade FROM escrituracao_contabil
-                        WHERE cliente_id = ? AND origem = ? AND data_inicio = ? AND data_fim = ? AND situacao = 'VIGENTE' AND id <> ?""",
-                (rs, i) -> new Vigente(rs.getLong(1), rs.getLong(2), rs.getString(3)),
-                clienteId, origem, Date.valueOf(inicio), Date.valueOf(fim), escrituracaoId);
+                        SELECT a.id, a.documento_id, a.finalidade FROM escrituracao_contabil a
+                        JOIN escrituracao_contabil e ON e.id = ?
+                        WHERE a.cliente_id = e.cliente_id AND a.origem = e.origem AND a.data_inicio = e.data_inicio
+                          AND a.data_fim = e.data_fim AND a.cnpj IS NOT DISTINCT FROM e.cnpj AND a.situacao = 'VIGENTE'
+                          AND a.id <> e.id""",
+                (rs, i) -> new Vigente(rs.getLong(1), rs.getLong(2), rs.getString(3)), escrituracaoId);
         for (Vigente anterior : anteriores) {
             if ("ORIGINAL".equals(finalidade) && "SUBSTITUTA".equals(anterior.finalidade())) {
                 marcarSituacao(escrituracaoId, "SUBSTITUIDA");

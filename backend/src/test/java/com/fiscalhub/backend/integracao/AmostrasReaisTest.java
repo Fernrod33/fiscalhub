@@ -2,6 +2,7 @@ package com.fiscalhub.backend.integracao;
 
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
+import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.entity.enums.Papel;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.jayway.jsonpath.JsonPath;
@@ -28,9 +29,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * ECDs reais (anonimizadas) em amostras-locais/ na raiz do repositório, fora do git. Só roda quando a pasta existe.
- * Cada arquivo .txt: importa pela central (cliente cadastrado a partir do arquivo) e confere que não há ERRO, que o
- * balanço fecha e que o referencial bate com o publicado.
+ * Arquivos SPED reais (anonimizados) em amostras-locais/ na raiz do repositório, fora do git: ECD, ECF,
+ * EFD-Contribuições e EFD ICMS/IPI. Só roda quando a pasta existe. Cada .txt é importado pela central (cliente
+ * cadastrado a partir do arquivo); confere que o tipo é reconhecido, que não há ERRO e, na ECD, que o balanço fecha e o
+ * referencial bate com o publicado; nas escriturações fiscais, que há apuração gravada.
  */
 @TesteIntegracao
 @EnabledIf("amostrasLocaisExistem")
@@ -48,7 +50,7 @@ class AmostrasReaisTest {
     }
 
     @TestFactory
-    Stream<DynamicTest> cadaEcdRealImportaSemErroEFecha() throws IOException {
+    Stream<DynamicTest> cadaSpedRealImportaSemErro() throws IOException {
         List<Path> arquivos;
         try (Stream<Path> s = Files.list(PASTA)) {
             arquivos = s.filter(p -> p.toString().toLowerCase().endsWith(".txt")).sorted().toList();
@@ -69,12 +71,19 @@ class AmostrasReaisTest {
             mvc.perform(post("/api/documentos/{d}/confirmar-cliente", id).with(sessao)).andExpect(status().isOk());
             aguardarFim(id);
         }
+        DocumentoTipo tipo = documentoRepository.findById(id).orElseThrow().getTipo();
+        assertThat(tipo).as("tipo de %s", arquivo.getFileName())
+                .isIn(DocumentoTipo.ECD, DocumentoTipo.ECF, DocumentoTipo.EFD_CONTRIBUICOES, DocumentoTipo.EFD_ICMS_IPI);
         List<String> regras = jdbc.queryForList("SELECT severidade || ':' || regra FROM inconsistencia_importacao WHERE documento_id = ?",
                 String.class, id);
         assertThat(regras).as("inconsistências de %s", arquivo.getFileName())
                 .noneMatch(r -> r.startsWith("ERRO:"))
                 .noneMatch(r -> r.contains("BALANCO_NAO_FECHA"))
                 .noneMatch(r -> r.contains("REFERENCIAL_DIFERE_PUBLICADA"));
+        if (tipo != DocumentoTipo.ECD && !regras.contains("INFO:IMUNE_OU_ISENTA")) {
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM apuracao_tributo WHERE documento_id = ?", Long.class, id))
+                    .as("apurações de %s", arquivo.getFileName()).isPositive();
+        }
     }
 
     private void aguardarFim(long id) {

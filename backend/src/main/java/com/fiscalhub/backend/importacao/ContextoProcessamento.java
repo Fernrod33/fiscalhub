@@ -75,24 +75,37 @@ public class ContextoProcessamento {
     }
 
     /**
-     * Associa o documento ao cliente da empresa lida no arquivo. Upload feito dentro de um cliente com outro CNPJ é
-     * erro (nunca associação silenciosa); sem cliente com esse CNPJ no escritório, o documento aguarda a confirmação.
+     * Associa o documento ao cliente da empresa lida no arquivo. Arquivo de filial (EFD ICMS/IPI é por estabelecimento)
+     * vai para o cliente com a mesma raiz de CNPJ (8 primeiros dígitos), se houver um só. Upload feito dentro de um
+     * cliente de outra empresa é erro (nunca associação silenciosa); sem cliente com esse CNPJ ou raiz no escritório, o
+     * documento aguarda a confirmação.
      */
     public Cliente cliente(String cnpj, String nome) {
         Cliente atual = documento.getCliente();
         if (atual != null) {
-            if (!atual.getCnpj().equals(cnpj)) {
+            if (!atual.getCnpj().equals(cnpj) && !mesmaRaiz(atual.getCnpj(), cnpj)) {
                 throw new FalhaImportacao("CNPJ_DIVERGENTE", "O arquivo é do CNPJ " + cnpj + " (" + nome
                         + "), mas foi enviado no cliente " + atual.getRazaoSocial() + " (CNPJ " + atual.getCnpj()
                         + "). Envie-o no cliente certo ou pela central de importação.");
             }
             return atual;
         }
-        Cliente encontrado = clienteRepository.findByEscritorioIdAndCnpj(documento.getEscritorio().getId(), cnpj)
-                .orElseThrow(() -> new AguardandoUsuario(DocumentoStatus.AGUARDANDO_CLIENTE,
-                        "Nenhum cliente do escritório tem o CNPJ " + cnpj + ". Confirme o cadastro sugerido.", cnpj, nome));
+        Long escritorio = documento.getEscritorio().getId();
+        Cliente encontrado = clienteRepository.findByEscritorioIdAndCnpj(escritorio, cnpj).orElseGet(() -> {
+            List<Cliente> mesmaRaiz = cnpj.length() == 14 ? clienteRepository.findByEscritorioIdAndCnpjStartingWith(escritorio,
+                    cnpj.substring(0, 8)) : List.of();
+            if (mesmaRaiz.size() != 1) {
+                throw new AguardandoUsuario(DocumentoStatus.AGUARDANDO_CLIENTE,
+                        "Nenhum cliente do escritório tem o CNPJ " + cnpj + ". Confirme o cadastro sugerido.", cnpj, nome);
+            }
+            return mesmaRaiz.get(0);
+        });
         documento.setCliente(encontrado);
         return encontrado;
+    }
+
+    private static boolean mesmaRaiz(String a, String b) {
+        return a != null && b != null && a.length() == 14 && b.length() == 14 && a.regionMatches(0, b, 0, 8);
     }
 
     /** Arquivos que não identificam a empresa (planilhas): exigem o cliente escolhido pelo usuário. */
