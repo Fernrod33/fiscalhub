@@ -1,16 +1,12 @@
 package com.fiscalhub.backend.entity;
 
-import com.fiscalhub.backend.entity.enums.DocumentoEsfera;
-import com.fiscalhub.backend.entity.enums.DocumentoJuridicao;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
-import com.fiscalhub.backend.entity.enums.TipoTributo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
-import org.hibernate.annotations.BatchSize;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -18,8 +14,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "documento_fiscal")
@@ -57,21 +51,6 @@ public class DocumentoFiscal {
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_informado", length = 40)
     private DocumentoTipo tipoInformado;
-
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private DocumentoEsfera esfera;
-
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private DocumentoJuridicao juridicao;
-
-    @BatchSize(size = 100) // listas paginadas: tributos de vários documentos numa consulta só
-    @ElementCollection(targetClass = TipoTributo.class)
-    @CollectionTable(name = "documento_fiscal_tributos", joinColumns = @JoinColumn(name = "documento_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "tributo", nullable = false, length = 30)
-    private Set<TipoTributo> tributos = new HashSet<>();
 
     /** Período lido do arquivo (ou escolhido no assistente da planilha). */
     @Column(name = "periodo_inicio")
@@ -114,9 +93,6 @@ public class DocumentoFiscal {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private DocumentoStatus status = DocumentoStatus.RECEBIDO;
-
-    @Column(name = "retificacao")
-    private Boolean retificacao = false;
 
     @Size(max = 1000)
     @Column(length = 1000)

@@ -9,8 +9,6 @@ import com.fiscalhub.backend.entity.Escritorio;
 import com.fiscalhub.backend.entity.IndiceMonetario;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.entity.Usuario;
-import com.fiscalhub.backend.entity.enums.DocumentoEsfera;
-import com.fiscalhub.backend.entity.enums.DocumentoJuridicao;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
@@ -40,7 +38,6 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 /** Fixture dos testes de integração: escritórios, usuários com papel, tokens e dados de cliente. */
 @TestComponent
@@ -134,9 +131,6 @@ public class DadosTeste {
         d.setEscritorio(cliente.getEscritorio());
         d.setUsuario(cliente.getCriadoPor());
         d.setTipo(DocumentoTipo.DCTF);
-        d.setEsfera(DocumentoEsfera.FEDERAL);
-        d.setJuridicao(DocumentoJuridicao.UNIAO);
-        d.setTributos(Set.of(TipoTributo.IRPJ));
         d.setPeriodoInicio(LocalDate.of(2024, 1, 1));
         d.setPeriodoFim(LocalDate.of(2024, 1, 31));
         d.setNomeOriginalArquivo("dctf.pdf");
