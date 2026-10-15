@@ -85,6 +85,7 @@ final class LeituraEfdContribuicoes extends LeituraSped {
             regime = r.texto("COD_INC_TRIB"); // 1 não cumulativo, 2 cumulativo, 3 ambos
             return;
         }
+        conferirLimite(lidos.size(), r);
         lidos.add(r);
     }
 

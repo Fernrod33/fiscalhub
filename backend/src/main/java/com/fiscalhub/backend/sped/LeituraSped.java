@@ -27,6 +27,11 @@ import java.util.Set;
 public abstract class LeituraSped {
 
     private static final int LINHAS_POR_PROGRESSO = 4096;
+    /**
+     * Registros de apuração guardados até o fim da leitura (blocos E, M, N, P): um arquivo real tem centenas por mês;
+     * acima disso o arquivo é recusado, para um upload malicioso não esgotar a memória.
+     */
+    protected static final int LIMITE_EM_MEMORIA = 200_000;
 
     protected final DocumentoFiscal documento;
     protected final ContextoProcessamento contexto;
@@ -74,6 +79,14 @@ public abstract class LeituraSped {
 
     /** Um registro de interesse (exceto 0000, 9900 e 9999), na ordem do arquivo. */
     protected abstract void tratar(RegistroSped r);
+
+    /** Recusa o arquivo quando os registros guardados passam do {@link #LIMITE_EM_MEMORIA}. */
+    protected void conferirLimite(int guardados, RegistroSped r) {
+        if (guardados >= LIMITE_EM_MEMORIA) {
+            throw new FalhaImportacao("REGISTROS_DEMAIS", "Mais de " + LIMITE_EM_MEMORIA + " registros de apuração no arquivo: "
+                    + "não é uma escrituração válida.", r.registro(), r.linha());
+        }
+    }
 
     /** Fim da leitura, com ou sem erro (ex.: gravar o resto de um lote). */
     protected void fimDaLeitura() {

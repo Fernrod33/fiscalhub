@@ -83,6 +83,7 @@ final class LeituraEfdIcmsIpi extends LeituraSped {
     /** O bloco E tem poucas linhas por mês: fica em memória até o fim. */
     @Override
     protected void tratar(RegistroSped r) {
+        conferirLimite(lidos.size(), r);
         lidos.add(r);
     }
 

@@ -82,6 +82,7 @@ final class LeituraEcf extends LeituraSped {
     /** M010: conta da Parte B -> [código padrão RFB, descrição]. */
     private final Map<String, String[]> contasParteB = new HashMap<>();
     private final List<SaldoFiscal> saldos = new ArrayList<>();
+    private int guardados;
 
     LeituraEcf(DocumentoFiscal documento, ContextoProcessamento contexto, Escrituracoes escrituracoes,
                RepositorioApuracao apuracoes, RepositorioContabil contabil, LayoutSped layout) {
@@ -106,6 +107,7 @@ final class LeituraEcf extends LeituraSped {
 
     @Override
     protected void tratar(RegistroSped r) {
+        conferirLimite(guardados++, r);
         String registro = r.registro();
         switch (registro) {
             case "0010" -> {

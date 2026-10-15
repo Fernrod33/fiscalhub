@@ -446,5 +446,5 @@ scripts/          # geração de leiaute, amostras e download das tabelas oficia
 - Isolamento por escritório num único ponto (`AcessoRecursoService`) e papéis por `@PreAuthorize`.
 - CORS só para as origens em `CORS_ALLOWED_ORIGINS`, com credenciais (cookie). Frontend e API precisam estar no mesmo site.
 - Sessão em cookie `httpOnly` (o JS não lê o JWT) e CSRF por cookie + cabeçalho em todo método que altera estado; logout invalida o JWT no servidor.
-- Arquivos não confiáveis: limite de tamanho de linha (SPED, CSV), de linhas e colunas (planilha), zip bomb e XXE no `.xlsx`, fórmulas nunca avaliadas.
+- Arquivos não confiáveis: limite de tamanho de linha (SPED, CSV), de linhas e colunas (planilha), de registros de apuração guardados em memória (200 mil, ECF e EFD), zip bomb e XXE no `.xlsx`, fórmulas nunca avaliadas. Linhas de registros pulados não são montadas.
 - O `app.jwt.secret` antigo ficou no histórico do git: **gere um segredo novo** para qualquer ambiente real.

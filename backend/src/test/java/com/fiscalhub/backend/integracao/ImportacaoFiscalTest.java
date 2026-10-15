@@ -256,6 +256,17 @@ class ImportacaoFiscalTest {
     }
 
     @Test
+    void registrosDeApuracaoDemaisSaoRecusadosSemEsgotarAMemoria() throws Exception {
+        String efd = new String(new ClassPathResource("amostras/efd-icms-ipi-2025-01.txt").getContentAsByteArray(),
+                StandardCharsets.ISO_8859_1);
+        String ajuste = "|E111|PR000001|Ajuste repetido|1,00|\r\n";
+        String inchada = efd.replace("|E116|", ajuste.repeat(200_001) + "|E116|");
+        long id = enviarConteudo("efd-inchada.txt", inchada.getBytes(StandardCharsets.ISO_8859_1));
+        aguardarStatus(id, DocumentoStatus.ERRO);
+        assertThat(regras(id)).containsExactly("REGISTROS_DEMAIS");
+    }
+
+    @Test
     void outroEscritorioNaoVeApuracoesNemSaldos() throws Exception {
         long id = enviar("efd-icms-ipi-2025-01.txt");
         aguardarStatus(id, DocumentoStatus.PROCESSADO);

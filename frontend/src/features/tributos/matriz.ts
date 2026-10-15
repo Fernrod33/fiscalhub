@@ -20,7 +20,7 @@ export type LinhaMatriz = { chave: string; tributo: string; uf: string | null; e
 export type Celula = { linha: LinhaMatriz; competencia: string; rotuloCompetencia: string; apuracoes: Apuracao[] };
 
 /** Competência pela data final do período: mensal 2025-01, trimestral 2025-T1, anual 2025. */
-export function competencia(dataFim: string, periodicidade: Periodicidade): { chave: string; rotulo: string } {
+function competencia(dataFim: string, periodicidade: Periodicidade): { chave: string; rotulo: string } {
   const ano = dataFim.slice(0, 4);
   const mes = Number(dataFim.slice(5, 7));
   if (periodicidade === 'ANUAL') return { chave: ano, rotulo: ano };
@@ -31,7 +31,7 @@ export function competencia(dataFim: string, periodicidade: Periodicidade): { ch
   return { chave: dataFim.slice(0, 7), rotulo: fmt.competencia(dataFim) };
 }
 
-export const ORDEM_TRIBUTOS = Object.keys(TRIBUTOS);
+const ORDEM_TRIBUTOS = Object.keys(TRIBUTOS);
 export const ORDEM_ESFERAS = Object.keys(ESFERAS);
 
 /** Linhas (tributo e UF) e colunas (competências) das apurações, já ordenadas. */
