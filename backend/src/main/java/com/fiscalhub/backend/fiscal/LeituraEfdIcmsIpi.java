@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -31,6 +32,26 @@ final class LeituraEfdIcmsIpi extends LeituraSped {
     private static final Set<String> LIDOS = Set.of("E100", "E110", "E111", "E116", "E200", "E210", "E250", "E300", "E310",
             "E316", "E500", "E520", "E530");
     private static final BigDecimal TOLERANCIA = new BigDecimal("0.01");
+    /** Descrição dos campos de saldo (Guia Prático), sem o sufixo do tributo (_ST, _DIFAL, _FCP, _IPI). */
+    private static final Map<String, String> DESCRICOES = Map.ofEntries(
+            Map.entry("VL_TOT_DEBITOS", "Débitos por saídas e prestações"), Map.entry("VL_TOT_DEB", "Débitos"),
+            Map.entry("VL_DEB", "Débitos por saídas"), Map.entry("VL_RETENCAO", "ICMS retido por substituição tributária"),
+            Map.entry("VL_AJ_DEBITOS", "Ajustes a débito"), Map.entry("VL_TOT_AJ_DEBITOS", "Ajustes a débito da apuração"),
+            Map.entry("VL_OUT_DEB", "Outros débitos"), Map.entry("VL_OD", "Outros débitos"),
+            Map.entry("VL_ESTORNOS_CRED", "Estornos de créditos"), Map.entry("VL_TOT_CREDITOS", "Créditos por entradas e aquisições"),
+            Map.entry("VL_TOT_CRED", "Créditos"), Map.entry("VL_CRED", "Créditos por entradas"),
+            Map.entry("VL_AJ_CREDITOS", "Ajustes a crédito"), Map.entry("VL_TOT_AJ_CREDITOS", "Ajustes a crédito da apuração"),
+            Map.entry("VL_OUT_CRED", "Outros créditos"), Map.entry("VL_OC", "Outros créditos"),
+            Map.entry("VL_DEVOL", "Devoluções"), Map.entry("VL_RESSARC", "Ressarcimentos"),
+            Map.entry("VL_ESTORNOS_DEB", "Estornos de débitos"), Map.entry("VL_SLD_CREDOR_ANT", "Saldo credor do período anterior"),
+            Map.entry("VL_SLD_CRED_ANT", "Saldo credor do período anterior"), Map.entry("VL_SD_ANT", "Saldo credor do período anterior"),
+            Map.entry("VL_SLD_APURADO", "Saldo devedor apurado"), Map.entry("VL_SLD_DEV_ANT", "Saldo devedor antes das deduções"),
+            Map.entry("VL_TOT_DED", "Deduções"), Map.entry("VL_DEDUCOES", "Deduções"),
+            Map.entry("VL_ICMS_RECOLHER", "ICMS a recolher"), Map.entry("VL_ICMS_RECOL", "ICMS a recolher"),
+            Map.entry("VL_RECOL", "Valor a recolher"), Map.entry("VL_SD", "Saldo devedor a recolher"),
+            Map.entry("VL_SLD_CREDOR_TRANSPORTAR", "Saldo credor a transportar"), Map.entry("VL_SLD_CRED_TRANSPORTAR", "Saldo credor a transportar"),
+            Map.entry("VL_SLD_CRED_ST_TRANSPORTAR", "Saldo credor a transportar"), Map.entry("VL_SC", "Saldo credor a transportar"),
+            Map.entry("DEB_ESP", "Débitos especiais (extra-apuração)"));
     /** COD_OR (tabela 5.4 do guia) 006: ICMS da alíquota adicional do Fundo de Combate à Pobreza. */
     private static final String OBRIGACAO_FCP = "006";
 
@@ -293,7 +314,8 @@ final class LeituraEfdIcmsIpi extends LeituraSped {
 
     private static void detalhes(Apuracao a, RegistroSped r, String... campos) {
         for (String campo : campos) {
-            a.detalhe("CALCULO", campo, campo, v(r, campo), r);
+            String semSufixo = campo.replaceFirst("_(ST|DIFAL|FCP|IPI)$", "");
+            a.detalhe("CALCULO", campo, DESCRICOES.getOrDefault(semSufixo, campo), v(r, campo), r);
         }
     }
 

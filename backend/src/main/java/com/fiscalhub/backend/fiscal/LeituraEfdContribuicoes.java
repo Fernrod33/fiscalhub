@@ -14,6 +14,7 @@ import com.fiscalhub.backend.sped.RegistroSped;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -25,7 +26,19 @@ import java.util.Set;
 final class LeituraEfdContribuicoes extends LeituraSped {
 
     private static final Set<String> LIDOS = Set.of("0110", "M100", "M200", "M210", "M500", "M600", "M610", "1100", "1500");
-    private static final java.util.Map<String, String> DEDUCOES = java.util.Map.of(
+    /** Tabela 4.3.5 do Guia Prático (código da contribuição social apurada). */
+    private static final Map<String, String> CONTRIBUICOES = Map.ofEntries(
+            Map.entry("01", "Não cumulativa à alíquota básica"), Map.entry("02", "Não cumulativa a alíquotas diferenciadas"),
+            Map.entry("03", "Não cumulativa por unidade de medida de produto"),
+            Map.entry("04", "Não cumulativa à alíquota básica – atividade imobiliária"),
+            Map.entry("31", "Apurada por substituição tributária"),
+            Map.entry("32", "Apurada por substituição tributária – vendas à Zona Franca de Manaus"),
+            Map.entry("51", "Cumulativa à alíquota básica"), Map.entry("52", "Cumulativa a alíquotas diferenciadas"),
+            Map.entry("53", "Cumulativa por unidade de medida de produto"),
+            Map.entry("54", "Cumulativa à alíquota básica – atividade imobiliária"),
+            Map.entry("71", "De SCP – incidência não cumulativa"), Map.entry("72", "De SCP – incidência cumulativa"),
+            Map.entry("99", "PIS/Pasep – folha de salários"));
+    private static final Map<String, String> DEDUCOES = Map.of(
             "VL_TOT_CRED_DESC", "Créditos descontados, apurados no período",
             "VL_TOT_CRED_DESC_ANT", "Créditos descontados, apurados em períodos anteriores",
             "VL_RET_NC", "Retenções na fonte", "VL_RET_CUM", "Retenções na fonte",
@@ -164,8 +177,9 @@ final class LeituraEfdContribuicoes extends LeituraSped {
             if (codigos.contains(d.texto("COD_CONT"))) {
                 base = base.add(soma(d, "VL_BC_CONT_AJUS"));
                 a.origem.putIfAbsent("baseCalculo", Origem.de(d));
-                a.detalhe("CONTRIBUICAO", d.texto("COD_CONT"), "Contribuição código " + d.texto("COD_CONT") + " (base "
-                        + soma(d, "VL_BC_CONT_AJUS").toPlainString() + ")", soma(d, "VL_CONT_PER"), d);
+                a.detalhe("CONTRIBUICAO", d.texto("COD_CONT"), CONTRIBUICOES.getOrDefault(d.texto("COD_CONT"),
+                        "Contribuição " + d.texto("COD_CONT")) + " (base " + soma(d, "VL_BC_CONT_AJUS").toPlainString() + ")",
+                        soma(d, "VL_CONT_PER"), d);
             }
         }
         a.base = a.origem.containsKey("baseCalculo") ? base : null;
