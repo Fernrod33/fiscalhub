@@ -49,6 +49,7 @@ public class DocumentoFiscalService {
     private static final Map<String, Set<String>> TIPOS_PERMITIDOS = Map.of(
             ".txt", Set.of("text/plain"),
             ".pdf", Set.of("application/pdf"),
+            ".dec", Set.of("application/octet-stream", "text/plain"), // DCTF Mensal (PGD): o navegador não conhece o tipo
             ".csv", Set.of("text/csv", "text/plain", "application/vnd.ms-excel"),
             ".xlsx", Set.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
 
@@ -245,7 +246,7 @@ public class DocumentoFiscalService {
     private void validarArquivo(MultipartFile arquivo) {
         Set<String> tiposAceitos = TIPOS_PERMITIDOS.get(extrairExtensao(arquivo.getOriginalFilename()));
         if (tiposAceitos == null) {
-            throw new BusinessRuleException("Tipo de arquivo não permitido. Use TXT (SPED), PDF, CSV ou XLSX.");
+            throw new BusinessRuleException("Tipo de arquivo não permitido. Use TXT (SPED), PDF, DEC (DCTF), CSV ou XLSX.");
         }
         if (arquivo.getContentType() != null && !tiposAceitos.contains(arquivo.getContentType())) {
             throw new BusinessRuleException("Tipo de conteúdo inválido para o arquivo importado.");

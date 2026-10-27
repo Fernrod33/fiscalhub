@@ -67,7 +67,7 @@ public class ProcessamentoDocumentoService {
         this.clienteRepository = clienteRepository;
         this.armazenamento = armazenamento;
         this.registroProgresso = registroProgresso;
-        this.processadores = processadores; // na ordem do Spring (@Order): o ProcessadorSemLeitura fica por último
+        this.processadores = processadores; // um por tipo; OUTRO vai para o ProcessadorSemLeitura
         this.eventos = eventos;
         this.transacao = new TransactionTemplate(transacoes);
     }
@@ -164,13 +164,15 @@ public class ProcessamentoDocumentoService {
             throw new FalhaImportacao("ARQUIVO_AUSENTE", "Arquivo não encontrado no armazenamento.");
         }
         contexto.usar(documento);
+        processadores.stream().filter(p -> p.suporta(documento.getTipo())).findFirst().orElseThrow()
+                .processar(documento, contexto);
+        // depois: no PDF, o tipo só se sabe quando o adaptador reconhece o layout
         DocumentoTipo informado = documento.getTipoInformado();
-        if (informado != null && informado != DocumentoTipo.OUTRO && informado != documento.getTipo()) {
+        if (informado != null && informado != DocumentoTipo.OUTRO && informado != DocumentoTipo.PDF
+                && informado != documento.getTipo()) {
             contexto.registrar(Severidade.ALERTA, null, null, "TIPO_DIVERGENTE", "Informado como " + informado
                     + ", mas o conteúdo é " + documento.getTipo() + ". Vale o conteúdo.");
         }
-        processadores.stream().filter(p -> p.suporta(documento.getTipo())).findFirst().orElseThrow()
-                .processar(documento, contexto);
     }
 
     private void concluir(Long jobId, Long documentoId, DocumentoStatus status, ContextoProcessamento contexto,

@@ -9,7 +9,11 @@ public enum TipoTributo {
     IPI,
     ITR,
     IRPF,
+    /** Contribuições previdenciárias (segurado, patronal, GILRAT). */
     INSS,
+    /** Contribuições de terceiros (salário-educação, INCRA, Sistema S). */
+    TERCEIROS,
+    IRRF,
     FGTS,
     // Estaduais
     ICMS,

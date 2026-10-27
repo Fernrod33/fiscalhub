@@ -10,7 +10,9 @@ public enum DocumentoStatus {
     /** O CNPJ do arquivo não bate com nenhum cliente do escritório: o usuário confirma criar ou associar. */
     AGUARDANDO_CLIENTE,
     /** Planilha cujo formato ainda não tem mapeamento de colunas salvo para o cliente. */
-    AGUARDANDO_MAPEAMENTO;
+    AGUARDANDO_MAPEAMENTO,
+    /** PDF cujo layout nenhum adaptador reconhece: fica guardado e é lido ao reprocessar, quando houver o adaptador. */
+    LAYOUT_NAO_RECONHECIDO;
 
     public boolean finalizado() {
         return this != RECEBIDO && this != PROCESSANDO;

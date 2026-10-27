@@ -108,6 +108,31 @@ public class ContextoProcessamento {
         return a != null && b != null && a.length() == 14 && b.length() == 14 && a.regionMatches(0, b, 0, 8);
     }
 
+    /**
+     * Documento estadual que só traz a inscrição estadual (relação de GR-PR): o cliente do escritório com essa inscrição
+     * (preenchida no cadastro ou por um documento do PR que traz CNPJ e inscrição). Enviado dentro de um cliente com outra
+     * inscrição: erro. Sem cliente com a inscrição: aguarda a escolha do cliente.
+     */
+    public Cliente clientePorInscricaoEstadual(String inscricao) {
+        Cliente atual = documento.getCliente();
+        if (atual != null) {
+            String doCliente = atual.getInscricaoEstadual() == null ? "" : atual.getInscricaoEstadual().replaceAll("[^0-9]", "");
+            if (!doCliente.isEmpty() && !doCliente.equals(inscricao)) {
+                throw new FalhaImportacao("INSCRICAO_ESTADUAL_DIVERGENTE", "O arquivo é da inscrição estadual " + inscricao
+                        + ", mas foi enviado no cliente " + atual.getRazaoSocial() + " (inscrição " + atual.getInscricaoEstadual()
+                        + "). Envie-o no cliente certo.");
+            }
+            return atual;
+        }
+        List<Cliente> encontrados = clienteRepository.findByEscritorioIdAndInscricaoEstadual(documento.getEscritorio().getId(), inscricao);
+        if (encontrados.size() != 1) {
+            throw new AguardandoUsuario(DocumentoStatus.AGUARDANDO_CLIENTE, "O documento traz só a inscrição estadual "
+                    + inscricao + ", que não está no cadastro de um único cliente. Escolha o cliente.", null, null);
+        }
+        documento.setCliente(encontrados.getFirst());
+        return encontrados.getFirst();
+    }
+
     /** Arquivos que não identificam a empresa (planilhas): exigem o cliente escolhido pelo usuário. */
     public Cliente clienteObrigatorio() {
         if (documento.getCliente() == null) {

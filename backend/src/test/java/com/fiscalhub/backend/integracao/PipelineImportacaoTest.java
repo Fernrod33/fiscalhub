@@ -44,7 +44,7 @@ class PipelineImportacaoTest {
 
     @Test
     void tipoInformadoDivergenteViraAlertaEValeOConteudo() throws Exception {
-        long id = enviar("dados.pdf", "application/pdf", "%PDF-1.7 " + UUID.randomUUID(), "{\"tipo\":\"ECD\"}");
+        long id = enviar("dados.txt", "text/plain", "conteúdo desconhecido " + UUID.randomUUID(), "{\"tipo\":\"ECD\"}");
         aguardar(() -> documentoRepository.findById(id).orElseThrow().getStatus().finalizado());
 
         mvc.perform(get("/api/documentos/{d}", id).with(consultor))
@@ -53,9 +53,9 @@ class PipelineImportacaoTest {
                 .andExpect(jsonPath("$.clienteId").isEmpty())
                 .andExpect(jsonPath("$.status").value("PROCESSADO_COM_ALERTAS"));
         mvc.perform(get("/api/documentos/{d}/inconsistencias", id).with(consultor))
-                .andExpect(jsonPath("$[0].regra").value("TIPO_DIVERGENTE"))
-                .andExpect(jsonPath("$[0].severidade").value("ALERTA"))
-                .andExpect(jsonPath("$[1].regra").value("TIPO_SEM_LEITURA"));
+                .andExpect(jsonPath("$[0].regra").value("TIPO_SEM_LEITURA"))
+                .andExpect(jsonPath("$[1].regra").value("TIPO_DIVERGENTE")) // depois da leitura: o PDF só tem tipo no adaptador
+                .andExpect(jsonPath("$[1].severidade").value("ALERTA"));
     }
 
     @Test

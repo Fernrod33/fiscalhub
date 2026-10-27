@@ -1,7 +1,6 @@
 package com.fiscalhub.backend.integracao;
 
 
-import com.fiscalhub.backend.dto.DebitoImportado;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
@@ -28,7 +27,7 @@ import com.fiscalhub.backend.security.JwtUtils;
 import jakarta.servlet.http.Cookie;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import com.fiscalhub.backend.service.DebitoService;
+import com.fiscalhub.backend.repository.DebitoRepository;
 import org.springframework.boot.test.context.TestComponent;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -51,7 +50,7 @@ public class DadosTeste {
     private final DocumentoFiscalRepository documentoRepository;
     private final SimulacaoParcelamentoRepository simulacaoRepository;
     private final IndiceMonetarioRepository indiceRepository;
-    private final DebitoService debitoService;
+    private final DebitoRepository debitoRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
     private String senhaCodificada;
@@ -59,14 +58,14 @@ public class DadosTeste {
     public DadosTeste(EscritorioRepository escritorioRepository, UsuarioRepository usuarioRepository,
                       ClienteRepository clienteRepository, DocumentoFiscalRepository documentoRepository,
                       SimulacaoParcelamentoRepository simulacaoRepository, IndiceMonetarioRepository indiceRepository,
-                      DebitoService debitoService, PasswordEncoder passwordEncoder, JwtUtils jwtUtils) {
+                      DebitoRepository debitoRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils) {
         this.escritorioRepository = escritorioRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.documentoRepository = documentoRepository;
         this.simulacaoRepository = simulacaoRepository;
         this.indiceRepository = indiceRepository;
-        this.debitoService = debitoService;
+        this.debitoRepository = debitoRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtils = jwtUtils;
     }
@@ -141,11 +140,19 @@ public class DadosTeste {
         return documentoRepository.save(d);
     }
 
-    /** Débito pelo caminho real de importação: sempre ligado ao documento de origem. */
+    /** Débito sempre ligado ao documento de origem (como os da importação; o fluxo real é pelos adaptadores). */
     public Debito debito(DocumentoFiscal origem, String valor, LocalDate vencimento) {
-        return debitoService.registrarDebitosImportados(origem, List.of(new DebitoImportado(
-                "registro 1", OrgaoCredor.RFB, TipoTributo.IRPJ, vencimento.withDayOfMonth(1), vencimento,
-                new BigDecimal(valor), null, null, SituacaoDebito.EM_ABERTO, null))).get(0);
+        Debito d = new Debito();
+        d.setCliente(origem.getCliente());
+        d.setDocumentoOrigem(origem);
+        d.setReferenciaOrigem("registro 1");
+        d.setOrgaoCredor(OrgaoCredor.RFB);
+        d.setTributo(TipoTributo.IRPJ);
+        d.setCompetencia(vencimento.withDayOfMonth(1));
+        d.setDataVencimento(vencimento);
+        d.setValorPrincipal(new BigDecimal(valor));
+        d.setSituacao(SituacaoDebito.EM_ABERTO);
+        return debitoRepository.save(d);
     }
 
     public SimulacaoParcelamento simulacao(Debito debito) {

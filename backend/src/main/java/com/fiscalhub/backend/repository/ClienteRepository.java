@@ -11,5 +11,6 @@ public interface ClienteRepository extends JpaRepository<Cliente, Long> {
     Optional<Cliente> findByIdAndEscritorioId(Long id, Long escritorioId);
     Optional<Cliente> findByEscritorioIdAndCnpj(Long escritorioId, String cnpj);
     List<Cliente> findByEscritorioIdAndCnpjStartingWith(Long escritorioId, String raiz);
+    List<Cliente> findByEscritorioIdAndInscricaoEstadual(Long escritorioId, String inscricaoEstadual);
     boolean existsByCnpjAndEscritorioId(String cnpj, Long escritorioId);
 }

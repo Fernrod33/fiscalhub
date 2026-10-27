@@ -60,6 +60,13 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.5.1</version>
         </dependency>
+        <!-- PDFs dos órgãos (situação fiscal, DCTF, DARF, GR-PR...): texto por página e linha, com posição. Uma
+             dependência só; sem OCR. Arquivo não confiável: limites de tamanho e páginas no LeitorPdf. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>

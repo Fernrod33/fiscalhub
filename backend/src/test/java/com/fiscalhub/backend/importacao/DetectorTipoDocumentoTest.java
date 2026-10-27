@@ -35,8 +35,11 @@ class DetectorTipoDocumentoTest {
     }
 
     @Test
-    void pdfEDesconhecidoViramOutro() {
-        assertThat(detectar("%PDF-1.7", ".pdf")).isEqualTo(DocumentoTipo.OUTRO);
+    void pdfDecDaDctfEDesconhecido() {
+        assertThat(detectar("%PDF-1.7", ".pdf")).isEqualTo(DocumentoTipo.PDF); // qual documento, o adaptador diz
+        assertThat(detectar("%PDF-1.4", ".txt")).isEqualTo(DocumentoTipo.PDF); // pelo conteúdo, não pela extensão
+        assertThat(detectar("DCTFM202411222333000181011202", ".dec")).isEqualTo(DocumentoTipo.DCTF);
+        assertThat(detectar("DCTFM sem ano", ".dec")).isEqualTo(DocumentoTipo.OUTRO);
         assertThat(detectar("qualquer coisa", ".txt")).isEqualTo(DocumentoTipo.OUTRO);
     }
 }

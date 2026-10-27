@@ -1,0 +1,34 @@
+# Códigos de receita -> tributo e esfera: chave da conciliação apurado x declarado x pago (DARF, DCTF, DCTFWeb, GR-PR).
+# Código sem a variação ("5123-01" -> 5123). tributo = TipoTributo, ou PARCELAMENTO (parcela de parcelamento ou
+# transação: vai para o parcelamento, não para o tributo do período).
+# Fontes:
+#   RFB-SICALC: códigos de uso corrente da tabela de códigos de receita da RFB (Sicalc). Registrados à mão, sem
+#     conferência automática com a tabela publicada: confira ao atualizar.
+#   DCTFWEB-MASSA: códigos da DCTFWeb como aparecem na massa fictícia (ficticio-2026-10). Conferir com a tabela oficial
+#     da DCTFWeb antes de usar com documentos reais.
+#   PR-ILUSTRATIVO: código estadual da massa fictícia, declarado ilustrativo no README dela. Conferir com a tabela de
+#     receitas da SEFA-PR antes de usar com documentos reais.
+#   PR-CONFERIR: código da GR-PR conhecido, ainda não conferido com a tabela publicada pela SEFA-PR.
+# Para mudar: edite este arquivo (versionado); um código que não está aqui gera alerta CODIGO_RECEITA_DESCONHECIDO.
+# codigo|esfera|orgao|tributo|descricao|fonte
+0561|FEDERAL|RFB|IRRF|IRRF - Rendimento do trabalho assalariado|RFB-SICALC
+2089|FEDERAL|RFB|IRPJ|IRPJ - Lucro presumido|RFB-SICALC
+2362|FEDERAL|RFB|IRPJ|IRPJ - Estimativa mensal (lucro real)|RFB-SICALC
+2372|FEDERAL|RFB|CSLL|CSLL - Lucro presumido|RFB-SICALC
+2484|FEDERAL|RFB|CSLL|CSLL - Estimativa mensal (lucro real)|RFB-SICALC
+5123|FEDERAL|RFB|IPI|IPI - Demais produtos|RFB-SICALC
+6912|FEDERAL|RFB|PIS|PIS - Não cumulativo|RFB-SICALC
+8109|FEDERAL|RFB|PIS|PIS - Faturamento (cumulativo)|RFB-SICALC
+5856|FEDERAL|RFB|COFINS|COFINS - Não cumulativa|RFB-SICALC
+2172|FEDERAL|RFB|COFINS|COFINS - Faturamento (cumulativa)|RFB-SICALC
+1082|FEDERAL|RFB|INSS|CP descontada do segurado|DCTFWEB-MASSA
+1138|FEDERAL|RFB|INSS|CP patronal|DCTFWEB-MASSA
+1646|FEDERAL|RFB|INSS|CP GILRAT (RAT x FAP)|DCTFWEB-MASSA
+1170|FEDERAL|RFB|TERCEIROS|Salário-educação|DCTFWEB-MASSA
+1176|FEDERAL|RFB|TERCEIROS|INCRA|DCTFWEB-MASSA
+1181|FEDERAL|RFB|TERCEIROS|SENAI|DCTFWEB-MASSA
+1184|FEDERAL|RFB|TERCEIROS|SESI|DCTFWEB-MASSA
+1191|FEDERAL|RFB|TERCEIROS|SEBRAE|DCTFWEB-MASSA
+1015|ESTADUAL|SEFA_PR|ICMS|ICMS - Operações próprias|PR-CONFERIR
+1023|ESTADUAL|SEFA_PR|ICMS_ST|ICMS-ST - Substituição tributária|PR-ILUSTRATIVO
+2011|ESTADUAL|SEFA_PR|PARCELAMENTO|Parcelamento de ICMS|PR-ILUSTRATIVO

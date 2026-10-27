@@ -8,6 +8,7 @@ import com.fiscalhub.backend.dto.SimulacaoResultDTO;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.ParcelaSimulacao;
 import com.fiscalhub.backend.entity.SimulacaoParcelamento;
+import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.service.calculo.CalculoParcelamentoStrategy;
@@ -98,7 +99,13 @@ public class SimulacaoParcelamentoService {
 
     private EntradaCalculo entrada(SimulacaoRequestDTO request, UsuarioAutenticado ua) {
         Cliente cliente = acessoRecursoService.cliente(request.getClienteId(), ua);
-        return new EntradaCalculo(cliente, acessoRecursoService.debitos(cliente.getId(), request.getDebitoIds(), ua), request);
+        List<Debito> debitos = acessoRecursoService.debitos(cliente.getId(), request.getDebitoIds(), ua);
+        debitos.stream().filter(d -> d.getDataVencimento() == null || d.getValorPrincipal() == null).findFirst().ifPresent(d -> {
+            throw new BusinessRuleException("O débito " + (d.getNumeroInscricao() != null ? d.getNumeroInscricao() : d.getId())
+                    + " não traz vencimento ou principal no documento (inscrição em dívida ativa). A simulação desses débitos "
+                    + "(transação e parcelamento da PGFN) entra na Fase 5.");
+        });
+        return new EntradaCalculo(cliente, debitos, request);
     }
 
     private CalculoParcelamentoStrategy resolverStrategy(SimulacaoRequestDTO request) {

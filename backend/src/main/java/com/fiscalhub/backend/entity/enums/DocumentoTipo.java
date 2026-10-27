@@ -1,6 +1,9 @@
 package com.fiscalhub.backend.entity.enums;
 
-/** Tipo detectado no conteúdo do arquivo (DetectorTipoDocumento). Os do fim ficam reservados para a Fase 2b. */
+/**
+ * Tipo detectado no conteúdo do arquivo. SPED e .dec pelo DetectorTipoDocumento; PDF pelo adaptador que reconhece o
+ * layout (ProcessadorPdf): até lá, e quando nenhum reconhece, fica PDF.
+ */
 public enum DocumentoTipo {
     ECD,
     ECF,
@@ -9,11 +12,22 @@ public enum DocumentoTipo {
     /** Balancete em planilha (.xlsx ou .csv). */
     BALANCETE,
     RELATORIO_SITUACAO_FISCAL,
-    EXTRATO_PGFN,
+    /** Extrato de inscrições em dívida ativa da União (Regularize/PGFN). */
+    EXTRATO_REGULARIZE,
+    CAPAG,
+    /** DCTF Mensal: PDF da impressão ou arquivo .dec. */
     DCTF,
     DCTFWEB,
-    COMPROVANTE_ARRECADACAO,
-    EXTRATO_DIVIDA_ATIVA_PR,
-    /** PDF, SPED não reconhecido ou conteúdo desconhecido. */
+    DARF,
+    /** Relatório consolidado de pagamentos (e-CAC). */
+    RELATORIO_PAGAMENTOS,
+    /** Conta corrente fiscal e dívida ativa do ICMS (Receita Estadual do PR). */
+    CONTA_CORRENTE_PR,
+    RTI,
+    GR_PR,
+    RELACAO_PAGAMENTOS_GR_PR,
+    /** PDF ainda sem layout reconhecido. */
+    PDF,
+    /** SPED não reconhecido ou conteúdo desconhecido. */
     OUTRO
 }

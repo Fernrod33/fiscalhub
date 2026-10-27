@@ -48,10 +48,11 @@ public class Debito {
     /** Primeiro dia do mês de competência. */
     private LocalDate competencia;
 
-    @Column(name = "data_vencimento", nullable = false)
+    /** Nulo em inscrição de dívida ativa (o extrato não traz vencimento). */
+    @Column(name = "data_vencimento")
     private LocalDate dataVencimento;
 
-    @Column(name = "valor_principal", nullable = false, precision = 15, scale = 2)
+    @Column(name = "valor_principal", precision = 15, scale = 2)
     private BigDecimal valorPrincipal;
 
     /** Multa e juros como informados no documento (opcionais). */

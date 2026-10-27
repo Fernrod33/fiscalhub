@@ -4,11 +4,13 @@ import com.fiscalhub.backend.entity.enums.DocumentoTipo;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.regex.Pattern;
 
 /**
  * Tipo do documento pelo conteúdo (a extensão e o tipo informado no upload são só pistas).
  * SPED: a primeira linha |0000|...| identifica a escrituração: ECD e ECF pelo nome no campo 2 ({@link #ASSINATURAS_SPED});
- * as EFD pela estrutura do 0000 ({@link #efd}).
+ * as EFD pela estrutura do 0000 ({@link #efd}). PDF: aqui só "é PDF"; qual documento é, quem diz é o adaptador que
+ * reconhece o layout (ProcessadorSituacao tenta todos). .dec da DCTF Mensal: cabeçalho DCTFM + ano.
  */
 public final class DetectorTipoDocumento {
 
@@ -24,6 +26,7 @@ public final class DetectorTipoDocumento {
     };
 
     private static final byte[] ZIP = {'P', 'K', 3, 4}; // .xlsx é um zip (OOXML)
+    private static final Pattern DEC_DCTF = Pattern.compile("^DCTFM[0-9]{18}.*", Pattern.DOTALL); // ano + CNPJ
 
     private DetectorTipoDocumento() {
     }
@@ -42,13 +45,19 @@ public final class DetectorTipoDocumento {
         if (efd != null) {
             return efd;
         }
+        if (texto.startsWith("%PDF-")) {
+            return DocumentoTipo.PDF;
+        }
+        if (DEC_DCTF.matcher(texto).matches()) {
+            return DocumentoTipo.DCTF;
+        }
         if (".xlsx".equals(extensao) && inicio.length >= 4 && Arrays.equals(inicio, 0, 4, ZIP, 0, 4)) {
             return DocumentoTipo.BALANCETE;
         }
         if (".csv".equals(extensao) && !texto.startsWith("|0000|") && !texto.startsWith("%PDF")) {
             return DocumentoTipo.BALANCETE;
         }
-        return DocumentoTipo.OUTRO; // PDF, SPED ainda não reconhecido ou conteúdo desconhecido
+        return DocumentoTipo.OUTRO; // SPED ainda não reconhecido ou conteúdo desconhecido
     }
 
     /**
