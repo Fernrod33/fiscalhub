@@ -25,7 +25,8 @@ src/
   app/          rotas (data router, código dividido por rota), guardas, providers, tema, telas de erro
   features/     uma pasta por domínio: auth, clientes, documentos (central de importação),
                 planilha (assistente do balancete), demonstracoes, tributos (apurado: matriz,
-                demonstração do lucro, saldos fiscais), debitos, simulacoes,
+                demonstração do lucro, saldos fiscais), situacao-fiscal (débitos, parcelamentos,
+                pendências, CAPAG, conciliação, origem por documento), simulacoes,
                 usuarios, auditoria, painel — cada uma com api.ts (TanStack Query),
                 components/ e pages/
   components/   compartilhados: DataTable, Cartao, EstadoVazio, TextoTruncado, Campo, Confirmar, Alternador,
@@ -50,10 +51,18 @@ Regras que valem para todo o código:
 
 ## Aba Tributos
 
-- **Matriz** (`features/tributos/components/matriz-tributos.tsx`): tributos por esfera (estaduais por UF) × competências (mensal, trimestral ou anual, pela data final do período); a célula soma o valor a recolher das apurações dela e abre a gaveta de detalhe (base, apurado, deduções e créditos, a recolher, origem, linhas do cálculo, obrigações). As colunas de cada competência são `Metrica`s (`features/tributos/matriz.ts`): para o declarado, o pago e a diferença da Fase 2b, basta passar mais métricas.
+- **Matriz** (`features/tributos/components/matriz-tributos.tsx`), montada da conciliação (`GET /conciliacao`): tributos por esfera (estaduais por UF) × competências (mensal, trimestral ou anual, somando os meses), com **Apurado, Declarado, Pago e Diferença** (`Metrica`s em `features/tributos/matriz.ts`) e o status em selo (texto sempre; cor só de estado; na célula agregada, o pior). Filtro por status. A célula abre a gaveta: os três valores com a origem (arquivo, página ou registro, linha e trecho), a diferença, os acréscimos devidos pelo atraso, o débito correspondente na situação fiscal e o cálculo das apurações do período (base, apurado, deduções, a recolher, linhas do cálculo, obrigações).
+- **Alertas da conciliação**: diferença sem débito na situação fiscal e débito em aberto sem diferença.
 - **IRPJ e CSLL**: por período de apuração (ajuste anual ou trimestre), regime e demonstração em cascata (lucro, adições, exclusões, compensação, base presumida, cálculo).
 - **Saldos fiscais**: cards do saldo mais recente de cada tipo e a evolução por período.
 - **Alertas de conferência**: as inconsistências das escriturações fiscais e a conferência ECD × ECF.
+
+## Aba Situação fiscal
+
+- **Certidão**: o que a impede (débito em aberto, inscrição sem negociação), em destaque.
+- **Débitos** por órgão e situação (filtros), com o total por órgão, selos de impeditivo e de fontes divergentes e a origem de cada fonte.
+- **Parcelamentos e transações** com a barra de parcelas (`BarraProgresso`, scaleX, respeita movimento reduzido), **pendências** e a **CAPAG oficial** (classe, razão capacidade ÷ passivo e alerta de inconsistência com a Portaria).
+- **Visão geral** do cliente: total por órgão, divergências da conciliação e certidão (`AnimatedNumber`, `Stagger`).
 
 ## Design system
 

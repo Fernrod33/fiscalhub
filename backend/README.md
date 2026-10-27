@@ -97,6 +97,9 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V16__remove_campos_legados_do_documento.sql` | remove `esfera`, `juridicao`, `retificacao` e `documento_fiscal_tributos`; tipos com nome de tributo viram `OUTRO`, `DCTF_WEB` vira `DCTFWEB` |
 | `V17__linha_demonstracao_derivada.sql` | `linha_demonstracao.derivada` (linha calculada pelo sistema, ex.: resultado do período não encerrado) |
 | `V18__apuracao_tributos.sql` | modelo único de apuração: `apuracao_tributo`, `detalhe_apuracao`, `obrigacao_recolher`, `saldo_fiscal`; CNPJ do estabelecimento na escrituração (preenchido com o do cliente nas existentes) |
+| `V19__hierarquia_herdada.sql` | `linha_demonstracao.hierarquia_herdada_de` (código do I051 ausente na tabela do exercício, posicionado pela de um ano anterior) |
+| `V20__situacao_fiscal.sql` | `debito` ampliado (escrituração, chave, fontes, encargo, total, origem por página e linha; vencimento e principal passam a aceitar nulo), `parcelamento`, `pendencia_fiscal`, `capacidade_pagamento_oficial`; `escrituracao_contabil.origem` e `versao_leiaute` mais largos |
+| `V21__declarado_e_pago.sql` | `debito_declarado` e `pagamento` |
 
 **Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
 
@@ -109,7 +112,7 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 **Upload**
 - Pela central do escritório (`POST /api/documentos`, sem cliente: o cliente sai do CNPJ do arquivo) ou dentro de um cliente (`POST /api/clientes/{id}/documentos`: o CNPJ do arquivo tem que ser o dele, senão é erro claro).
 - O arquivo vai direto para o storage por stream, com **SHA-256** no caminho. O mesmo arquivo de novo no escritório responde **409** com `recursoExistenteId`.
-- Extensões aceitas: `.txt`, `.pdf`, `.csv`, `.xlsx`. O tipo informado (`documento.tipo`, opcional) é só sugestão: vale o detectado no conteúdo, e a divergência vira alerta.
+- Extensões aceitas: `.txt`, `.pdf`, `.dec`, `.csv`, `.xlsx`. O tipo informado (`documento.tipo`, opcional) é só sugestão: vale o detectado no conteúdo, e a divergência vira alerta.
 - **Storage**: `ArmazenamentoArquivos` (`ArmazenamentoLocal` em dev, `ArmazenamentoS3` para S3/MinIO), por `fiscalhub.storage.tipo`.
 
 **Tipos reconhecidos** (`DetectorTipoDocumento`, pelo conteúdo)
@@ -121,14 +124,14 @@ Dados fiscais e contábeis só entram por arquivo; nenhum valor é digitado. Tod
 | `\|0000\|COD_VER\|` com as datas nos campos 6 e 7 (`TIPO_ESCRIT\|IND_SIT_ESP\|NUM_REC_ANTERIOR\|DT_INI\|DT_FIN`) | `EFD_CONTRIBUICOES` | `ProcessadorFiscal` (`LeituraEfdContribuicoes`) |
 | `\|0000\|COD_VER\|` com as datas nos campos 4 e 5 (`COD_FIN\|DT_INI\|DT_FIN`) | `EFD_ICMS_IPI` | `ProcessadorFiscal` (`LeituraEfdIcmsIpi`) |
 | zip OOXML com extensão `.xlsx`, ou `.csv` | `BALANCETE` | `ProcessadorPlanilha` |
-| PDF, SPED não reconhecido, outro | `OUTRO` | guardado, com alerta (`ProcessadorSemLeitura`) |
-
-Reservados para a Fase 2b (ainda sem detecção): `RELATORIO_SITUACAO_FISCAL`, `EXTRATO_PGFN`, `DCTF`, `DCTFWEB`, `COMPROVANTE_ARRECADACAO`, `EXTRATO_DIVIDA_ATIVA_PR`.
+| `%PDF-` | `PDF` até o adaptador reconhecer o layout (vira `RELATORIO_SITUACAO_FISCAL`, `DARF`...) | `ProcessadorSituacao` (ver abaixo) |
+| `DCTFM` + ano + CNPJ | `DCTF` (`.dec`) | `ProcessadorSituacao` (`LeitorDctfDec`) |
+| SPED não reconhecido, outro | `OUTRO` | guardado, com alerta (`ProcessadorSemLeitura`) |
 
 **Pipeline** (`importacao/ProcessamentoDocumentoService`)
 - Um registro em `job_processamento` é despachado depois do commit ao pool do Spring Boot. Na subida, jobs presos voltam para a fila.
 - Etapas no job, expostas em `GET /api/documentos/{id}/status` com o percentual (bytes lidos ÷ tamanho): `RECEBIDO → LENDO → VALIDANDO → GRAVANDO → CONCLUIDO`. Etapa e progresso são gravados em transação própria (`RegistroProgresso`), para a tela acompanhar.
-- Status do documento: `RECEBIDO`, `PROCESSANDO`, `PROCESSADO`, `PROCESSADO_COM_ALERTAS` (há alerta ou erro não fatal), `ERRO`, `AGUARDANDO_CLIENTE` (CNPJ sem cliente no escritório: sugestão de cadastro com CNPJ e nome do arquivo), `AGUARDANDO_MAPEAMENTO` (planilha sem mapeamento ou período).
+- Status do documento: `RECEBIDO`, `PROCESSANDO`, `PROCESSADO`, `PROCESSADO_COM_ALERTAS` (há alerta ou erro não fatal), `ERRO`, `AGUARDANDO_CLIENTE` (CNPJ sem cliente no escritório: sugestão de cadastro com CNPJ e nome do arquivo), `AGUARDANDO_MAPEAMENTO` (planilha sem mapeamento ou período), `LAYOUT_NAO_RECONHECIDO` (PDF que nenhum adaptador reconhece).
 - **Uma transação por documento**: erro fatal (`FalhaImportacao`) desfaz tudo o que o processador gravou e marca `ERRO`. As inconsistências (`ERRO`, `ALERTA`, `INFO`, com registro, linha e código da regra; até 1.000 por documento) são gravadas no fim, em `inconsistencia_importacao`.
 - **Reprocessar** (`POST /api/documentos/{id}/reprocessar`, ADMIN e CONSULTOR) roda de novo a partir do arquivo no storage; o processador apaga o que a execução anterior gerou.
 
@@ -199,20 +202,116 @@ Os registros lidos têm os mesmos campos em todas as versões cobertas de cada t
 
 **Desempenho** (`DesempenhoEfdTest`, opcional, `@Tag("desempenho")`): EFD ICMS/IPI sintética de **1 GB / 6,9 milhões de linhas em 3,3 s, pico de heap 149 MB com `-Xmx256m`**.
 
+## Documentos dos órgãos: PDF e .dec (Fase 2b)
+
+Leitura em duas camadas (`pdf/`), sem OCR e sem IA:
+
+1. **`LeitorPdf`** (Apache PDFBox 3.0.8, a única dependência para PDF): texto por página e por linha, cada linha
+   dividida em células pela posição horizontal; texto rotacionado é descartado (some a marca d'água diagonal);
+   normalizadores pt-BR de valor (`1.234,56`, `R$`, `(...)`, `D/C`), data, CNPJ, CPF e competência. O resultado é um
+   `DocumentoPdf` com a navegação comum: seção pelo título, tabela (um registro é um **bloco** de linhas a até 1,45 ×
+   a fonte uma da outra: célula quebrada e centralização vertical) e campo "rótulo | valor".
+2. **Um adaptador por tipo de documento e versão de layout** (`AdaptadorDocumentoPdf`: `tipo`, `versao`,
+   `reconhece(pdf)`, `extrair(pdf, extracao)`). O `ProcessadorSituacao` tenta todos: exatamente um reconhece → ele lê;
+   nenhum ou mais de um → status `LAYOUT_NAO_RECONHECIDO` com alerta (nunca chute). O documento fica guardado e é lido
+   ao reprocessar, quando houver o adaptador.
+
+PDF não confiável: 20 MB e 300 páginas no máximo, PDF com senha recusado (`PDF_CRIPTOGRAFADO`), arquivo inválido
+(`PDF_INVALIDO`), cache de streams em arquivo temporário (não em memória). PDF sem texto (scan, foto) é erro
+`PDF_SEM_TEXTO` com a orientação "gere o PDF pelo próprio sistema; scan e foto não são aceitos". A extração de texto
+não executa JavaScript, não abre anexos nem busca recursos externos.
+
+**Tipos e versões de layout cobertos**
+
+| Documento | `DocumentoTipo` | Adaptador | Versão | Grava |
+|---|---|---|---|---|
+| Relatório de Situação Fiscal (e-CAC, RFB + PGFN) | `RELATORIO_SITUACAO_FISCAL` | `AdaptadorRelatorioSituacaoFiscal` | `ficticio-2026-10` | débitos do SIEF, omissões, inscrições do SIDA e negociadas, processo suspenso |
+| Extrato de inscrições (Regularize) | `EXTRATO_REGULARIZE` | `AdaptadorRegularize` | `ficticio-2026-10` | inscrições (principal, multa, juros, encargo, situação, ajuizamento), transação |
+| CAPAG (Regularize) | `CAPAG` | `AdaptadorCapag` | `ficticio-2026-10` | capacidade oficial (classe conferida pela Portaria PGFN 6.757/2022) |
+| DCTF Mensal (impressão) | `DCTF` | `AdaptadorDctfPdf` | `ficticio-2026-10` | declarado e vinculações |
+| DCTF Mensal (`.dec`) | `DCTF` | `LeitorDctfDec` + `resources/dctf/dec-ficticio-2026-10.properties` | `ficticio-2026-10` (layout **aproximado**) | declarado e vinculações |
+| DCTFWeb (declaração completa) | `DCTFWEB` | `AdaptadorDctfWeb` | `ficticio-2026-10` | declarado (previdenciário, terceiros, IRRF, MIT) |
+| DARF pago | `DARF` | `AdaptadorDarf` | `ficticio-2026-10` | pagamento por código |
+| Relatório consolidado de pagamentos (e-CAC) | `RELATORIO_PAGAMENTOS` | `AdaptadorRelatorioPagamentos` | `ficticio-2026-10` | pagamentos; parcela de transação vai para a transação |
+| Conta corrente e dívida ativa do ICMS (PR) | `CONTA_CORRENTE_PR` | `AdaptadorContaCorrentePr` | `ficticio-2026-10` | declarado do ICMS por mês, débito em aberto (SEFA-PR), CDA (PGE-PR), parcelamento |
+| RTI (PR) | `RTI` | `AdaptadorRti` | `ficticio-2026-10` (conteúdo **presumido**) | saldos credores mensais de ICMS; capacidade oficial só se o documento trouxer |
+| GR-PR paga | `GR_PR` | `AdaptadorGrPr` | `ficticio-2026-10` | pagamento; parcela de parcelamento vai para o parcelamento |
+| Relação de pagamentos GR-PR | `RELACAO_PAGAMENTOS_GR_PR` | `AdaptadorRelacaoGrPr` | `ficticio-2026-10` | pagamentos (o cliente vem do CAD/ICMS) |
+
+> **Atenção:** os adaptadores `ficticio-2026-10` leem a massa fictícia (`src/test/resources/massa-ficticia`), que
+> imita o **conteúdo**, não o visual dos sistemas, e só a reconhecem pela faixa "DOCUMENTO FICTÍCIO PARA TESTE DE
+> SOFTWARE (FiscalHub)". Um PDF real cai em `LAYOUT_NAO_RECONHECIDO` até ganhar o seu adaptador. O `.dec` usa um
+> layout aproximado, não o do PGD DCTF.
+
+**Como adicionar um adaptador de PDF** (PDF real ou nova versão de layout)
+1. Leia o PDF com o `LeitorPdf` e veja as linhas e células (um teste que imprime `pdf.linhas()` basta).
+2. Crie `situacao/adaptadores/Adaptador<Documento><Versao>` como `@Component` implementando `AdaptadorDocumentoPdf`
+   (ou estendendo uma base da versão, como `AdaptadorFicticio`). `reconhece`: trechos que identificam o documento **e**
+   a versão do layout (dois adaptadores não podem reconhecer o mesmo PDF). `extrair`: use `pdf.campo(rótulo)`,
+   `pdf.secao(título, títulos)` e `DocumentoPdf.tabela(linhas, chave)`; normalize com `LeitorPdf.valor/data/cnpj`;
+   preencha a `Extracao` com a empresa (CNPJ ou inscrição estadual), o período e os itens, cada um com a
+   `Origem` (página, linha, trecho). Não grave nada: o `RepositorioSituacao` grava.
+3. Não mexa nos adaptadores existentes. Teste o novo com o PDF (anonimizado) em `AdaptadoresTest` ou num teste próprio.
+4. Código de receita novo: uma linha em `resources/receitas/codigos-receita.txt`, com a fonte.
+
+**`.dec` da DCTF**: largura fixa pelo layout versionado em `resources/dctf/` (registro → campo:início:tamanho). Para o
+layout do PGD, crie outro arquivo de layout e o reconhecimento dele no `LeitorDctfDec`, sem mexer no atual.
+
+## Débitos, declarado, pago e conciliação
+
+Tudo pende da escrituração do documento (`escrituracao_contabil`, origem = tipo do documento, `versao_leiaute` = versão
+do adaptador): reprocessar ou excluir o documento apaga o que ele gerou. Cada linha leva a origem (página, linha e
+trecho; no `.dec`, registro e linha).
+
+- **`debito`** (a entidade existente, ampliada): órgão (`RFB`, `PGFN`, `SEFA_PR`, `PGE_PR`), tributo e código de
+  receita, competência ou período, vencimento, principal, multa, juros, encargo, total do documento, situação
+  (`EM_ABERTO`, `INSCRITO_DIVIDA_ATIVA`, `PARCELADO`, `SUSPENSO`, `NEGOCIADO`), inscrição/CDA/processo, ajuizamento,
+  negociação. Impede certidão: `EM_ABERTO` e `INSCRITO_DIVIDA_ATIVA`.
+- **`parcelamento`**, **`pendencia_fiscal`**, **`capacidade_pagamento_oficial`** (insumo da Fase 4),
+  **`debito_declarado`** (com as vinculações: pago, compensado, suspenso, parcelado) e **`pagamento`** (DARF, DAS,
+  GR-PR; parcela de parcelamento ou transação aponta para ele).
+- **Fontes juntas na consulta** (`SituacaoFiscalService`): relatórios que são retrato (situação fiscal, Regularize,
+  CAPAG, conta corrente, RTI) valem só pelo mais recente de cada tipo; a mesma dívida em tipos diferentes (chave:
+  inscrição, ou órgão + tributo + competência) é um débito só, com as origens de todos e os valores do documento mais
+  recente que os traz; valor diferente entre fontes marca o débito como `divergente` e gera alerta na importação. O
+  mesmo pagamento (DARF pelo número; GR-PR por receita, referência e data) é um só, com os itens do próprio documento de
+  arrecadação. Declarações: a retificadora substitui a original do mesmo período (histórico mantido); a mesma DCTF em
+  PDF e `.dec` é conferida uma contra a outra.
+- **Simulação**: os débitos importados entram em `/api/simulacoes`; inscrição sem vencimento ou principal é recusada
+  com mensagem clara (o cálculo da PGFN é da Fase 5).
+
+**Tabela de códigos de receita** (`resources/receitas/codigos-receita.txt`): código (sem a variação) → esfera, órgão e
+tributo, ou `PARCELAMENTO`; fonte por linha (`RFB-SICALC`: códigos de uso corrente registrados à mão, a conferir;
+`DCTFWEB-MASSA` e `PR-ILUSTRATIVO`: como na massa fictícia, a conferir com as tabelas oficiais antes de usar com
+documentos reais; `PR-CONFERIR`). Código fora da tabela gera `CODIGO_RECEITA_DESCONHECIDO` e fica fora da conciliação.
+
+**Acréscimos moratórios** (`AcrescimosMoratorios`, componente único da regra federal, Lei 9.430/96, art. 61): multa de
+0,33% ao dia, do dia seguinte ao vencimento ao do pagamento, limitada a 20%; juros pela **soma** da SELIC mensal do mês
+seguinte ao vencimento ao anterior ao pagamento, mais 1% no mês do pagamento. Sem SELIC carregada é erro (sem
+estimativa). As calculadoras de parcelamento da Fase 5 devem usar este componente.
+
+**Conciliação** (`ConciliacaoService`, calculada na consulta): chave cliente + esfera + tributo (+ UF) + período de
+apuração; apurado das escriturações fiscais vigentes, declarado da DCTF/DCTFWeb (no ICMS, a conta corrente do PR ou, sem
+ela, a própria EFD), pago dos DARF, do relatório e das GR-PR. Status: `CONCILIADO`, `DIVERGENCIA_APURADO_DECLARADO`,
+`NAO_DECLARADO`, `PAGO_A_MENOR`, `PAGO_A_MAIOR`, `NAO_PAGO`, `PAGO_EM_ATRASO_SEM_ACRESCIMOS`,
+`COMPENSADO_OU_SUSPENSO`, `PARCELADO`; tolerância `fiscalhub.conciliacao.tolerancia` (padrão 0,01). Cada diferença
+traz o débito correspondente do relatório de situação fiscal ou da conta corrente do PR; diferença sem débito
+(`DIFERENCA_SEM_DEBITO`) e débito em aberto sem diferença (`DEBITO_SEM_DIFERENCA`) viram alerta.
+
 ## Modelo de apuração
 
 Um modelo só para todos os tributos e fontes (`fiscal/RepositorioApuracao`):
 
 - `apuracao_tributo`: cliente, documento e escrituração de origem; tributo (`TipoTributo`: IRPJ, CSLL, PIS, COFINS, IPI, ICMS, ICMS_ST, ICMS_DIFAL, ICMS_FCP), esfera e UF; período e periodicidade (MENSAL, TRIMESTRAL, ANUAL); regime; descrição; base de cálculo, valor apurado, deduções e créditos, **valor a recolher**, saldo credor a transportar; e `origem` (JSON campo → registro e linha).
 - `detalhe_apuracao`: linhas que compõem o cálculo (grupo, código, descrição, valor, registro, linha).
-- `obrigacao_recolher`: obrigações do E116/E250/E316, para a conciliação com o declarado e o pago (Fase 2b).
+- `obrigacao_recolher`: obrigações do E116/E250/E316 (vencimento do apurado na conciliação).
 - `saldo_fiscal`: saldos que passam de período (prejuízo fiscal, base negativa, créditos de PIS/COFINS, saldos credores), por período, com origem.
 
 Valores positivos, como no arquivo (a convenção D/C vale para os dados contábeis). Tudo pende da escrituração: reprocessar ou excluir o documento apaga o que ele gerou; só escriturações vigentes aparecem na API.
 
 ## Demonstrações referenciais
 
-- **Plano referencial oficial**: tabelas dinâmicas da RFB (portal Sped Tabelas, pacotes "Planos Referenciais" 2018 a 2021) em `src/main/resources/plano-referencial`, com fonte e SHA-256 de cada uma em `tabelas.txt`. **Só a tabela do próprio exercício é usada**: exercício sem tabela carregada gera o alerta `TABELA_REFERENCIAL_AUSENTE` e só a demonstração publicada fica disponível; plano fora dos carregados (instituições financeiras, seguradoras, imunes/isentas) gera `PLANO_REFERENCIAL_NAO_SUPORTADO`. O Sped Tabelas não publica pacotes depois de 2021 (consultado em 2026-10-15, sistemas SpedContabil e SpedEcf); as tabelas de 2022 a 2025 aguardam fonte oficial confirmada. Planos carregados: `1` PJ em geral, Lucro Real (L100_A balanço, L300_A resultado) e `2` PJ em geral, Lucro Presumido (P100, P150). A `ImportacaoPlanoReferencial` roda na subida e só recarrega a tabela que mudou. Para um ano novo: `scripts/sped/baixar_tabelas_referenciais.py` e uma linha em `tabelas.txt`. Nenhuma conta referencial é digitada no código.
+- **Plano referencial oficial** em `src/main/resources/plano-referencial`, com fonte e SHA-256 de cada tabela em `tabelas.txt`: 2018 a 2021 do portal Sped Tabelas (pacotes "Planos Referenciais"); **2022 a 2025 da planilha oficial "Tabelas Dinâmicas e Planos de Contas Referenciais" da ECF de cada ano-calendário** (leiautes 9 a 12, http://sped.rfb.gov.br/pasta/show/1644, com URL, data de atualização e SHA-256 da planilha e do `.txt` convertido por `scripts/sped/converter_tabelas_dinamicas_ecf.py`). **Só a tabela do próprio exercício é usada**: exercício sem tabela carregada gera o alerta `TABELA_REFERENCIAL_AUSENTE` e só a demonstração publicada fica disponível; plano fora dos carregados (instituições financeiras, seguradoras, imunes/isentas) gera `PLANO_REFERENCIAL_NAO_SUPORTADO`. Código do I051 que não existe na tabela do exercício gera `CODIGO_REFERENCIAL_AUSENTE_NO_ANO` e entra na posição que tinha na tabela do ano anterior mais recente em que existe, marcado como hierarquia herdada (selo na tabela e explicação no popover de origem). DRE publicada "plana" (todas as linhas no nível 1, com totalizadoras): o total conferido é a última totalizadora. Planos carregados: `1` PJ em geral, Lucro Real (L100_A balanço, L300_A resultado) e `2` PJ em geral, Lucro Presumido (P100, P150). A `ImportacaoPlanoReferencial` roda na subida e só recarrega a tabela que mudou. Para um ano novo: `scripts/sped/baixar_tabelas_referenciais.py` e uma linha em `tabelas.txt`. Nenhuma conta referencial é digitada no código.
 - **Montagem** (`MontagemReferencial`, usada pela ECD e pela planilha): Balanço pelos saldos finais e iniciais do exercício; DRE pelo resultado antes do encerramento. Valores agregados pela hierarquia referencial; cada linha analítica guarda as contas da empresa que a compõem. Vale a tabela do ano mais recente até o exercício.
 - **Conferência cruzada**: ativo, passivo + PL e resultado do referencial contra o publicado (`J100`/`J150`); diferença vira alerta.
 - **Comparativo** (`GET /api/clientes/{id}/demonstracoes`): um exercício por coluna (a escrituração vigente de cada ano; ECD antes de planilha), AH = (atual ÷ anterior − 1) × 100 e AV (BP sobre o total do grupo; DRE sobre a receita líquida) calculadas no backend.
@@ -285,12 +384,15 @@ mvn test   # requer Docker em execução
   - sessão em cookie e CSRF;
   - ECD (cada leiaute, cliente pelo arquivo, retificação, cada validação, reprocessamento), demonstrações (referencial, publicada, AH/AV, conferência, origem, exercício sem tabela, plano não suportado) e balancete em planilha (assistente, de-para, papéis, auditoria, resultado não encerrado);
   - ECF, EFD-Contribuições e EFD ICMS/IPI (`ImportacaoFiscalTest`: apurações e origem, detalhe, saldos, fórmulas, contagem de registro pulado, conferência ECD × ECF nos dois sentidos, retificação, filial, isolamento);
+  - situação fiscal, declarado e pago (`SituacaoFiscalTest`: retificação da DCTF, PDF × .dec, a mesma inscrição em duas fontes e a divergência, simulação com débito importado, layout desconhecido, PDF sem texto);
+  - **aceite com a massa fictícia** (`MassaFicticiaAceiteTest`): toda a massa pela central de importação, os valores de `_gerador/valores_esperados.json` e os problemas plantados do gabarito (itens 1, 2, 3, 5, 6, 7, 8 e 10; dados dos itens 4 e 9);
   - auditoria;
   - ProblemDetail;
   - banco do zero só com as migrações.
 - **Storage** (`storage/`): o mesmo contrato para o local e para o S3 contra MinIO real.
-- **Leitura** (`sped/`, `contabil/planilha/`, `importacao/`): `LeitorSped`, leiaute por versão, detector de tipo, `.xlsx` (fórmula, zip bomb) e `.csv`.
-- **Amostras sintéticas** em `src/test/resources/amostras/` (geradas por `scripts/sped/gerar_amostras_ecd.py`, `scripts/sped/gerar_amostras_fiscais.py`, que monta cada linha pelo leiaute, e `scripts/planilha/gerar_amostras_planilha.py`). ECD de 2021/2020 (anos com tabela referencial) e de 2024 (sem tabela); ECF Lucro Real 2021 com prejuízo compensado e Presumido 2024; EFD-Contribuições não cumulativa e cumulativa; EFD ICMS/IPI com ST, DIFAL/FCP, IPI e saldo credor; variantes retificadora, fórmula que não fecha e contagem errada.
+- **Leitura** (`sped/`, `contabil/planilha/`, `importacao/`, `pdf/`, `situacao/`): `LeitorSped`, leiaute por versão, detector de tipo, `.xlsx` (fórmula, zip bomb) e `.csv`; `LeitorPdf` (marca d'água, PDF sem texto, com senha, páginas demais, normalizadores), cada adaptador e o `.dec` (`AdaptadoresTest`), `AcrescimosMoratoriosTest` (30, 60 e 61 dias, virada de mês, falta de SELIC) e os status da conciliação.
+- **Massa fictícia** em `src/test/resources/massa-ficticia/` (gerador, arquivos, README com as limitações e o gabarito; como regenerar no README dela).
+- **Amostras sintéticas** em `src/test/resources/amostras/` (geradas por `scripts/sped/gerar_amostras_ecd.py`, `scripts/sped/gerar_amostras_fiscais.py`, que monta cada linha pelo leiaute, e `scripts/planilha/gerar_amostras_planilha.py`). ECD de 2021/2020 e de 2024; ECF Lucro Real 2021 com prejuízo compensado e Presumido 2024; EFD-Contribuições não cumulativa e cumulativa; EFD ICMS/IPI com ST, DIFAL/FCP, IPI e saldo credor; variantes retificadora, fórmula que não fecha e contagem errada.
 - **Opcionais**: `mvn test -Dtest=DesempenhoEcdTest -Ddesempenho=true` (ECD de 300 MB) e `mvn test -Dtest=DesempenhoEfdTest -Ddesempenho=true -DargLine=-Xmx256m` (EFD de 1 GB, `@Tag("desempenho")`); `AmostrasReaisTest` roda sozinho quando existe `amostras-locais/` na raiz (ECD, ECF e EFD reais anonimizadas, fora do git).
 - **Motor de parcelamento** (`service/calculo/`):
   - testes de caracterização do comportamento atual;
@@ -380,13 +482,20 @@ A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secur
 | GET | `/api/clientes/{id}/apuracoes/alertas` | alertas e erros das escriturações fiscais e conferências entre arquivos |
 | GET | `/api/clientes/{id}/saldos-fiscais` | prejuízo fiscal, base negativa, créditos e saldos credores por período |
 
-### Débitos (somente leitura)
+### Situação fiscal, declarado, pago e conciliação (somente leitura)
 
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/clientes/{id}/debitos` | débitos do cliente, cada um com o documento e o trecho de origem |
+| GET | `/api/clientes/{id}/debitos?orgao=&situacao=` | um débito por dívida (fontes juntas), com total, `impedeCertidao`, `divergente` e as origens de cada fonte |
+| GET | `/api/clientes/{id}/parcelamentos` | parcelamentos e transações (parcelas pagas e total, valor, saldo, situação, débitos vinculados, origem) |
+| GET | `/api/clientes/{id}/pendencias` | omissões de declaração e afins |
+| GET | `/api/clientes/{id}/capacidade-oficial` | CAPAG da PGFN (classe, capacidade, passivo, razão, consistência com a Portaria) |
+| GET | `/api/clientes/{id}/declaracoes` | débitos declarados (DCTF, DCTFWeb, conta corrente do ICMS) com vinculações e origens |
+| GET | `/api/clientes/{id}/pagamentos` | pagamentos (DARF, GR-PR), cada um uma vez, com as origens de todas as fontes |
+| GET | `/api/clientes/{id}/conciliacao?de=&ate=&status=` | itens apurado × declarado × pago (`de`/`ate` em aaaa-mm) e os alertas |
+| GET | `/api/clientes/{id}/conciliacao/{item}` | um item (ex.: `COFINS-2026-08`, `ICMS_ST-PR-2026-08`) com origens, acréscimos e débitos |
 
-Não há criação manual: os débitos são gerados pela importação (Relatório de Situação Fiscal e extratos, Fase 2b).
+Não há criação manual: tudo vem da importação. Cliente de outro escritório: 404.
 
 ### Simulações de parcelamento
 
@@ -425,6 +534,9 @@ src/main/java/com/fiscalhub/backend/
 ├── service/      # regras de negócio; AcessoRecursoService = autorização por escritório
 │   └── calculo/  # motor de parcelamento (RFB e SEFA-PR)
 ├── fiscal/       # ECF, EFD-Contribuições, EFD ICMS/IPI: leituras, ProcessadorFiscal, modelo de apuração, conferência ECD × ECF
+├── pdf/          # LeitorPdf (PDFBox), DocumentoPdf (seção, tabela, campo), AdaptadorDocumentoPdf
+├── situacao/     # ProcessadorSituacao, RepositorioSituacao, SituacaoFiscalService, ConciliacaoService, AcrescimosMoratorios, CodigosReceita
+│   └── adaptadores/ # um adaptador por documento e versão de layout; LeitorDctfDec
 ├── importacao/   # pipeline: detector, ProcessadorDocumento, contexto, inconsistências, jobs, Escrituracoes (retificação)
 ├── sped/         # LeitorSped (stream, registros de interesse), LeituraSped (base comum), LayoutSped, Saldos
 ├── storage/      # ArmazenamentoArquivos: local e S3
@@ -435,7 +547,9 @@ src/main/resources/
 ├── db/migration/ # Flyway
 ├── db/dev/       # seed só do perfil dev
 ├── sped/         # leiautes SPED por versão (gerados dos manuais)
-└── plano-referencial/ # tabelas oficiais + tabelas.txt (fonte e SHA-256)
+├── plano-referencial/ # tabelas oficiais + tabelas.txt (fonte e SHA-256)
+├── receitas/     # tabela de códigos de receita (fonte por código)
+└── dctf/         # layouts do .dec da DCTF por versão
 scripts/          # geração de leiaute, amostras e download das tabelas oficiais
 ```
 
@@ -446,5 +560,5 @@ scripts/          # geração de leiaute, amostras e download das tabelas oficia
 - Isolamento por escritório num único ponto (`AcessoRecursoService`) e papéis por `@PreAuthorize`.
 - CORS só para as origens em `CORS_ALLOWED_ORIGINS`, com credenciais (cookie). Frontend e API precisam estar no mesmo site.
 - Sessão em cookie `httpOnly` (o JS não lê o JWT) e CSRF por cookie + cabeçalho em todo método que altera estado; logout invalida o JWT no servidor.
-- Arquivos não confiáveis: limite de tamanho de linha (SPED, CSV), de linhas e colunas (planilha), de registros de apuração guardados em memória (200 mil, ECF e EFD), zip bomb e XXE no `.xlsx`, fórmulas nunca avaliadas. Linhas de registros pulados não são montadas.
+- Arquivos não confiáveis: limite de tamanho de linha (SPED, CSV), de linhas e colunas (planilha), de registros de apuração guardados em memória (200 mil, ECF e EFD), zip bomb e XXE no `.xlsx`, fórmulas nunca avaliadas; PDF com 20 MB e 300 páginas no máximo, sem senha, cache em disco, sem execução de scripts nem recursos externos; `.dec` com o mesmo limite de tamanho. Linhas de registros pulados não são montadas.
 - O `app.jwt.secret` antigo ficou no histórico do git: **gere um segredo novo** para qualquer ambiente real.
