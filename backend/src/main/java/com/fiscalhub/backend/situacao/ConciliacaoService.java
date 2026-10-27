@@ -41,6 +41,8 @@ import java.util.TreeMap;
  * </ul>
  * Calculada na consulta (sempre igual aos documentos vigentes); cada diferença aponta o débito correspondente na
  * situação fiscal (RFB, SEFA-PR) e diferença sem débito, ou débito sem diferença, vira alerta.
+ * ponytail: recalcula tudo do cliente a cada GET (sem tabela conciliacao_item); gravar o resultado ao fim de cada
+ * importação quando a carteira de um cliente passar de alguns milhares de documentos.
  */
 @Service
 @Transactional(readOnly = true)
@@ -291,7 +293,7 @@ public class ConciliacaoService {
         }
     }
 
-    /** Estadual sem UF na declaração ou no pagamento: PR (os documentos estaduais lidos são do Paraná). */
+    /** Estadual sem UF na declaração ou no pagamento: PR. ponytail: só há adaptadores do PR; levar a UF na Extracao quando entrar outro estado. */
     private static String uf(TipoTributo tributo) {
         return CodigosReceita.codigo(tributo, "ESTADUAL").isPresent() ? "PR" : null;
     }
