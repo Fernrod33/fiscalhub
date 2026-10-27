@@ -263,12 +263,19 @@ public class MontagemReferencial {
         }
     }
 
-    /** Soma das linhas de nível mais alto da publicada (do grupo, quando informado). */
+    /**
+     * Total da publicada: soma das linhas de nível mais alto (do grupo, quando informado). DRE "plana" (todas as linhas
+     * no nível 1, com totalizadoras como receita líquida e lucro bruto): o resultado é a última totalizadora, não a soma.
+     */
     public static BigDecimal topo(List<LinhaDemonstracao> linhas, String grupo) {
         int nivel = linhas.stream().filter(l -> l.nivel() != null).mapToInt(LinhaDemonstracao::nivel).min().orElse(1);
-        return linhas.stream()
-                .filter(l -> l.nivel() != null && l.nivel() == nivel && (grupo == null || grupo.equals(l.grupo())))
-                .map(l -> l.valorFinal() == null ? BigDecimal.ZERO : l.valorFinal())
+        List<LinhaDemonstracao> topo = linhas.stream()
+                .filter(l -> l.nivel() != null && l.nivel() == nivel && (grupo == null || grupo.equals(l.grupo()))).toList();
+        if (grupo == null && topo.size() > 1 && topo.stream().anyMatch(LinhaDemonstracao::totalizadora)) {
+            return topo.stream().filter(LinhaDemonstracao::totalizadora).max(Comparator.comparingInt(LinhaDemonstracao::ordem))
+                    .map(l -> l.valorFinal() == null ? BigDecimal.ZERO : l.valorFinal()).orElseThrow();
+        }
+        return topo.stream().map(l -> l.valorFinal() == null ? BigDecimal.ZERO : l.valorFinal())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
