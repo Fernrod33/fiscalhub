@@ -189,6 +189,8 @@ class AcessoEntreEscritoriosTest {
                 Map.entry("GET pagamentos", get("/api/clientes/{id}/pagamentos", c)),
                 Map.entry("GET declaracoes", get("/api/clientes/{id}/declaracoes", c)),
                 Map.entry("GET capacidade oficial", get("/api/clientes/{id}/capacidade-oficial", c)),
+                Map.entry("GET conciliacao", get("/api/clientes/{id}/conciliacao", c)),
+                Map.entry("GET item da conciliacao", get("/api/clientes/{id}/conciliacao/{item}", c, "COFINS-2026-08")),
                 Map.entry("GET simulacao", get("/api/simulacoes/{id}", s)),
                 Map.entry("GET simulacoes do cliente", get("/api/simulacoes/cliente/{id}", c)),
                 Map.entry("POST calcular", post("/api/simulacoes/calcular").contentType(APPLICATION_JSON).content(simulacaoJson)),
