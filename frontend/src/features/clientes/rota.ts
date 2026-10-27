@@ -6,6 +6,7 @@ export const ABAS_CLIENTE = [
   ['importacoes', 'Importações'],
   ['demonstracoes', 'Demonstrações'],
   ['tributos', 'Tributos'],
+  ['situacao-fiscal', 'Situação fiscal'],
   ['capacidade', 'Capacidade'],
   ['simulacoes', 'Simulações'],
   ['pontos-de-atencao', 'Pontos de atenção'],

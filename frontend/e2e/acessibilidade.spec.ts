@@ -52,8 +52,13 @@ test('central de importação, demonstrações e assistente da planilha sem viol
 
   await page.getByRole('navigation', { name: 'Seções do cliente' }).getByRole('link', { name: 'Tributos', exact: true }).click();
   await expect(page).toHaveURL(/\/tributos$/);
-  await expect(page.getByRole('heading', { name: 'Apurado a recolher por competência' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apurado × declarado × pago' })).toBeVisible();
   await verificar(page, 'tributos (sem apurações)');
+
+  await page.getByRole('navigation', { name: 'Seções do cliente' }).getByRole('link', { name: 'Situação fiscal', exact: true }).click();
+  await expect(page).toHaveURL(/\/situacao-fiscal$/);
+  await expect(page.getByRole('heading', { name: 'Certidão' })).toBeVisible();
+  await verificar(page, 'situação fiscal (vazia)');
 
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: 'Importações' }).click();
   await expect(page).toHaveURL(/\/importacoes$/);

@@ -1,6 +1,6 @@
 /** Rótulos dos enums da API. Tipados contra os tipos gerados: um valor novo no backend quebra o build aqui. */
 import type { Tom } from '@/components/selo';
-import type { Documento, DocumentoStatus, EtapaProcessamento, EventoAuditoria, Inconsistencia, Papel, Debito } from './api/tipos';
+import type { Debito, Documento, DocumentoStatus, EtapaProcessamento, EventoAuditoria, Inconsistencia, Papel, StatusConciliacao } from './api/tipos';
 
 export const PAPEIS: Record<Papel, string> = { ADMIN: 'Administrador', CONSULTOR: 'Consultor', ASSISTENTE: 'Assistente' };
 
@@ -12,10 +12,12 @@ export const STATUS_DOCUMENTO: Record<DocumentoStatus, { rotulo: string; tom: To
   ERRO: { rotulo: 'Erro', tom: 'danger' },
   AGUARDANDO_CLIENTE: { rotulo: 'Aguardando cliente', tom: 'info' },
   AGUARDANDO_MAPEAMENTO: { rotulo: 'Aguardando mapeamento', tom: 'info' },
+  LAYOUT_NAO_RECONHECIDO: { rotulo: 'Layout não reconhecido', tom: 'warning' },
 };
 
 /** Status em que o processamento parou (terminou ou espera o usuário): o polling para. */
-export const STATUS_FINAL: DocumentoStatus[] = ['PROCESSADO', 'PROCESSADO_COM_ALERTAS', 'ERRO', 'AGUARDANDO_CLIENTE', 'AGUARDANDO_MAPEAMENTO'];
+export const STATUS_FINAL: DocumentoStatus[] = ['PROCESSADO', 'PROCESSADO_COM_ALERTAS', 'ERRO', 'AGUARDANDO_CLIENTE', 'AGUARDANDO_MAPEAMENTO',
+  'LAYOUT_NAO_RECONHECIDO'];
 
 /** Tipo detectado no conteúdo (rótulo curto: vai em selo e filtro). */
 export const TIPOS_DOCUMENTO: Record<Documento['tipo'], string> = {
@@ -24,12 +26,18 @@ export const TIPOS_DOCUMENTO: Record<Documento['tipo'], string> = {
   EFD_CONTRIBUICOES: 'EFD-Contribuições',
   EFD_ICMS_IPI: 'EFD ICMS/IPI',
   BALANCETE: 'Balancete',
-  RELATORIO_SITUACAO_FISCAL: 'Relatório de Situação Fiscal',
-  EXTRATO_PGFN: 'Extrato PGFN',
+  RELATORIO_SITUACAO_FISCAL: 'Situação fiscal',
+  EXTRATO_REGULARIZE: 'Regularize',
+  CAPAG: 'CAPAG',
   DCTF: 'DCTF',
   DCTFWEB: 'DCTFWeb',
-  COMPROVANTE_ARRECADACAO: 'Comprovante de arrecadação',
-  EXTRATO_DIVIDA_ATIVA_PR: 'Dívida ativa PR',
+  DARF: 'DARF',
+  RELATORIO_PAGAMENTOS: 'Pagamentos',
+  CONTA_CORRENTE_PR: 'Conta corrente PR',
+  RTI: 'RTI',
+  GR_PR: 'GR-PR',
+  RELACAO_PAGAMENTOS_GR_PR: 'Relação GR-PR',
+  PDF: 'PDF',
   OUTRO: 'Outro',
 };
 
@@ -87,15 +95,39 @@ export const RECURSOS_AUDITORIA: Record<string, string> = {
   USUARIO: 'Usuário', CLIENTE: 'Cliente', DOCUMENTO: 'Documento', SIMULACAO: 'Simulação',
 };
 
-export const SITUACAO_DEBITO: Record<Debito['situacao'], string> = {
-  EM_ABERTO: 'Em aberto', INSCRITO_DIVIDA_ATIVA: 'Inscrito em dívida ativa', PARCELADO: 'Parcelado', SUSPENSO: 'Suspenso',
+export const SITUACAO_DEBITO: Record<Debito['situacao'], { rotulo: string; tom: Tom }> = {
+  EM_ABERTO: { rotulo: 'Em aberto', tom: 'danger' }, INSCRITO_DIVIDA_ATIVA: { rotulo: 'Inscrito em dívida ativa', tom: 'danger' },
+  PARCELADO: { rotulo: 'Parcelado', tom: 'info' }, SUSPENSO: { rotulo: 'Suspenso', tom: 'info' },
+  NEGOCIADO: { rotulo: 'Negociado', tom: 'info' },
 };
+
+/** Status da conciliação apurado × declarado × pago; ordem = gravidade (a célula agregada mostra o pior). */
+export const STATUS_CONCILIACAO: Record<StatusConciliacao, { rotulo: string; tom: Tom }> = {
+  NAO_PAGO: { rotulo: 'Não pago', tom: 'danger' },
+  PAGO_A_MENOR: { rotulo: 'Pago a menor', tom: 'danger' },
+  PAGO_EM_ATRASO_SEM_ACRESCIMOS: { rotulo: 'Atraso sem acréscimos', tom: 'danger' },
+  NAO_DECLARADO: { rotulo: 'Não declarado', tom: 'danger' },
+  DIVERGENCIA_APURADO_DECLARADO: { rotulo: 'Apurado ≠ declarado', tom: 'warning' },
+  PAGO_A_MAIOR: { rotulo: 'Pago a maior', tom: 'warning' },
+  PARCELADO: { rotulo: 'Parcelado', tom: 'info' },
+  COMPENSADO_OU_SUSPENSO: { rotulo: 'Compensado/suspenso', tom: 'info' },
+  CONCILIADO: { rotulo: 'Conciliado', tom: 'success' },
+};
+
+export const SITUACAO_PARCELAMENTO: Record<string, { rotulo: string; tom: Tom }> = {
+  EM_DIA: { rotulo: 'Em dia', tom: 'success' }, EM_ATRASO: { rotulo: 'Em atraso', tom: 'danger' },
+  RESCINDIDO: { rotulo: 'Rescindido', tom: 'danger' },
+};
+
+/** Fonte da capacidade de pagamento oficial. */
+export const FONTES_CAPACIDADE: Record<string, string> = { PGFN: 'PGFN (CAPAG)', SEFA_PR: 'Receita Estadual do PR (RTI)' };
 
 export const ORGAO_CREDOR: Record<Debito['orgaoCredor'], string> = { RFB: 'RFB', PGFN: 'PGFN', SEFA_PR: 'SEFA-PR', PGE_PR: 'PGE-PR' };
 
 /** Tributos apurados (TipoTributo), na ordem da matriz dentro de cada esfera. */
 export const TRIBUTOS: Record<string, string> = {
-  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI',
+  IRPJ: 'IRPJ', CSLL: 'CSLL', PIS: 'PIS', COFINS: 'COFINS', IPI: 'IPI', INSS: 'Previdenciárias', TERCEIROS: 'Terceiros',
+  IRRF: 'IRRF',
   ICMS: 'ICMS', ICMS_ST: 'ICMS-ST', ICMS_DIFAL: 'ICMS DIFAL', ICMS_FCP: 'FCP',
 };
 

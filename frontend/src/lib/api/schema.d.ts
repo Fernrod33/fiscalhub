@@ -468,6 +468,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clientes/{clienteId}/pendencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pendencias"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/parcelamentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["parcelamentos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/pagamentos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pagamentos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/escrituracoes": {
         parameters: {
             query?: never;
@@ -516,6 +564,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clientes/{clienteId}/declaracoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["declaracoes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/debitos": {
         parameters: {
             query?: never;
@@ -523,7 +587,55 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_2"];
+        get: operations["debitos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/conciliacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["conciliacao"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/conciliacao/{item}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["item"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/capacidade-oficial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["capacidade"];
         put?: never;
         post?: never;
         delete?: never;
@@ -603,7 +715,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_3"];
+        get: operations["listar_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -730,7 +842,7 @@ export interface components {
             /** @enum {string} */
             modalidade: "ORDINARIO_RFB" | "PERT_RFB" | "REFIS" | "ORDINARIO_SEFA_PR" | "ESPECIAL_SEFA_PR";
             /** @enum {string} */
-            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
             clienteRazaoSocial: string;
             clienteCnpj: string;
             valorOriginal: number;
@@ -762,7 +874,7 @@ export interface components {
         };
         DocumentoFiscalRequestDTO: {
             /** @enum {string} */
-            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
+            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
             observacao: string;
         };
         DocumentoFiscalResponseDTO: {
@@ -774,9 +886,9 @@ export interface components {
             /** Format: int64 */
             usuarioId: number;
             /** @enum {string} */
-            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
+            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
             /** @enum {string} */
-            tipoInformado: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
+            tipoInformado: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
             /** Format: date */
             periodoInicio: string;
             /** Format: date */
@@ -789,7 +901,7 @@ export interface components {
             /** Format: date-time */
             dataImportacao: string;
             /** @enum {string} */
-            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
+            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO" | "LAYOUT_NAO_RECONHECIDO";
             observacao: string;
             sha256: string;
             cnpjArquivo: string;
@@ -915,9 +1027,9 @@ export interface components {
             /** Format: int64 */
             documentoId: number;
             /** @enum {string} */
-            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
+            status: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO" | "LAYOUT_NAO_RECONHECIDO";
             /** @enum {string} */
-            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
+            tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
             /** @enum {string} */
             job: "PENDENTE" | "PROCESSANDO" | "CONCLUIDO" | "ERRO";
             /** @enum {string} */
@@ -995,6 +1107,73 @@ export interface components {
             registro: string;
             /** Format: int64 */
             linha: number;
+        };
+        OrigemValor: {
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            tipoDocumento: string;
+            /** Format: int32 */
+            pagina: number;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            trecho: string;
+        };
+        PendenciaFiscal: {
+            /** Format: int64 */
+            id: number;
+            tipo: string;
+            descricao: string;
+            /** Format: date */
+            periodo: string;
+            situacao: string;
+            /** Format: date */
+            dataReferencia: string;
+            origem: components["schemas"]["OrigemValor"];
+        };
+        ParcelamentoFiscal: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            orgao: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
+            numero: string;
+            modalidade: string;
+            /** Format: int32 */
+            parcelasPagas: number;
+            /** Format: int32 */
+            parcelasTotal: number;
+            valorParcela: number;
+            saldo: number;
+            situacao: string;
+            debitos: string[];
+            /** Format: date */
+            dataReferencia: string;
+            origem: components["schemas"]["OrigemValor"];
+        };
+        PagamentoConsolidado: {
+            /** Format: int64 */
+            id: number;
+            chave: string;
+            documento: string;
+            numero: string;
+            codigoReceita: string;
+            /** @enum {string} */
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            /** Format: date */
+            periodo: string;
+            referencia: string;
+            /** Format: date */
+            vencimento: string;
+            /** Format: date */
+            dataPagamento: string;
+            principal: number;
+            multa: number;
+            juros: number;
+            total: number;
+            parcelamento: string;
+            divergente: boolean;
+            origens: components["schemas"]["OrigemValor"][];
         };
         Escrituracao: {
             /** Format: int64 */
@@ -1100,28 +1279,155 @@ export interface components {
             dataFim: string;
             centroCusto: string;
         };
-        DebitoResponseDTO: {
+        DebitoDeclarado: {
+            /** Format: int64 */
+            id: number;
+            declaracao: string;
+            finalidade: string;
+            codigoReceita: string;
+            /** @enum {string} */
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            /** Format: date */
+            periodo: string;
+            /** Format: date */
+            vencimento: string;
+            valor: number;
+            valorPago: number;
+            valorCompensado: number;
+            valorSuspenso: number;
+            valorParcelado: number;
+            divergente: boolean;
+            origens: components["schemas"]["OrigemValor"][];
+        };
+        DebitoConsolidado: {
             /** Format: int64 */
             id: number;
             /** Format: int64 */
             clienteId: number;
-            /** Format: int64 */
-            documentoOrigemId: number;
-            referenciaOrigem: string;
             /** @enum {string} */
             orgaoCredor: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
             /** @enum {string} */
-            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            codigoReceita: string;
             /** Format: date */
             competencia: string;
+            periodo: string;
             /** Format: date */
             dataVencimento: string;
             valorPrincipal: number;
             valorMulta: number;
             valorJuros: number;
+            valorEncargo: number;
+            valorTotal: number;
             /** @enum {string} */
-            situacao: "EM_ABERTO" | "INSCRITO_DIVIDA_ATIVA" | "PARCELADO" | "SUSPENSO";
+            situacao: "EM_ABERTO" | "INSCRITO_DIVIDA_ATIVA" | "PARCELADO" | "SUSPENSO" | "NEGOCIADO";
+            situacaoDocumento: string;
             numeroInscricao: string;
+            numeroProcesso: string;
+            ajuizado: boolean;
+            negociacao: string;
+            impedeCertidao: boolean;
+            divergente: boolean;
+            /** Format: int64 */
+            documentoOrigemId: number;
+            referenciaOrigem: string;
+            origens: components["schemas"]["OrigemDebito"][];
+        };
+        OrigemDebito: {
+            origem: components["schemas"]["OrigemValor"];
+            /** Format: date */
+            dataReferencia: string;
+            principal: number;
+            multa: number;
+            juros: number;
+            encargo: number;
+            total: number;
+            situacao: string;
+        };
+        Acrescimos: {
+            principal: number;
+            /** Format: date */
+            vencimento: string;
+            /** Format: date */
+            pagamento: string;
+            /** Format: int64 */
+            diasAtraso: number;
+            percentualMulta: number;
+            multa: number;
+            selicDe: string;
+            selicAte: string;
+            percentualJuros: number;
+            juros: number;
+        };
+        AlertaConciliacao: {
+            regra: string;
+            itemId: string;
+            /** Format: int64 */
+            debitoId: number;
+            mensagem: string;
+        };
+        Conciliacao: {
+            tolerancia: number;
+            /** Format: date */
+            dataCalculo: string;
+            itens: components["schemas"]["ItemConciliacao"][];
+            alertas: components["schemas"]["AlertaConciliacao"][];
+        };
+        DebitoRelacionado: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            orgao: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
+            /** @enum {string} */
+            situacao: "EM_ABERTO" | "INSCRITO_DIVIDA_ATIVA" | "PARCELADO" | "SUSPENSO" | "NEGOCIADO";
+            valorTotal: number;
+            impedeCertidao: boolean;
+            origens: components["schemas"]["OrigemValor"][];
+        };
+        ItemConciliacao: {
+            id: string;
+            esfera: string;
+            /** @enum {string} */
+            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+            uf: string;
+            periodo: string;
+            /** Format: date */
+            vencimento: string;
+            /** @enum {string} */
+            status: "CONCILIADO" | "DIVERGENCIA_APURADO_DECLARADO" | "NAO_DECLARADO" | "PAGO_A_MENOR" | "PAGO_A_MAIOR" | "NAO_PAGO" | "PAGO_EM_ATRASO_SEM_ACRESCIMOS" | "COMPENSADO_OU_SUSPENSO" | "PARCELADO";
+            apurado: components["schemas"]["ValorConciliado"];
+            declarado: components["schemas"]["ValorConciliado"];
+            pago: components["schemas"]["PagoConciliado"];
+            diferenca: number;
+            acrescimos: components["schemas"]["Acrescimos"];
+            erroAcrescimos: string;
+            codigosReceita: string[];
+            debitos: components["schemas"]["DebitoRelacionado"][];
+        };
+        PagoConciliado: {
+            valor: number;
+            multa: number;
+            juros: number;
+            /** Format: date */
+            dataPagamento: string;
+            origens: components["schemas"]["OrigemValor"][];
+        };
+        ValorConciliado: {
+            valor: number;
+            origens: components["schemas"]["OrigemValor"][];
+        };
+        CapacidadeOficial: {
+            /** Format: int64 */
+            id: number;
+            fonte: string;
+            classe: string;
+            capacidade: number;
+            passivo: number;
+            razao: number;
+            classeConsistente: boolean;
+            /** Format: date */
+            dataReferencia: string;
+            origem: components["schemas"]["OrigemValor"];
         };
         Apuracao: {
             /** Format: int64 */
@@ -1522,8 +1828,8 @@ export interface operations {
         parameters: {
             query: {
                 clienteId?: number;
-                tipo?: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_PGFN" | "DCTF" | "DCTFWEB" | "COMPROVANTE_ARRECADACAO" | "EXTRATO_DIVIDA_ATIVA_PR" | "OUTRO";
-                status?: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO";
+                tipo?: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
+                status?: "RECEBIDO" | "PROCESSANDO" | "PROCESSADO" | "PROCESSADO_COM_ALERTAS" | "ERRO" | "AGUARDANDO_CLIENTE" | "AGUARDANDO_MAPEAMENTO" | "LAYOUT_NAO_RECONHECIDO";
                 pageable: components["schemas"]["Pageable"];
             };
             header?: never;
@@ -2139,6 +2445,72 @@ export interface operations {
             };
         };
     };
+    pendencias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PendenciaFiscal"][];
+                };
+            };
+        };
+    };
+    parcelamentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ParcelamentoFiscal"][];
+                };
+            };
+        };
+    };
+    pagamentos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagamentoConsolidado"][];
+                };
+            };
+        };
+    };
     escrituracoes: {
         parameters: {
             query?: never;
@@ -2210,7 +2582,7 @@ export interface operations {
             };
         };
     };
-    listar_2: {
+    declaracoes: {
         parameters: {
             query?: never;
             header?: never;
@@ -2227,7 +2599,103 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DebitoResponseDTO"][];
+                    "*/*": components["schemas"]["DebitoDeclarado"][];
+                };
+            };
+        };
+    };
+    debitos: {
+        parameters: {
+            query?: {
+                orgao?: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
+                situacao?: "EM_ABERTO" | "INSCRITO_DIVIDA_ATIVA" | "PARCELADO" | "SUSPENSO" | "NEGOCIADO";
+            };
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DebitoConsolidado"][];
+                };
+            };
+        };
+    };
+    conciliacao: {
+        parameters: {
+            query?: {
+                de?: string;
+                ate?: string;
+                status?: "CONCILIADO" | "DIVERGENCIA_APURADO_DECLARADO" | "NAO_DECLARADO" | "PAGO_A_MENOR" | "PAGO_A_MAIOR" | "NAO_PAGO" | "PAGO_EM_ATRASO_SEM_ACRESCIMOS" | "COMPENSADO_OU_SUSPENSO" | "PARCELADO";
+            };
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Conciliacao"];
+                };
+            };
+        };
+    };
+    item: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                item: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ItemConciliacao"];
+                };
+            };
+        };
+    };
+    capacidade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CapacidadeOficial"][];
                 };
             };
         };
@@ -2235,7 +2703,7 @@ export interface operations {
     apuracoes: {
         parameters: {
             query?: {
-                tributo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
+                tributo?: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
                 de?: string;
                 ate?: string;
             };
@@ -2323,7 +2791,7 @@ export interface operations {
             };
         };
     };
-    listar_3: {
+    listar_2: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];

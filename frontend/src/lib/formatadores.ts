@@ -14,6 +14,8 @@ type Num = number | null | undefined;
 
 export const moeda = (v: Num) => (v == null ? VAZIO : moedaFmt.format(v));
 export const inteiro = (v: Num) => (v == null ? VAZIO : inteiroFmt.format(v));
+/** Número com duas casas, sem moeda (razões como 0,78). */
+export const decimal = (v: Num) => (v == null ? VAZIO : valorFmt.format(v));
 /** Recebe o percentual como na API (1.5 = 1,5%). */
 export const percentual = (v: Num) => (v == null ? VAZIO : percentualFmt.format(v / 100));
 

@@ -7,12 +7,12 @@ import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
 import { Selo } from '@/components/selo';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Apuracao } from '@/lib/api/tipos';
+import type { Apuracao, StatusConciliacao } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
-import { REGIMES } from '@/lib/rotulos';
+import { REGIMES, STATUS_CONCILIACAO } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
 import { useClienteId } from '@/features/clientes/rota';
-import { Debitos } from '@/features/debitos/components/debitos';
+import { useConciliacao } from '@/features/situacao-fiscal/api';
 import { useAlertasFiscais, useApuracoes, useSaldosFiscais } from '../api';
 import { AlertasFiscais } from '../components/alertas-fiscais';
 import { DemonstracaoLucro } from '../components/demonstracao-lucro';
@@ -27,33 +27,55 @@ function ImporteOs({ clienteId, children }: { clienteId: number; children: React
 }
 
 /**
- * Aba Tributos (o que a empresa apurou): matriz tributo × competência com o valor a recolher, demonstração do lucro
- * real ou presumido, saldos fiscais e alertas de conferência. Os débitos em aberto (Fase 2b) ficam no fim.
+ * Aba Tributos: matriz tributo × competência com apurado, declarado, pago, diferença e o status da conciliação;
+ * demonstração do lucro real ou presumido, saldos fiscais e alertas de conferência. Débitos: aba Situação fiscal.
  */
 export default function TributosPage() {
   const clienteId = useClienteId();
   const apuracoes = useApuracoes(clienteId);
+  const conciliacao = useConciliacao(clienteId);
   const saldos = useSaldosFiscais(clienteId);
   const alertas = useAlertasFiscais(clienteId);
   const [periodicidade, setPeriodicidade] = useState<Periodicidade>('MENSAL');
+  const [status, setStatus] = useState<StatusConciliacao | ''>('');
   const [celula, setCelula] = useState<Celula | null>(null);
 
-  if (apuracoes.isPending) return <Skeleton className="h-96" />;
+  if (apuracoes.isPending || conciliacao.isPending) return <Skeleton className="h-96" />;
   const lista = apuracoes.data ?? [];
+  const itens = conciliacao.data?.itens ?? [];
+  const presentes = (Object.keys(STATUS_CONCILIACAO) as StatusConciliacao[]).filter((s) => itens.some((i) => i.status === s));
+  const filtrados = status ? itens.filter((i) => i.status === status) : itens;
 
   return (
     <Reveal className="grid gap-4">
       <Cartao aria-labelledby="titulo-apurado" className="grid gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CartaoTitulo id="titulo-apurado">Apurado a recolher por competência</CartaoTitulo>
-          <Alternador rotulo="Periodicidade" valor={periodicidade} aoMudar={setPeriodicidade}
-                      opcoes={[['MENSAL', 'Mensal'], ['TRIMESTRAL', 'Trimestral'], ['ANUAL', 'Anual']]} />
+          <CartaoTitulo id="titulo-apurado">Apurado × declarado × pago</CartaoTitulo>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Status</span>
+              <select value={status} onChange={(e) => setStatus(e.target.value as StatusConciliacao | '')}
+                      className="h-8 rounded-md border bg-background px-2 text-sm">
+                <option value="">Todos</option>
+                {presentes.map((s) => <option key={s} value={s}>{STATUS_CONCILIACAO[s].rotulo}</option>)}
+              </select>
+            </label>
+            <Alternador rotulo="Periodicidade" valor={periodicidade} aoMudar={setPeriodicidade}
+                        opcoes={[['MENSAL', 'Mensal'], ['TRIMESTRAL', 'Trimestral'], ['ANUAL', 'Anual']]} />
+          </div>
         </div>
-        {lista.length === 0
-          ? <EstadoVazio icone={Landmark} titulo="Nenhuma apuração importada"
-                         descricao={<ImporteOs clienteId={clienteId}>IRPJ e CSLL vêm da ECF; PIS e COFINS, da EFD-Contribuições; ICMS,
-                           ICMS-ST, DIFAL e IPI, da EFD ICMS/IPI.</ImporteOs>} />
-          : <MatrizTributos apuracoes={lista} periodicidade={periodicidade} aoAbrir={setCelula} />}
+        {itens.length === 0
+          ? <EstadoVazio icone={Landmark} titulo="Nada para conciliar"
+                         descricao={<ImporteOs clienteId={clienteId}>O apurado vem da ECF e das EFD; o declarado, da DCTF, da DCTFWeb e
+                           da conta corrente do PR; o pago, dos DARF, do relatório de pagamentos e das GR-PR.</ImporteOs>} />
+          : <MatrizTributos itens={filtrados} periodicidade={periodicidade} aoAbrir={setCelula} />}
+        {(conciliacao.data?.alertas ?? []).length > 0 && (
+          <ul className="grid gap-1 text-sm" aria-label="Alertas da conciliação">
+            {conciliacao.data?.alertas.map((a, i) => (
+              <li key={i} className="flex items-start gap-2"><Selo tom="warning">Alerta</Selo><span>{a.mensagem}</span></li>
+            ))}
+          </ul>
+        )}
       </Cartao>
 
       <PainelLucro clienteId={clienteId} apuracoes={lista} />
@@ -76,8 +98,7 @@ export default function TributosPage() {
         </Cartao>
       )}
 
-      <Debitos />
-      <DetalheCelula clienteId={clienteId} celula={celula} aoFechar={() => setCelula(null)} />
+      <DetalheCelula clienteId={clienteId} celula={celula} apuracoes={lista} aoFechar={() => setCelula(null)} />
     </Reveal>
   );
 }

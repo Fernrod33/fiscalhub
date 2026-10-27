@@ -89,3 +89,16 @@ export function Collapse({ aberto, children, id }: { aberto: boolean; children: 
     </AnimatePresence>
   );
 }
+
+/** Barra de progresso (parcelas pagas): cresce da esquerda com scaleX; com movimento reduzido, aparece pronta. */
+export function BarraProgresso({ valor, maximo, rotulo }: { valor: number; maximo: number; rotulo: string }) {
+  const reduzido = useMovimentoReduzido();
+  const fracao = maximo > 0 ? Math.min(1, valor / maximo) : 0;
+  return (
+    <div role="progressbar" aria-label={rotulo} aria-valuemin={0} aria-valuemax={maximo} aria-valuenow={valor}
+         className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <motion.div className="h-full origin-left rounded-full bg-primary" initial={{ scaleX: reduzido ? fracao : 0 }}
+                  animate={{ scaleX: fracao }} transition={{ duration: reduzido ? 0 : segundos(duracao.slow), ease: curva.standard }} />
+    </div>
+  );
+}

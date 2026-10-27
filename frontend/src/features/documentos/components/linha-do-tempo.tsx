@@ -16,6 +16,7 @@ export function LinhaDoTempo({ status, enviando }: { status?: StatusDocumento; e
   const atual = status ? ETAPAS.findIndex((e) => e.etapa === status.etapa) : -1;
   const falhou = status?.status === 'ERRO';
   const aguardando = status?.status === 'AGUARDANDO_CLIENTE' || status?.status === 'AGUARDANDO_MAPEAMENTO';
+  const semLayout = status?.status === 'LAYOUT_NAO_RECONHECIDO';
   const concluido = status?.etapa === 'CONCLUIDO' && !falhou;
   const transicao = { duration: reduzido ? 0 : segundos(duracao.slow), ease: curva.standard };
 
@@ -23,6 +24,7 @@ export function LinhaDoTempo({ status, enviando }: { status?: StatusDocumento; e
     ? `Enviando ${fmt.progresso(enviando)}`
     : falhou ? `Falhou na etapa ${ETAPAS[Math.max(atual, 0)].rotulo.toLowerCase()}`
       : aguardando ? 'Aguardando você'
+        : semLayout ? 'Layout não reconhecido'
         : concluido ? 'Pronto'
           : status ? `${ETAPAS[atual].rotulo}${status.etapa === 'LENDO' ? ` ${fmt.progresso(status.progresso / 100)}` : ''}` : 'Na fila';
 

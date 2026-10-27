@@ -1,53 +1,63 @@
-import type { Apuracao } from '@/lib/api/tipos';
-import * as fmt from '@/lib/formatadores';
-import { ESFERAS, TRIBUTOS } from '@/lib/rotulos';
+import type { ItemConciliacao, StatusConciliacao } from '@/lib/api/tipos';
+import { ESFERAS, STATUS_CONCILIACAO, TRIBUTOS } from '@/lib/rotulos';
 
 export type Periodicidade = 'MENSAL' | 'TRIMESTRAL' | 'ANUAL';
 
-/**
- * Uma coluna de valor dentro de cada competência. Hoje só o apurado a recolher; a Fase 2b acrescenta Declarado, Pago e
- * Diferença passando outras métricas (cada uma calcula o valor da célula a partir das apurações dela).
- */
-export type Metrica = { chave: string; rotulo: string; valor: (apuracoes: Apuracao[]) => number | null };
+/** Uma coluna de valor dentro de cada competência, calculada dos itens da conciliação da célula. */
+export type Metrica = { chave: string; rotulo: string; valor: (itens: ItemConciliacao[]) => number | null };
 
-export const A_RECOLHER: Metrica = {
-  chave: 'aRecolher', rotulo: 'A recolher',
-  valor: (apuracoes) => apuracoes.reduce((total, a) => total + a.valorARecolher, 0),
+const soma = (itens: ItemConciliacao[], valor: (i: ItemConciliacao) => number | null | undefined) => {
+  const valores = itens.map(valor).filter((v): v is number => v != null);
+  return valores.length ? valores.reduce((a, b) => a + b, 0) : null;
 };
+
+/** Apurado (SPED), declarado (DCTF, DCTFWeb, conta corrente), pago (DARF, GR-PR) e a diferença. */
+export const METRICAS: Metrica[] = [
+  { chave: 'apurado', rotulo: 'Apurado', valor: (i) => soma(i, (x) => x.apurado?.valor) },
+  { chave: 'declarado', rotulo: 'Declarado', valor: (i) => soma(i, (x) => x.declarado?.valor) },
+  { chave: 'pago', rotulo: 'Pago', valor: (i) => soma(i, (x) => x.pago?.valor) },
+  { chave: 'diferenca', rotulo: 'Diferença', valor: (i) => soma(i, (x) => x.diferenca) },
+];
 
 /** Linha da matriz: um tributo (estaduais por UF). */
 export type LinhaMatriz = { chave: string; tributo: string; uf: string | null; esfera: string; rotulo: string };
-export type Celula = { linha: LinhaMatriz; competencia: string; rotuloCompetencia: string; apuracoes: Apuracao[] };
+export type Celula = { linha: LinhaMatriz; competencia: string; rotuloCompetencia: string; itens: ItemConciliacao[] };
 
-/** Competência pela data final do período: mensal 2025-01, trimestral 2025-T1, anual 2025. */
-function competencia(dataFim: string, periodicidade: Periodicidade): { chave: string; rotulo: string } {
-  const ano = dataFim.slice(0, 4);
-  const mes = Number(dataFim.slice(5, 7));
+const GRAVIDADE = Object.keys(STATUS_CONCILIACAO) as StatusConciliacao[];
+
+/** O pior status entre os itens (célula com vários meses, na visão trimestral ou anual). */
+export const piorStatus = (itens: ItemConciliacao[]) =>
+  itens.map((i) => i.status).sort((a, b) => GRAVIDADE.indexOf(a) - GRAVIDADE.indexOf(b))[0];
+
+/** Competência pelo período de apuração (aaaa-mm): mensal 2025-01, trimestral 2025-T1, anual 2025. */
+function competencia(periodo: string, periodicidade: Periodicidade): { chave: string; rotulo: string } {
+  const ano = periodo.slice(0, 4);
+  const mes = Number(periodo.slice(5, 7));
   if (periodicidade === 'ANUAL') return { chave: ano, rotulo: ano };
   if (periodicidade === 'TRIMESTRAL') {
     const tri = Math.ceil(mes / 3);
     return { chave: `${ano}-T${tri}`, rotulo: `${tri}º tri/${ano}` };
   }
-  return { chave: dataFim.slice(0, 7), rotulo: fmt.competencia(dataFim) };
+  return { chave: periodo, rotulo: `${periodo.slice(5, 7)}/${ano}` };
 }
 
 const ORDEM_TRIBUTOS = Object.keys(TRIBUTOS);
 export const ORDEM_ESFERAS = Object.keys(ESFERAS);
 
-/** Linhas (tributo e UF) e colunas (competências) das apurações, já ordenadas. */
-export function montarMatriz(apuracoes: Apuracao[], periodicidade: Periodicidade) {
+/** Linhas (tributo e UF) e colunas (competências) dos itens da conciliação, já ordenadas. */
+export function montarMatriz(itens: ItemConciliacao[], periodicidade: Periodicidade) {
   const linhas = new Map<string, LinhaMatriz>();
   const colunas = new Map<string, string>();
-  const celulas = new Map<string, Apuracao[]>();
-  for (const a of apuracoes) {
-    const uf = a.esfera === 'ESTADUAL' ? (a.uf ?? null) : null;
-    const chave = `${a.tributo}|${uf ?? ''}`;
-    linhas.set(chave, { chave, tributo: a.tributo, uf, esfera: a.esfera,
-      rotulo: (TRIBUTOS[a.tributo] ?? a.tributo) + (uf ? ` · ${uf}` : '') });
-    const c = competencia(a.dataFim, periodicidade);
+  const celulas = new Map<string, ItemConciliacao[]>();
+  for (const i of itens) {
+    const uf = i.esfera === 'ESTADUAL' ? (i.uf ?? null) : null;
+    const chave = `${i.tributo}|${uf ?? ''}`;
+    linhas.set(chave, { chave, tributo: i.tributo, uf, esfera: i.esfera,
+      rotulo: (TRIBUTOS[i.tributo] ?? i.tributo) + (uf ? ` · ${uf}` : '') });
+    const c = competencia(i.periodo, periodicidade);
     colunas.set(c.chave, c.rotulo);
     const celula = `${chave}@${c.chave}`;
-    celulas.set(celula, [...(celulas.get(celula) ?? []), a]);
+    celulas.set(celula, [...(celulas.get(celula) ?? []), i]);
   }
   const ordenadas = [...linhas.values()].sort((x, y) =>
     ORDEM_ESFERAS.indexOf(x.esfera) - ORDEM_ESFERAS.indexOf(y.esfera)

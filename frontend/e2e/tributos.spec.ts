@@ -21,13 +21,13 @@ test('ECD + ECF + EFD do mesmo cliente → aba Tributos → célula → origem d
   }
 
   await page.getByRole('navigation', { name: 'Seções do cliente' }).getByRole('link', { name: 'Tributos', exact: true }).click();
-  const matriz = page.getByRole('table', { name: 'Valores apurados por tributo e competência' });
+  const matriz = page.getByRole('table', { name: 'Apurado, declarado e pago por tributo e competência' });
   await expect(matriz.getByRole('rowheader', { name: 'ICMS-ST · SP' })).toBeVisible();
   await page.waitForTimeout(600); // fim das animações de entrada
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id), 'aba Tributos com dados').toEqual([]);
 
-  await matriz.getByRole('button', { name: /ICMS · PR em 01\/2025, A recolher/ }).click();
+  await matriz.getByRole('button', { name: /ICMS · PR em 01\/2025, Apurado/ }).click();
   const gaveta = page.getByRole('dialog');
   await expect(gaveta.getByRole('heading', { name: 'Operações próprias' })).toBeVisible();
   await gaveta.getByRole('button', { name: /Origem de A recolher — Operações próprias/ }).click();

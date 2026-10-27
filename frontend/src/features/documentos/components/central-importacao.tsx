@@ -119,7 +119,11 @@ function ItemFila({ item, aoRemover }: { item: Item; aoRemover: () => void }) {
       {s?.status === 'AGUARDANDO_MAPEAMENTO' && doc && (
         <MapearPlanilha documentoId={doc.id} prefixo="Planilha recebida. " />
       )}
-      {(s?.status === 'PROCESSADO_COM_ALERTAS' || s?.status === 'ERRO') && doc && (
+      {(s?.status === 'ERRO' || s?.status === 'LAYOUT_NAO_RECONHECIDO') && s.mensagem && (
+        // PDF sem texto, layout desconhecido...: a mensagem já diz o que fazer
+        <p className={s.status === 'ERRO' ? 'text-danger' : 'text-warning'} role={s.status === 'ERRO' ? 'alert' : 'status'}>{s.mensagem}</p>
+      )}
+      {(s?.status === 'PROCESSADO_COM_ALERTAS' || s?.status === 'ERRO' || s?.status === 'LAYOUT_NAO_RECONHECIDO') && doc && (
         <div>
           <Button variant="link" className="h-auto p-0" onClick={() => setInconsistencias(true)}>Ver inconsistências</Button>
           <PainelInconsistencias documentoId={doc.id} arquivo={doc.nomeOriginalArquivo} aberto={inconsistencias} aoMudar={setInconsistencias} />

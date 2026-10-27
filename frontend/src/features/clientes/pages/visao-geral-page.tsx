@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { usePermissoes } from '@/features/auth/permissoes';
 import { useDocumentos } from '@/features/documentos/api';
 import { EscrituracoesCliente } from '@/features/demonstracoes/components/escrituracoes-cliente';
+import { ResumoSituacao } from '@/features/situacao-fiscal/components/resumo-situacao';
 import { useCliente } from '../api';
 import { ClienteDialog } from '../components/cliente-dialog';
 import { useClienteId } from '../rota';
@@ -55,6 +56,8 @@ export default function VisaoGeralPage() {
             </dl>
           )}
       </Cartao>
+
+      <ResumoSituacao clienteId={id} />
 
       <EscrituracoesCliente clienteId={id} />
 

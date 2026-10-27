@@ -1,19 +1,26 @@
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { Collapse } from '@/components/motion';
 import { Selo } from '@/components/selo';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import type { Apuracao } from '@/lib/api/tipos';
+import type { Apuracao, ItemConciliacao } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
-import { CAMPOS_APURACAO, REGIMES } from '@/lib/rotulos';
+import { CAMPOS_APURACAO, ORGAO_CREDOR, REGIMES, SITUACAO_DEBITO, STATUS_CONCILIACAO, TRIBUTOS } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
+import { ListaOrigens, ValorDocumento } from '@/features/situacao-fiscal/components/origem-documento';
 import { useDetalheApuracao } from '../api';
 import type { Celula } from '../matriz';
 import { ValorComOrigem } from './origem-arquivo';
 
-/** Gaveta com as apurações de uma célula da matriz: valores com origem, linhas do cálculo e obrigações a recolher. */
-export function DetalheCelula({ clienteId, celula, aoFechar }: { clienteId: number; celula: Celula | null; aoFechar: () => void }) {
+/**
+ * Gaveta de uma célula da matriz: para cada período, o status da conciliação, apurado, declarado e pago com as origens
+ * (arquivo, página ou registro, linha), a diferença, os acréscimos devidos pelo atraso e o débito correspondente na
+ * situação fiscal; embaixo, o cálculo das apurações do período.
+ */
+export function DetalheCelula({ clienteId, celula, apuracoes, aoFechar }: {
+  clienteId: number; celula: Celula | null; apuracoes: Apuracao[]; aoFechar: () => void;
+}) {
   return (
     <Sheet open={celula != null} onOpenChange={(aberto) => !aberto && aoFechar()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
@@ -21,17 +28,90 @@ export function DetalheCelula({ clienteId, celula, aoFechar }: { clienteId: numb
           <>
             <SheetHeader>
               <SheetTitle>{celula.linha.rotulo} · {celula.rotuloCompetencia}</SheetTitle>
-              <SheetDescription>
-                {celula.apuracoes.length === 1 ? '1 apuração' : `${celula.apuracoes.length} apurações`} nesta competência
-              </SheetDescription>
+              <SheetDescription>Apurado × declarado × pago, com a origem de cada valor</SheetDescription>
             </SheetHeader>
             <div className="grid gap-4 px-4 pb-6">
-              {celula.apuracoes.map((a) => <ApuracaoDetalhada key={a.id} clienteId={clienteId} apuracao={a} />)}
+              {celula.itens.map((item) => (
+                <ItemDetalhado key={item.id} clienteId={clienteId} item={item}
+                               apuracoes={apuracoes.filter((a) => a.tributo === item.tributo && (a.uf ?? null) === (item.uf ?? null)
+                                 && a.dataFim.slice(0, 7) === item.periodo)} />
+              ))}
             </div>
           </>
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function ItemDetalhado({ clienteId, item, apuracoes }: { clienteId: number; item: ItemConciliacao; apuracoes: Apuracao[] }) {
+  const status = STATUS_CONCILIACAO[item.status];
+  const rotulo = `${TRIBUTOS[item.tributo] ?? item.tributo} ${item.periodo.slice(5, 7)}/${item.periodo.slice(0, 4)}`;
+  const a = item.acrescimos;
+  return (
+    <section aria-label={`Conciliação de ${rotulo}`} className="grid gap-3 rounded-md border p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-semibold">{rotulo}</h3>
+        <Selo tom={status.tom}>{status.rotulo}</Selo>
+      </div>
+      <p className="num text-xs text-muted-foreground">
+        Vencimento {fmt.data(item.vencimento)}
+        {item.pago?.dataPagamento && <> · pago em {fmt.data(item.pago.dataPagamento)}</>}
+        {item.codigosReceita.length > 0 && <> · código {item.codigosReceita.join(', ')}</>}
+      </p>
+      <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+        {([['Apurado', item.apurado], ['Declarado', item.declarado], ['Pago', item.pago]] as const).map(([nome, v]) => (
+          <div key={nome} className="contents">
+            <dt className="text-muted-foreground">{nome}</dt>
+            <dd><ValorDocumento clienteId={clienteId} rotulo={`${nome} — ${rotulo}`} valor={v?.valor} origens={v?.origens} /></dd>
+          </div>
+        ))}
+        <dt className="font-semibold">Diferença</dt>
+        <dd className={cn('num px-1 text-right font-semibold', status.tom === 'danger' && 'text-danger')}>{fmt.moeda(item.diferenca)}</dd>
+      </dl>
+
+      {a && (
+        <div className="grid gap-1 rounded-md bg-muted/50 p-2 text-sm" aria-label="Acréscimos devidos">
+          <p className="font-semibold">Acréscimos devidos pelo atraso</p>
+          <p className="num text-xs text-muted-foreground">
+            {fmt.inteiro(a.diasAtraso)} dias de {fmt.data(a.vencimento)} a {fmt.data(a.pagamento)} sobre {fmt.moeda(a.principal)}
+          </p>
+          <dl className="grid grid-cols-[1fr_auto] gap-x-4">
+            <dt>Multa de mora ({fmt.percentual(a.percentualMulta)}; 0,33% ao dia, até 20%)</dt>
+            <dd className="num text-right">{fmt.moeda(a.multa)}</dd>
+            <dt>Juros ({fmt.percentual(a.percentualJuros)}; SELIC{a.selicDe ? ` ${a.selicDe} a ${a.selicAte}` : ''} + 1%)</dt>
+            <dd className="num text-right">{fmt.moeda(a.juros)}</dd>
+            <dt className="font-semibold">Total dos acréscimos</dt>
+            <dd className="num text-right font-semibold">{fmt.moeda(a.multa + a.juros)}</dd>
+          </dl>
+        </div>
+      )}
+      {item.erroAcrescimos && (
+        <p className="flex items-start gap-1.5 text-sm text-warning" role="note">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />{item.erroAcrescimos}
+        </p>
+      )}
+
+      {item.debitos.length > 0 && (
+        <div className="grid gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Débito na situação fiscal</p>
+          {item.debitos.map((d) => (
+            <div key={d.id} className="grid gap-2 rounded-md border p-2 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span>{ORGAO_CREDOR[d.orgao]} · <span className="num">{fmt.moeda(d.valorTotal)}</span></span>
+                <span className="flex gap-1">
+                  <Selo tom={SITUACAO_DEBITO[d.situacao].tom}>{SITUACAO_DEBITO[d.situacao].rotulo}</Selo>
+                  {d.impedeCertidao && <Selo tom="danger">Impede certidão</Selo>}
+                </span>
+              </div>
+              <ListaOrigens clienteId={clienteId} origens={d.origens} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {apuracoes.map((ap) => <ApuracaoDetalhada key={ap.id} clienteId={clienteId} apuracao={ap} />)}
+    </section>
   );
 }
 
