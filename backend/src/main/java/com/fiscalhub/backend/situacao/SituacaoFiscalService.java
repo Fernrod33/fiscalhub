@@ -48,7 +48,7 @@ public class SituacaoFiscalService {
                               Long linha, String trecho) {
     }
 
-    public record Debito(long id, long clienteId, OrgaoCredor orgaoCredor, TipoTributo tributo, String codigoReceita,
+    public record DebitoConsolidado(long id, long clienteId, OrgaoCredor orgaoCredor, TipoTributo tributo, String codigoReceita,
                          LocalDate competencia, String periodo, LocalDate dataVencimento, BigDecimal valorPrincipal,
                          BigDecimal valorMulta, BigDecimal valorJuros, BigDecimal valorEncargo, BigDecimal valorTotal,
                          SituacaoDebito situacao, String situacaoDocumento, String numeroInscricao, String numeroProcesso,
@@ -61,12 +61,12 @@ public class SituacaoFiscalService {
                                BigDecimal juros, BigDecimal encargo, BigDecimal total, String situacao) {
     }
 
-    public record Parcelamento(long id, OrgaoCredor orgao, String numero, String modalidade, Integer parcelasPagas,
+    public record ParcelamentoFiscal(long id, OrgaoCredor orgao, String numero, String modalidade, Integer parcelasPagas,
                                Integer parcelasTotal, BigDecimal valorParcela, BigDecimal saldo, String situacao,
                                List<String> debitos, LocalDate dataReferencia, OrigemValor origem) {
     }
 
-    public record Pendencia(long id, String tipo, String descricao, LocalDate periodo, String situacao,
+    public record PendenciaFiscal(long id, String tipo, String descricao, LocalDate periodo, String situacao,
                             LocalDate dataReferencia, OrigemValor origem) {
     }
 
@@ -76,14 +76,14 @@ public class SituacaoFiscalService {
     }
 
     /** declaracao: DCTF, DCTFWEB ou CONTA_CORRENTE_PR; finalidade: ORIGINAL ou SUBSTITUTA (retificadora). */
-    public record Declarado(long id, String declaracao, String finalidade, String codigoReceita, TipoTributo tributo,
+    public record DebitoDeclarado(long id, String declaracao, String finalidade, String codigoReceita, TipoTributo tributo,
                             LocalDate periodo, LocalDate vencimento, BigDecimal valor, BigDecimal valorPago,
                             BigDecimal valorCompensado, BigDecimal valorSuspenso, BigDecimal valorParcelado,
                             boolean divergente, List<OrigemValor> origens) {
     }
 
-    /** Pagamento (um item por código): os valores do documento de arrecadação e as origens de todas as fontes. */
-    public record Pagamento(long id, String chave, String documento, String numero, String codigoReceita, TipoTributo tributo,
+    /** PagamentoConsolidado (um item por código): os valores do documento de arrecadação e as origens de todas as fontes. */
+    public record PagamentoConsolidado(long id, String chave, String documento, String numero, String codigoReceita, TipoTributo tributo,
                             LocalDate periodo, String referencia, LocalDate vencimento, LocalDate dataPagamento,
                             BigDecimal principal, BigDecimal multa, BigDecimal juros, BigDecimal total, String parcelamento,
                             boolean divergente, List<OrigemValor> origens) {
@@ -107,7 +107,7 @@ public class SituacaoFiscalService {
     // ---------------------------------------------------------------- débitos
 
     /** Débitos do cliente, um por dívida (fontes juntas); orgao e situacao opcionais. */
-    public List<Debito> debitos(long clienteId, OrgaoCredor orgao, SituacaoDebito situacao, UsuarioAutenticado ua) {
+    public List<DebitoConsolidado> debitos(long clienteId, OrgaoCredor orgao, SituacaoDebito situacao, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         return debitos(clienteId).stream()
                 .filter(d -> orgao == null || d.orgaoCredor() == orgao)
@@ -116,7 +116,7 @@ public class SituacaoFiscalService {
     }
 
     /** Sem checagem de acesso: para quem já checou (conciliação, resumo). */
-    List<Debito> debitos(long clienteId) {
+    List<DebitoConsolidado> debitos(long clienteId) {
         List<Map<String, Object>> linhas = jdbc.queryForList("""
                 SELECT d.*, doc.nome_original_arquivo, doc.tipo AS tipo_documento FROM debito d
                 JOIN documento_fiscal doc ON doc.id = d.documento_origem_id
@@ -124,7 +124,7 @@ public class SituacaoFiscalService {
                 clienteId, clienteId);
         Map<String, List<Map<String, Object>>> porChave = linhas.stream().collect(Collectors.groupingBy(
                 l -> l.get("chave") == null ? "ID|" + l.get("id") : (String) l.get("chave"), LinkedHashMap::new, Collectors.toList()));
-        List<Debito> debitos = new ArrayList<>();
+        List<DebitoConsolidado> debitos = new ArrayList<>();
         for (List<Map<String, Object>> fontes : porChave.values()) {
             fontes.sort(Comparator.comparing((Map<String, Object> l) -> (Date) l.get("data_referencia"),
                     Comparator.nullsFirst(Comparator.naturalOrder())).thenComparing(l -> (Long) l.get("id")).reversed());
@@ -132,7 +132,7 @@ public class SituacaoFiscalService {
             Map<String, Object> comValores = fontes.stream().filter(l -> l.get("valor_principal") != null || l.get("valor_total") != null)
                     .findFirst().orElse(recente);
             SituacaoDebito situacao = SituacaoDebito.valueOf((String) recente.get("situacao"));
-            debitos.add(new Debito((Long) comValores.get("id"), clienteId, OrgaoCredor.valueOf((String) recente.get("orgao_credor")),
+            debitos.add(new DebitoConsolidado((Long) comValores.get("id"), clienteId, OrgaoCredor.valueOf((String) recente.get("orgao_credor")),
                     TipoTributo.valueOf((String) recente.get("tributo")), primeiro(fontes, "codigo_receita"),
                     data(primeiro(fontes, "competencia")), primeiro(fontes, "periodo"), data(primeiro(fontes, "data_vencimento")),
                     (BigDecimal) comValores.get("valor_principal"), (BigDecimal) comValores.get("valor_multa"),
@@ -145,8 +145,8 @@ public class SituacaoFiscalService {
                             (BigDecimal) l.get("valor_principal"), (BigDecimal) l.get("valor_multa"), (BigDecimal) l.get("valor_juros"),
                             (BigDecimal) l.get("valor_encargo"), total(l), (String) l.get("situacao_documento"))).toList()));
         }
-        debitos.sort(Comparator.comparing(Debito::orgaoCredor).thenComparing(Debito::competencia,
-                Comparator.nullsFirst(Comparator.naturalOrder())).thenComparing(Debito::id));
+        debitos.sort(Comparator.comparing(DebitoConsolidado::orgaoCredor).thenComparing(DebitoConsolidado::competencia,
+                Comparator.nullsFirst(Comparator.naturalOrder())).thenComparing(DebitoConsolidado::id));
         return debitos;
     }
 
@@ -172,18 +172,18 @@ public class SituacaoFiscalService {
 
     // ---------------------------------------------------------------- parcelamentos, pendências, capacidade
 
-    public List<Parcelamento> parcelamentos(long clienteId, UsuarioAutenticado ua) {
+    public List<ParcelamentoFiscal> parcelamentos(long clienteId, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         return parcelamentos(clienteId);
     }
 
-    List<Parcelamento> parcelamentos(long clienteId) {
-        List<Parcelamento> todos = jdbc.query("""
+    List<ParcelamentoFiscal> parcelamentos(long clienteId) {
+        List<ParcelamentoFiscal> todos = jdbc.query("""
                 SELECT p.*, e.documento_id, doc.nome_original_arquivo, doc.tipo AS tipo_documento FROM parcelamento p
                 JOIN escrituracao_contabil e ON e.id = p.escrituracao_id
                 JOIN documento_fiscal doc ON doc.id = e.documento_id
                 WHERE p.cliente_id = ? AND p.escrituracao_id IN (""" + VIGENTES_RETRATO + ") ORDER BY p.data_referencia DESC, p.id DESC",
-                (rs, i) -> new Parcelamento(rs.getLong("id"), OrgaoCredor.valueOf(rs.getString("orgao")), rs.getString("numero"),
+                (rs, i) -> new ParcelamentoFiscal(rs.getLong("id"), OrgaoCredor.valueOf(rs.getString("orgao")), rs.getString("numero"),
                         rs.getString("modalidade"), (Integer) rs.getObject("parcelas_pagas"), (Integer) rs.getObject("parcelas_total"),
                         rs.getBigDecimal("valor_parcela"), rs.getBigDecimal("saldo"), rs.getString("situacao"),
                         rs.getString("debitos") == null || rs.getString("debitos").isEmpty() ? List.of()
@@ -192,18 +192,18 @@ public class SituacaoFiscalService {
         return unicos(todos, p -> p.orgao() + "|" + p.numero());
     }
 
-    public List<Pendencia> pendencias(long clienteId, UsuarioAutenticado ua) {
+    public List<PendenciaFiscal> pendencias(long clienteId, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         return pendencias(clienteId);
     }
 
-    List<Pendencia> pendencias(long clienteId) {
+    List<PendenciaFiscal> pendencias(long clienteId) {
         return jdbc.query("""
                 SELECT p.*, e.documento_id, doc.nome_original_arquivo, doc.tipo AS tipo_documento FROM pendencia_fiscal p
                 JOIN escrituracao_contabil e ON e.id = p.escrituracao_id
                 JOIN documento_fiscal doc ON doc.id = e.documento_id
                 WHERE p.cliente_id = ? AND p.escrituracao_id IN (""" + VIGENTES_RETRATO + ") ORDER BY p.periodo DESC NULLS LAST, p.id",
-                (rs, i) -> new Pendencia(rs.getLong("id"), rs.getString("tipo"), rs.getString("descricao"),
+                (rs, i) -> new PendenciaFiscal(rs.getLong("id"), rs.getString("tipo"), rs.getString("descricao"),
                         data(rs.getDate("periodo")), rs.getString("situacao"), rs.getDate("data_referencia").toLocalDate(),
                         origem(rs)), clienteId, clienteId);
     }
@@ -232,7 +232,7 @@ public class SituacaoFiscalService {
 
     // ---------------------------------------------------------------- declarado e pago
 
-    public List<Declarado> declaracoes(long clienteId, UsuarioAutenticado ua) {
+    public List<DebitoDeclarado> declaracoes(long clienteId, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         return declaracoes(clienteId);
     }
@@ -241,7 +241,7 @@ public class SituacaoFiscalService {
      * Débitos declarados das declarações vigentes (DCTF, DCTFWeb) e da conta corrente do ICMS mais recente. A mesma
      * declaração em PDF e .dec: um item por código, com as duas origens (divergente se os valores diferem).
      */
-    List<Declarado> declaracoes(long clienteId) {
+    List<DebitoDeclarado> declaracoes(long clienteId) {
         List<Map<String, Object>> linhas = jdbc.queryForList("""
                 SELECT d.*, e.origem AS declaracao, e.finalidade, e.documento_id, doc.nome_original_arquivo, doc.tipo AS tipo_documento
                 FROM debito_declarado d
@@ -256,7 +256,7 @@ public class SituacaoFiscalService {
         return grupos.values().stream().map(fontes -> {
             Map<String, Object> l = fontes.getFirst();
             boolean divergente = fontes.stream().map(f -> ((BigDecimal) f.get("valor")).stripTrailingZeros()).distinct().count() > 1;
-            return new Declarado((Long) l.get("id"), (String) l.get("declaracao"), (String) l.get("finalidade"),
+            return new DebitoDeclarado((Long) l.get("id"), (String) l.get("declaracao"), (String) l.get("finalidade"),
                     (String) l.get("codigo_receita"), tributo((String) l.get("tributo")), data(l.get("periodo")),
                     data(l.get("vencimento")), (BigDecimal) l.get("valor"), (BigDecimal) l.get("valor_pago"),
                     (BigDecimal) l.get("valor_compensado"), (BigDecimal) l.get("valor_suspenso"),
@@ -265,7 +265,7 @@ public class SituacaoFiscalService {
         }).toList();
     }
 
-    public List<Pagamento> pagamentos(long clienteId, UsuarioAutenticado ua) {
+    public List<PagamentoConsolidado> pagamentos(long clienteId, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         return pagamentos(clienteId);
     }
@@ -275,7 +275,7 @@ public class SituacaoFiscalService {
      * próprio documento de arrecadação (DARF ou GR-PR individual) quando importado, senão do relatório mais recente.
      * divergente: as fontes somam totais diferentes.
      */
-    List<Pagamento> pagamentos(long clienteId) {
+    List<PagamentoConsolidado> pagamentos(long clienteId) {
         List<Map<String, Object>> linhas = jdbc.queryForList("""
                 SELECT p.*, e.origem, e.documento_id, doc.nome_original_arquivo, doc.tipo AS tipo_documento FROM pagamento p
                 JOIN escrituracao_contabil e ON e.id = p.escrituracao_id AND e.situacao = 'VIGENTE'
@@ -283,7 +283,7 @@ public class SituacaoFiscalService {
                 WHERE p.cliente_id = ? ORDER BY p.data_pagamento, p.chave, p.id""", clienteId);
         Map<String, List<Map<String, Object>>> porChave = linhas.stream().collect(Collectors.groupingBy(
                 l -> (String) l.get("chave"), LinkedHashMap::new, Collectors.toList()));
-        List<Pagamento> pagamentos = new ArrayList<>();
+        List<PagamentoConsolidado> pagamentos = new ArrayList<>();
         for (List<Map<String, Object>> fontes : porChave.values()) {
             Map<Long, List<Map<String, Object>>> porEscrituracao = fontes.stream().collect(Collectors.groupingBy(
                     l -> (Long) l.get("escrituracao_id"), LinkedHashMap::new, Collectors.toList()));
@@ -294,7 +294,7 @@ public class SituacaoFiscalService {
                     .reduce(BigDecimal.ZERO, BigDecimal::add)).map(BigDecimal::stripTrailingZeros).distinct().count() > 1;
             List<OrigemValor> origens = fontes.stream().map(l -> origem(l, "documento_id")).toList();
             for (Map<String, Object> l : escolhida) {
-                pagamentos.add(new Pagamento((Long) l.get("id"), (String) l.get("chave"), (String) l.get("documento"),
+                pagamentos.add(new PagamentoConsolidado((Long) l.get("id"), (String) l.get("chave"), (String) l.get("documento"),
                         (String) l.get("numero"), (String) l.get("codigo_receita"), tributo((String) l.get("tributo")),
                         data(l.get("periodo")), (String) l.get("referencia"), data(l.get("vencimento")),
                         data(l.get("data_pagamento")), (BigDecimal) l.get("principal"), (BigDecimal) l.get("multa"),

@@ -34,20 +34,20 @@ public class SituacaoFiscalController {
 
     /** Um débito por dívida (as fontes juntas, com as origens); filtros opcionais por órgão e situação. */
     @GetMapping("/debitos")
-    public List<SituacaoFiscalService.Debito> debitos(@PathVariable long clienteId, @RequestParam(required = false) OrgaoCredor orgao,
+    public List<SituacaoFiscalService.DebitoConsolidado> debitos(@PathVariable long clienteId, @RequestParam(required = false) OrgaoCredor orgao,
                                                      @RequestParam(required = false) SituacaoDebito situacao,
                                                      @AuthenticationPrincipal UsuarioAutenticado ua) {
         return this.situacao.debitos(clienteId, orgao, situacao, ua);
     }
 
     @GetMapping("/parcelamentos")
-    public List<SituacaoFiscalService.Parcelamento> parcelamentos(@PathVariable long clienteId,
+    public List<SituacaoFiscalService.ParcelamentoFiscal> parcelamentos(@PathVariable long clienteId,
                                                                   @AuthenticationPrincipal UsuarioAutenticado ua) {
         return situacao.parcelamentos(clienteId, ua);
     }
 
     @GetMapping("/pendencias")
-    public List<SituacaoFiscalService.Pendencia> pendencias(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
+    public List<SituacaoFiscalService.PendenciaFiscal> pendencias(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
         return situacao.pendencias(clienteId, ua);
     }
 
@@ -58,12 +58,12 @@ public class SituacaoFiscalController {
     }
 
     @GetMapping("/declaracoes")
-    public List<SituacaoFiscalService.Declarado> declaracoes(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
+    public List<SituacaoFiscalService.DebitoDeclarado> declaracoes(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
         return situacao.declaracoes(clienteId, ua);
     }
 
     @GetMapping("/pagamentos")
-    public List<SituacaoFiscalService.Pagamento> pagamentos(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
+    public List<SituacaoFiscalService.PagamentoConsolidado> pagamentos(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
         return situacao.pagamentos(clienteId, ua);
     }
 
@@ -79,7 +79,7 @@ public class SituacaoFiscalController {
 
     /** item: o id do item na conciliação (tributo, UF e período, ex.: COFINS-2026-08, ICMS_ST-PR-2026-08). */
     @GetMapping("/conciliacao/{item}")
-    public ConciliacaoService.Item item(@PathVariable long clienteId, @PathVariable String item,
+    public ConciliacaoService.ItemConciliacao item(@PathVariable long clienteId, @PathVariable String item,
                                         @AuthenticationPrincipal UsuarioAutenticado ua) {
         return conciliacao.item(clienteId, item, ua);
     }

@@ -54,11 +54,11 @@ public class ConciliacaoService {
     /** Status de diferença que deve ter débito na situação fiscal. */
     private static final Set<Status> COM_DEBITO = Set.of(Status.NAO_PAGO, Status.PAGO_A_MENOR, Status.PAGO_EM_ATRASO_SEM_ACRESCIMOS);
 
-    public record Valor(BigDecimal valor, List<OrigemValor> origens) {
+    public record ValorConciliado(BigDecimal valor, List<OrigemValor> origens) {
     }
 
     /** O que foi pago: principal, acréscimos pagos e a data do último pagamento. */
-    public record Pago(BigDecimal valor, BigDecimal multa, BigDecimal juros, LocalDate dataPagamento, List<OrigemValor> origens) {
+    public record PagoConciliado(BigDecimal valor, BigDecimal multa, BigDecimal juros, LocalDate dataPagamento, List<OrigemValor> origens) {
     }
 
     public record DebitoRelacionado(long id, OrgaoCredor orgao, SituacaoDebito situacao, BigDecimal valorTotal,
@@ -69,15 +69,15 @@ public class ConciliacaoService {
      * Um item da conciliação. diferenca: devido − pago (positivo = falta pagar); na divergência, apurado − declarado.
      * acrescimos: devidos pelo atraso (federal), até o pagamento ou, se não pago, até a data de cálculo.
      */
-    public record Item(String id, String esfera, TipoTributo tributo, String uf, YearMonth periodo, LocalDate vencimento,
-                       Status status, Valor apurado, Valor declarado, Pago pago, BigDecimal diferenca, Acrescimos acrescimos,
+    public record ItemConciliacao(String id, String esfera, TipoTributo tributo, String uf, YearMonth periodo, LocalDate vencimento,
+                       Status status, ValorConciliado apurado, ValorConciliado declarado, PagoConciliado pago, BigDecimal diferenca, Acrescimos acrescimos,
                        String erroAcrescimos, List<String> codigosReceita, List<DebitoRelacionado> debitos) {
     }
 
-    public record Alerta(String regra, String itemId, Long debitoId, String mensagem) {
+    public record AlertaConciliacao(String regra, String itemId, Long debitoId, String mensagem) {
     }
 
-    public record Conciliacao(BigDecimal tolerancia, LocalDate dataCalculo, List<Item> itens, List<Alerta> alertas) {
+    public record Conciliacao(BigDecimal tolerancia, LocalDate dataCalculo, List<ItemConciliacao> itens, List<AlertaConciliacao> alertas) {
     }
 
     private final JdbcTemplate jdbc;
@@ -101,19 +101,19 @@ public class ConciliacaoService {
     public Conciliacao conciliar(long clienteId, YearMonth de, YearMonth ate, Status status, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         Conciliacao c = conciliar(clienteId);
-        List<Item> itens = c.itens().stream()
+        List<ItemConciliacao> itens = c.itens().stream()
                 .filter(i -> de == null || !i.periodo().isBefore(de))
                 .filter(i -> ate == null || !i.periodo().isAfter(ate))
                 .filter(i -> status == null || i.status() == status).toList();
-        Set<String> ids = itens.stream().map(Item::id).collect(java.util.stream.Collectors.toSet());
+        Set<String> ids = itens.stream().map(ItemConciliacao::id).collect(java.util.stream.Collectors.toSet());
         return new Conciliacao(c.tolerancia(), c.dataCalculo(), itens,
                 c.alertas().stream().filter(a -> a.itemId() == null || ids.contains(a.itemId())).toList());
     }
 
-    public Item item(long clienteId, String itemId, UsuarioAutenticado ua) {
+    public ItemConciliacao item(long clienteId, String itemId, UsuarioAutenticado ua) {
         acesso.cliente(clienteId, ua);
         return conciliar(clienteId).itens().stream().filter(i -> i.id().equals(itemId)).findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Item da conciliação não encontrado: " + itemId));
+                .orElseThrow(() -> new ResourceNotFoundException("ItemConciliacao da conciliação não encontrado: " + itemId));
     }
 
     /** Montagem dos itens (chave -> apurado, declarado, pago) e do status de cada um. */
@@ -121,7 +121,7 @@ public class ConciliacaoService {
         Map<String, Montagem> itens = new TreeMap<>();
         apurado(clienteId, itens);
         boolean temContaCorrente = false;
-        for (SituacaoFiscalService.Declarado d : situacao.declaracoes(clienteId)) {
+        for (SituacaoFiscalService.DebitoDeclarado d : situacao.declaracoes(clienteId)) {
             if (d.tributo() == null) {
                 continue;
             }
@@ -134,7 +134,7 @@ public class ConciliacaoService {
             m.vencimento = min(m.vencimento, d.vencimento());
             m.codigos.add(d.codigoReceita());
         }
-        for (SituacaoFiscalService.Pagamento p : situacao.pagamentos(clienteId)) {
+        for (SituacaoFiscalService.PagamentoConsolidado p : situacao.pagamentos(clienteId)) {
             if (p.tributo() == null || p.parcelamento() != null || p.periodo() == null) {
                 continue; // sem código (DARF DCTFWeb só com o total) ou parcela de parcelamento
             }
@@ -147,38 +147,38 @@ public class ConciliacaoService {
             m.origensPago.addAll(p.origens());
             m.codigos.add(p.codigoReceita());
         }
-        List<SituacaoFiscalService.Debito> debitos = situacao.debitos(clienteId);
+        List<SituacaoFiscalService.DebitoConsolidado> debitos = situacao.debitos(clienteId);
         LocalDate hoje = LocalDate.now();
-        List<Item> resultado = new ArrayList<>();
-        List<Alerta> alertas = new ArrayList<>();
+        List<ItemConciliacao> resultado = new ArrayList<>();
+        List<AlertaConciliacao> alertas = new ArrayList<>();
         for (Montagem m : itens.values()) {
             if ("ESTADUAL".equals(m.esfera) && m.declarado == null && !temContaCorrente && m.apurado != null) {
                 m.declarado = m.apurado; // sem a conta corrente do PR, a EFD (apurado) é a declaração do ICMS
                 m.origensDeclarado.addAll(m.origensApurado);
             }
-            Item item = item(m, debitos, hoje);
+            ItemConciliacao item = item(m, debitos, hoje);
             resultado.add(item);
             if (COM_DEBITO.contains(item.status()) && item.debitos().isEmpty()) {
-                alertas.add(new Alerta("DIFERENCA_SEM_DEBITO", item.id(), null, rotulo(item) + ": " + item.status()
+                alertas.add(new AlertaConciliacao("DIFERENCA_SEM_DEBITO", item.id(), null, rotulo(item) + ": " + item.status()
                         + " de " + item.diferenca().toPlainString() + " sem débito correspondente na situação fiscal "
                         + "(relatório de situação fiscal ou conta corrente do PR). Importe o relatório mais recente ou confira."));
             }
         }
-        for (SituacaoFiscalService.Debito d : debitos) {
+        for (SituacaoFiscalService.DebitoConsolidado d : debitos) {
             if (Set.of(OrgaoCredor.RFB, OrgaoCredor.SEFA_PR).contains(d.orgaoCredor()) && d.competencia() != null
                     && d.situacao() == SituacaoDebito.EM_ABERTO && resultado.stream().noneMatch(i -> COM_DEBITO.contains(i.status())
                     && i.debitos().stream().anyMatch(r -> r.id() == d.id()))) {
-                alertas.add(new Alerta("DEBITO_SEM_DIFERENCA", null, d.id(), "Débito de " + d.tributo() + " "
+                alertas.add(new AlertaConciliacao("DEBITO_SEM_DIFERENCA", null, d.id(), "Débito de " + d.tributo() + " "
                         + YearMonth.from(d.competencia()) + " em aberto (" + d.orgaoCredor() + ", "
                         + d.valorTotal().toPlainString() + ") sem diferença na conciliação que o explique: faltam o apurado, "
                         + "o declarado ou o pago do período, ou o débito já foi pago depois do relatório."));
             }
         }
-        resultado.sort(Comparator.comparing(Item::periodo).reversed().thenComparing(Item::esfera).thenComparing(Item::tributo));
+        resultado.sort(Comparator.comparing(ItemConciliacao::periodo).reversed().thenComparing(ItemConciliacao::esfera).thenComparing(ItemConciliacao::tributo));
         return new Conciliacao(tolerancia, hoje, resultado, alertas);
     }
 
-    private Item item(Montagem m, List<SituacaoFiscalService.Debito> debitos, LocalDate hoje) {
+    private ItemConciliacao item(Montagem m, List<SituacaoFiscalService.DebitoConsolidado> debitos, LocalDate hoje) {
         BigDecimal devido = m.declarado != null ? m.declarado : m.apurado != null ? m.apurado : BigDecimal.ZERO;
         BigDecimal pago = m.pago == null ? BigDecimal.ZERO : m.pago;
         BigDecimal diferenca = devido.subtract(pago);
@@ -215,10 +215,10 @@ public class ConciliacaoService {
                 erro = e.getMessage() + " Carregue a SELIC para calcular os acréscimos.";
             }
         }
-        return new Item(m.id(), m.esfera, m.tributo, m.uf, m.periodo, m.vencimento, status,
-                m.apurado == null ? null : new Valor(m.apurado, m.origensApurado),
-                m.declarado == null ? null : new Valor(m.declarado, m.origensDeclarado),
-                m.pago == null ? null : new Pago(m.pago, m.multaPaga, m.jurosPagos, m.dataPagamento, m.origensPago),
+        return new ItemConciliacao(m.id(), m.esfera, m.tributo, m.uf, m.periodo, m.vencimento, status,
+                m.apurado == null ? null : new ValorConciliado(m.apurado, m.origensApurado),
+                m.declarado == null ? null : new ValorConciliado(m.declarado, m.origensDeclarado),
+                m.pago == null ? null : new PagoConciliado(m.pago, m.multaPaga, m.jurosPagos, m.dataPagamento, m.origensPago),
                 diferenca, devidos, erro, m.codigos.stream().filter(Objects::nonNull).distinct().sorted().toList(), relacionados);
     }
 
@@ -252,7 +252,7 @@ public class ConciliacaoService {
         return diferenca.negate().compareTo(tolerancia) > 0 ? Status.PAGO_A_MAIOR : Status.CONCILIADO;
     }
 
-    /** Valor a recolher das escriturações fiscais vigentes, com a origem (registro e linha) do valor. */
+    /** ValorConciliado a recolher das escriturações fiscais vigentes, com a origem (registro e linha) do valor. */
     private void apurado(long clienteId, Map<String, Montagem> itens) {
         jdbc.query("""
                 SELECT a.tributo, a.esfera, a.uf, a.data_fim, a.valor_a_recolher, a.origem::text, a.documento_id,
@@ -304,7 +304,7 @@ public class ConciliacaoService {
         return tributo + (uf == null ? "" : "-" + uf) + "-" + periodo;
     }
 
-    private static String rotulo(Item i) {
+    private static String rotulo(ItemConciliacao i) {
         return i.tributo() + (i.uf() == null ? "" : " " + i.uf()) + " " + i.periodo();
     }
 
@@ -316,7 +316,7 @@ public class ConciliacaoService {
         return a == null ? b : b == null || a.isBefore(b) ? a : b;
     }
 
-    /** Item em montagem: os três valores somados por chave e as origens de cada um. */
+    /** ItemConciliacao em montagem: os três valores somados por chave e as origens de cada um. */
     private static final class Montagem {
         final TipoTributo tributo;
         final String uf;
