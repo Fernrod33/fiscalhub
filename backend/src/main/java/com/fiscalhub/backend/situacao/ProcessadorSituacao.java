@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.time.DateTimeException;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -62,14 +63,14 @@ public class ProcessadorSituacao implements ProcessadorDocumento {
         Extracao extracao = new Extracao();
         String versao;
         if (documento.getTipo() == DocumentoTipo.DCTF) { // o detector só dá DCTF ao .dec; PDF chega como PDF
-            LeitorDctfDec.ler(bytes, extracao);
             versao = LeitorDctfDec.VERSAO;
+            extrair(() -> LeitorDctfDec.ler(bytes, extracao), "DCTF (.dec)", versao);
         } else {
             DocumentoPdf pdf = LeitorPdf.ler(bytes);
             AdaptadorDocumentoPdf adaptador = adaptador(pdf, contexto);
             documento.setTipo(adaptador.tipo());
-            adaptador.extrair(pdf, extracao);
             versao = adaptador.versao();
+            extrair(() -> adaptador.extrair(pdf, extracao), adaptador.tipo().name(), versao);
         }
         contexto.etapa(EtapaProcessamento.VALIDANDO);
         Cliente cliente;
@@ -86,6 +87,17 @@ public class ProcessadorSituacao implements ProcessadorDocumento {
         }
         contexto.etapa(EtapaProcessamento.GRAVANDO);
         repositorio.gravar(documento, cliente, versao, extracao, contexto);
+    }
+
+    /** Campo fora do formato num documento reconhecido: erro claro com o layout, não "falha inesperada". */
+    private static void extrair(Runnable leitura, String tipo, String versao) {
+        try {
+            leitura.run();
+        } catch (DateTimeException | IllegalArgumentException | IndexOutOfBoundsException e) { // NumberFormatException incluída
+            throw new FalhaImportacao("CAMPO_ILEGIVEL", "O documento foi reconhecido como " + tipo + " (layout " + versao
+                    + "), mas um campo não pôde ser lido: " + e.getMessage() + ". Confira se o arquivo é o documento original "
+                    + "do sistema; se for, o layout mudou e precisa de um adaptador novo.");
+        }
     }
 
     private AdaptadorDocumentoPdf adaptador(DocumentoPdf pdf, ContextoProcessamento contexto) {

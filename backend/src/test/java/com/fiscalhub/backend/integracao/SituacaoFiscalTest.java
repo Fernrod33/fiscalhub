@@ -140,6 +140,16 @@ class SituacaoFiscalTest {
         assertThat(regras(imagem)).containsExactly("PDF_SEM_TEXTO");
     }
 
+    @Test
+    void decComCampoIlegivelEhErroClaroComOLayout() throws Exception {
+        long id = importar("ruim.dec", dec().replace("R10512301112024241220240000000041200", "R10512301112024241220XX0000000041200")
+                .getBytes(StandardCharsets.ISO_8859_1));
+        assertThat(documentoRepository.findById(id).orElseThrow().getStatus()).isEqualTo(DocumentoStatus.ERRO);
+        assertThat(regras(id)).containsExactly("CAMPO_ILEGIVEL");
+        mvc.perform(get("/api/documentos/{d}/status", id).with(sessao))
+                .andExpect(jsonPath("$.mensagem").value(containsString("layout ficticio-2026-10")));
+    }
+
     // ---------------------------------------------------------------- apoio
 
     private long importar(String nome, byte[] conteudo) throws Exception {
