@@ -62,6 +62,7 @@ const { anos, grade, recolhidos, alternar, sinal, mostrarAh, mostrarAv, clienteI
             : <span className="size-5 shrink-0" aria-hidden />}
           <span className="truncate" title={`${l.codigo} · ${l.descricao}`}>{l.descricao}</span>
           {l.derivada && <Selo tom="info">derivada</Selo>}
+          {l.hierarquiaHerdada && <Selo tom="warning">hierarquia herdada</Selo>}
         </div>
         {anos.map((ano, i) => {
           const v = l.valores[ano];

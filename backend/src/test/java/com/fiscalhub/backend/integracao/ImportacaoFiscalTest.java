@@ -95,9 +95,9 @@ class ImportacaoFiscalTest {
     }
 
     @Test
-    void ecfLucroPresumidoTrimestralEConferenciaComAEcdSemReferencial() throws Exception {
-        long ecd = enviar("ecd-2024-l9.txt"); // 2024: sem tabela referencial, confere pelo resultado líquido (I355)
-        aguardarStatus(ecd, DocumentoStatus.PROCESSADO_COM_ALERTAS);
+    void ecfLucroPresumidoTrimestralEConferenciaComAEcdPeloReferencial() throws Exception {
+        long ecd = enviar("ecd-2024-l9.txt"); // 2024: tabela oficial carregada, confere receita bruta e lucro antes do IR
+        aguardarStatus(ecd, DocumentoStatus.PROCESSADO);
         long ecf = enviar("ecf-presumido-2024.txt");
         aguardarStatus(ecf, DocumentoStatus.PROCESSADO);
         mvc.perform(get("/api/clientes/{c}/apuracoes", cliente.getId()).param("tributo", "IRPJ").with(sessao))

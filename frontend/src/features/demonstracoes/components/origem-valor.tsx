@@ -39,6 +39,10 @@ function Conteudo({ clienteId, linhaId, exercicio, aberto }: { clienteId: number
                 <p className="text-muted-foreground">Valor derivado: soma das contas de resultado do balancete (receitas − custos
                   − despesas), que ainda não foram encerradas no patrimônio líquido.</p>
               )}
+              {o.hierarquiaHerdadaDe != null && (
+                <p className="text-muted-foreground">Hierarquia herdada: o código {o.codigo} não existe na tabela oficial de
+                  {' '}{exercicio}; a posição na demonstração veio da tabela de {o.hierarquiaHerdadaDe}.</p>
+              )}
               {o.origem === 'PUBLICADA'
                 ? <p className="num">Registro {o.registro} · linha {fmt.inteiro(o.linha)}</p>
                 : o.contas.length === 0

@@ -23,7 +23,7 @@ const COMPARATIVO = {
       valores: { 2023: valor(1, 3000, 100, null), 2024: valor(2, 6000, 100, 100) } },
     { codigo: '1.01', descricao: 'ATIVO CIRCULANTE', nivel: 2, codigoSuperior: '1', totalizadora: true, grupo: 'A',
       valores: { 2023: valor(3, 3000, 100, null), 2024: valor(4, 6000, 100, 100) } },
-    { codigo: '1.01.01', descricao: 'Caixa', nivel: 3, codigoSuperior: '1.01', totalizadora: false, grupo: 'A',
+    { codigo: '1.01.01', descricao: 'Caixa', nivel: 3, codigoSuperior: '1.01', totalizadora: false, grupo: 'A', hierarquiaHerdada: true,
       valores: { 2023: valor(5, 2000, 66.67, null), 2024: valor(6, 4000, 66.67, 100) } },
     { codigo: '2', descricao: 'PASSIVO', nivel: 1, codigoSuperior: '', totalizadora: true, grupo: 'P',
       valores: { 2023: valor(7, -3000, 100, null), 2024: valor(8, -6000, 100, 100) } },
@@ -90,5 +90,17 @@ describe('TabelaDemonstracao', () => {
     expect(await screen.findByText('ecd-2024.txt')).toBeInTheDocument();
     expect(screen.getByText(/I155 · linha 26/)).toBeInTheDocument();
     expect(get).toHaveBeenCalledWith('/api/clientes/7/demonstracoes/linhas/2/origem');
+  });
+
+  it('linha com hierarquia herdada tem selo e a origem diz de qual tabela veio a posição', async () => {
+    vi.spyOn(http, 'get').mockResolvedValue({
+      linhaId: 6, codigo: '1.01.01', descricao: 'Caixa', tipo: 'BP', origem: 'REFERENCIAL', hierarquiaHerdadaDe: 2021,
+      documentoId: 11, arquivo: 'ecd-2024.txt', registro: null, linha: null, contas: [],
+    });
+    renderizar();
+    expect(screen.getByText('hierarquia herdada')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Origem de Caixa em 2024/ }));
+    expect(await screen.findByText(/não existe na tabela oficial de 2024; a posição na demonstração veio da tabela de 2021/))
+      .toBeInTheDocument();
   });
 });

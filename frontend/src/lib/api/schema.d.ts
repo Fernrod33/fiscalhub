@@ -1051,6 +1051,7 @@ export interface components {
             totalizadora: boolean;
             grupo: string;
             derivada: boolean;
+            hierarquiaHerdada: boolean;
             valores: {
                 [key: string]: components["schemas"]["Valor"];
             };
@@ -1080,6 +1081,8 @@ export interface components {
             tipo: string;
             origem: string;
             derivada: boolean;
+            /** Format: int32 */
+            hierarquiaHerdadaDe: number;
             /** Format: int64 */
             documentoId: number;
             arquivo: string;

@@ -29,10 +29,13 @@ public class RepositorioContabil {
                         String registro, long linha) {
     }
 
-    /** derivada: calculada pelo sistema, sem conta equivalente no plano oficial (ex.: resultado não encerrado). */
+    /**
+     * derivada: calculada pelo sistema, sem conta equivalente no plano oficial (ex.: resultado não encerrado).
+     * hierarquiaHerdadaDe: código ausente na tabela do exercício, posicionado pela tabela desse ano (anterior).
+     */
     public record LinhaDemonstracao(String codigo, String descricao, Integer nivel, String codigoSuperior, int ordem,
                                     boolean totalizadora, String grupo, BigDecimal valorInicial, BigDecimal valorFinal,
-                                    String registro, Long linha, boolean derivada) {
+                                    String registro, Long linha, boolean derivada, Integer hierarquiaHerdadaDe) {
     }
 
     private final JdbcTemplate jdbc;
@@ -125,8 +128,9 @@ public class RepositorioContabil {
     public Map<String, Long> inserirLinhas(long demonstracaoId, List<LinhaDemonstracao> linhas) {
         jdbc.batchUpdate("""
                 INSERT INTO linha_demonstracao (demonstracao_id, codigo, descricao, nivel, codigo_superior, ordem,
-                                                totalizadora, grupo, valor_inicial, valor_final, registro, linha, derivada)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", linhas, TAMANHO_LOTE, (ps, l) -> {
+                                                totalizadora, grupo, valor_inicial, valor_final, registro, linha, derivada,
+                                                hierarquia_herdada_de)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", linhas, TAMANHO_LOTE, (ps, l) -> {
             ps.setLong(1, demonstracaoId);
             ps.setString(2, l.codigo());
             ps.setString(3, l.descricao());
@@ -140,6 +144,7 @@ public class RepositorioContabil {
             ps.setString(11, l.registro());
             ps.setObject(12, l.linha());
             ps.setBoolean(13, l.derivada());
+            ps.setObject(14, l.hierarquiaHerdadaDe());
         });
         Map<String, Long> ids = new HashMap<>();
         jdbc.query("SELECT codigo, id FROM linha_demonstracao WHERE demonstracao_id = ?",

@@ -49,9 +49,14 @@ class DemonstracoesTest {
 
     @Test
     void tabelasOficiaisCarregadasComAFonte() {
-        assertThat(jdbc.queryForObject("SELECT count(*) FROM tabela_referencial", Long.class)).isEqualTo(16);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM tabela_referencial", Long.class)).isEqualTo(32);
         assertThat(jdbc.queryForObject("SELECT fonte FROM tabela_referencial WHERE tabela = 'SPEDECF_DINAMICA_L100_A_2021'",
                 String.class)).contains("pacote 112", "tabela 1494");
+        // 2022+: planilha oficial da ECF, com URL, data de atualização e SHA-256 da planilha
+        assertThat(jdbc.queryForObject("SELECT fonte FROM tabela_referencial WHERE tabela = 'SPEDECF_DINAMICA_L300_A_2025'",
+                String.class)).contains("sped.rfb.gov.br/arquivo/download/8002", "atualização 28/05/2026", "aba L300A");
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM conta_referencial WHERE tabela = 'SPEDECF_DINAMICA_L300_A_2022' "
+                + "AND codigo LIKE '3.11%'", Long.class)).isPositive(); // linhas da atividade rural
         assertThat(jdbc.queryForObject("SELECT descricao FROM conta_referencial WHERE tabela = 'SPEDECF_DINAMICA_L100_A_2021' "
                 + "AND codigo = '1.01.01.01.01'", String.class)).isEqualTo("Caixa Matriz");
     }
@@ -120,15 +125,33 @@ class DemonstracoesTest {
 
     @Test
     void exercicioSemTabelaOficialTemAlertaESoAPublicada() throws Exception {
-        importar("ecd-2024-l9.txt");
+        importar("ecd-2026.txt", amostra("ecd-2024-l9.txt").replace("2024", "2026").getBytes(StandardCharsets.ISO_8859_1));
         assertThat(regras()).contains("TABELA_REFERENCIAL_AUSENTE");
         assertThat(jdbc.queryForObject("""
                 SELECT mensagem FROM inconsistencia_importacao i JOIN documento_fiscal d ON d.id = i.documento_id
                 WHERE d.cliente_id = ? AND regra = 'TABELA_REFERENCIAL_AUSENTE'""", String.class, cliente.getId()))
-                .contains("exercício 2024", "carregadas: 2018 a 2021", "Só a demonstração publicada");
+                .contains("exercício 2026", "carregadas: 2018 a 2025", "Só a demonstração publicada");
         assertThat(jdbc.queryForList("""
                 SELECT d.origem FROM demonstracao d JOIN escrituracao_contabil e ON e.id = d.escrituracao_id
                 WHERE e.cliente_id = ? ORDER BY d.origem""", String.class, cliente.getId())).containsOnly("PUBLICADA");
+    }
+
+    @Test
+    void codigoAusenteNaTabelaDoAnoHerdaAHierarquiaDoAnoAnterior() throws Exception {
+        // JCP a pagar - circulante - Brasil: existe na tabela de 2021 e foi extinta na de 2022 (a superior virou analítica)
+        importar("ecd-2022.txt", amostra("ecd-2024-l9.txt").replace("2024", "2022")
+                .replace("|I051||2.01.01.03.01|", "|I051||2.01.01.17.12.10|").getBytes(StandardCharsets.ISO_8859_1));
+        assertThat(regras()).contains("CODIGO_REFERENCIAL_AUSENTE_NO_ANO").doesNotContain("REFERENCIAL_FORA_DA_TABELA");
+        String json = mvc.perform(get("/api/clientes/{c}/demonstracoes", cliente.getId()).param("tipo", "BP")
+                        .param("origem", "REFERENCIAL").with(sessao))
+                .andExpect(jsonPath("$.exercicios[0].tabelaReferencial").value("SPEDECF_DINAMICA_L100_A_2022"))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2.01.01.17.12.10')].hierarquiaHerdada").value(true))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2.01.01.17.12.10')].codigoSuperior").value("2.01.01.17.12"))
+                .andExpect(jsonPath("$.linhas[?(@.codigo == '2.01.01.17.12')].hierarquiaHerdada").value(false))
+                .andReturn().getResponse().getContentAsString();
+        List<Number> linha = JsonPath.read(json, "$.linhas[?(@.codigo == '2.01.01.17.12.10')].valores['2022'].linhaId");
+        mvc.perform(get("/api/clientes/{c}/demonstracoes/linhas/{l}/origem", cliente.getId(), linha.get(0).longValue()).with(sessao))
+                .andExpect(jsonPath("$.hierarquiaHerdadaDe").value(2021));
     }
 
     @Test
@@ -153,6 +176,10 @@ class DemonstracoesTest {
         mvc.perform(get("/api/clientes/{c}/escrituracoes", cliente.getId()).with(intruso)).andExpect(status().isNotFound());
         mvc.perform(get("/api/clientes/{c}/demonstracoes/linhas/{l}/origem", cliente.getId(), linha).with(intruso))
                 .andExpect(status().isNotFound());
+    }
+
+    private static String amostra(String nome) throws java.io.IOException {
+        return new String(new ClassPathResource("amostras/" + nome).getContentAsByteArray(), StandardCharsets.ISO_8859_1);
     }
 
     private void importar(String amostra) throws Exception {

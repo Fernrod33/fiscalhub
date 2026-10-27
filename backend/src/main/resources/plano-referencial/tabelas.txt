@@ -3,8 +3,8 @@
 #   pacote "SpedContabil - Pacote de Planos Referenciais <ano>" -> tabela -> "Baixar tabela" (baixadas em 2026-10-14).
 # Planos (0000.COD_PLAN_REF): 1 = PJ em Geral - Lucro Real (L100_A balanço, L300_A resultado);
 #                            2 = PJ em Geral - Lucro Presumido (P100 balanço, P150 resultado).
-# Vale só a tabela do próprio exercício. O portal não publicou pacotes depois de 2021 (consultado em 2026-10-15,
-#   SpedContabil e SpedEcf): ECD de 2022 em diante gera alerta e fica só com a demonstração publicada.
+# Vale só a tabela do próprio exercício. O Sped Tabelas não publicou pacotes depois de 2021 (consultado em 2026-10-15,
+#   SpedContabil e SpedEcf): de 2022 em diante a fonte é a planilha oficial da ECF (ver o bloco no fim).
 # Para atualizar: scripts/sped/baixar_tabelas_referenciais.py e uma linha nova aqui. A importação (reexecutável)
 # compara o SHA-256 e só recarrega a tabela que mudou.
 # tabela|ano|plano|demonstracao|id do pacote|id da tabela|arquivo baixado|sha256
@@ -24,3 +24,23 @@ SPEDECF_DINAMICA_L100_A_2021|2021|1|BP|112|1494|tb17561.txt|aadbc1ad9ff16426a828
 SPEDECF_DINAMICA_L300_A_2021|2021|1|DRE|112|1497|tb17491.txt|2fa6e8cece4bfa12dfcc446fc2b2824c0afe0491acb1da118481bf7d4a984fb5
 SPEDECF_DINAMICA_P100_2021|2021|2|BP|112|1499|tb17652.txt|af3607ea6ac3b9c54f1ab1749cdff2a152cb53db9f69a439761fe5329ea85cd0
 SPEDECF_DINAMICA_P150_2021|2021|2|DRE|112|1500|tb17771.txt|ba5914cadfbf55e584d6e4f6f9e4e65f8485c5977ffb1a2967235bd47ac1eaa2
+# 2022 em diante: planilha oficial "Tabelas Dinâmicas e Planos de Contas Referenciais" da ECF de cada ano-calendário
+#   (http://sped.rfb.gov.br/pasta/show/1644; leiaute 9 = AC 2022 ... leiaute 12 = AC 2025), baixada em 2026-10-27 e
+#   convertida por scripts/sped/converter_tabelas_dinamicas_ecf.py. Colunas 5 a 7: URL, data de atualização no portal e
+#   SHA-256 da planilha + aba + leiaute; a coluna 8 é o SHA-256 do .txt convertido (o que a importação confere).
+SPEDECF_DINAMICA_L100_A_2022|2022|1|BP|http://sped.rfb.gov.br/arquivo/download/7147|12/04/2023|planilha 76c8cee285d62e68e50724d94cc132331fa9311c108ec1068a2a7d3cf9673da4 aba L100A leiaute 9|dac683b993760024dd3ebdf6bc1a57a93241c1de475385120d2c1a807afc04c7
+SPEDECF_DINAMICA_L300_A_2022|2022|1|DRE|http://sped.rfb.gov.br/arquivo/download/7147|12/04/2023|planilha 76c8cee285d62e68e50724d94cc132331fa9311c108ec1068a2a7d3cf9673da4 aba L300A leiaute 9|b4b837e5ad847fc4587f90424ba52db34a155f35664eb131e93e173fbed01b95
+SPEDECF_DINAMICA_P100_2022|2022|2|BP|http://sped.rfb.gov.br/arquivo/download/7147|12/04/2023|planilha 76c8cee285d62e68e50724d94cc132331fa9311c108ec1068a2a7d3cf9673da4 aba P100A leiaute 9|51f554cf852255da0dbcb3175bced1e74988cc7a1d12e73cdde5a7fbd80c8640
+SPEDECF_DINAMICA_P150_2022|2022|2|DRE|http://sped.rfb.gov.br/arquivo/download/7147|12/04/2023|planilha 76c8cee285d62e68e50724d94cc132331fa9311c108ec1068a2a7d3cf9673da4 aba P150A leiaute 9|e18991989f12181bed9bed7353a710c21da07c072e82eb8219c7d0fd8dec353c
+SPEDECF_DINAMICA_L100_A_2023|2023|1|BP|http://sped.rfb.gov.br/arquivo/download/7308|15/01/2024|planilha f02e925067634f7399c85ebc9fe6f7e777886665b2a7b40f62503745e13d7e6a aba L100A leiaute 10|9b148f5135dbd1455f2a305d37e6509cba1781dad6afd051ac0f20f1ad5a58f0
+SPEDECF_DINAMICA_L300_A_2023|2023|1|DRE|http://sped.rfb.gov.br/arquivo/download/7308|15/01/2024|planilha f02e925067634f7399c85ebc9fe6f7e777886665b2a7b40f62503745e13d7e6a aba L300A leiaute 10|accbd69056cdf58a2175c9778bfa9d5f19c56fd98b600c40e928c5ac08bd1819
+SPEDECF_DINAMICA_P100_2023|2023|2|BP|http://sped.rfb.gov.br/arquivo/download/7308|15/01/2024|planilha f02e925067634f7399c85ebc9fe6f7e777886665b2a7b40f62503745e13d7e6a aba P100A leiaute 10|9b148f5135dbd1455f2a305d37e6509cba1781dad6afd051ac0f20f1ad5a58f0
+SPEDECF_DINAMICA_P150_2023|2023|2|DRE|http://sped.rfb.gov.br/arquivo/download/7308|15/01/2024|planilha f02e925067634f7399c85ebc9fe6f7e777886665b2a7b40f62503745e13d7e6a aba P150A leiaute 10|5387bf12ed0ddb81409d4738c69f0a362c598ee4f67982814ad3c2802282675f
+SPEDECF_DINAMICA_L100_A_2024|2024|1|BP|http://sped.rfb.gov.br/arquivo/download/7627|09/11/2025|planilha 38a7b49bcc3c4bf17788b11af456f80e452f42d4bce56cbf7d301dff423a8de7 aba L100A leiaute 11|3012972feb4db9400816fc54d5839e71ab3636cecbce38a4010376a302d41111
+SPEDECF_DINAMICA_L300_A_2024|2024|1|DRE|http://sped.rfb.gov.br/arquivo/download/7627|09/11/2025|planilha 38a7b49bcc3c4bf17788b11af456f80e452f42d4bce56cbf7d301dff423a8de7 aba L300A leiaute 11|2636c9495566dd543ee047370d9a927f7bf9b46f9968895329e76c4358b92132
+SPEDECF_DINAMICA_P100_2024|2024|2|BP|http://sped.rfb.gov.br/arquivo/download/7627|09/11/2025|planilha 38a7b49bcc3c4bf17788b11af456f80e452f42d4bce56cbf7d301dff423a8de7 aba P100A leiaute 11|3012972feb4db9400816fc54d5839e71ab3636cecbce38a4010376a302d41111
+SPEDECF_DINAMICA_P150_2024|2024|2|DRE|http://sped.rfb.gov.br/arquivo/download/7627|09/11/2025|planilha 38a7b49bcc3c4bf17788b11af456f80e452f42d4bce56cbf7d301dff423a8de7 aba P150A leiaute 11|b39c6b5170c3e4a884c3de6269b5daa4a339d2d2ddd048502affdd91b5db3e4a
+SPEDECF_DINAMICA_L100_A_2025|2025|1|BP|http://sped.rfb.gov.br/arquivo/download/8002|28/05/2026|planilha 366b8d9030a04e9f6203b6ae29ace49d3ffa3fa0c1f5a7a18b0c967b9a5a3cac aba L100A leiaute 12|9278150ce3e76be76f2ee21d29d260a29235e3d5aba1062ac2e23b231442aaf5
+SPEDECF_DINAMICA_L300_A_2025|2025|1|DRE|http://sped.rfb.gov.br/arquivo/download/8002|28/05/2026|planilha 366b8d9030a04e9f6203b6ae29ace49d3ffa3fa0c1f5a7a18b0c967b9a5a3cac aba L300A leiaute 12|c687b25b054e943b539dea434fdb6eaa8bccb5480cffe173cf664ae5f3dc6f3f
+SPEDECF_DINAMICA_P100_2025|2025|2|BP|http://sped.rfb.gov.br/arquivo/download/8002|28/05/2026|planilha 366b8d9030a04e9f6203b6ae29ace49d3ffa3fa0c1f5a7a18b0c967b9a5a3cac aba P100A leiaute 12|bbf1afc78b559ec4fba9b0132cf3c074902357357f899efa2197f739b3d3859f
+SPEDECF_DINAMICA_P150_2025|2025|2|DRE|http://sped.rfb.gov.br/arquivo/download/8002|28/05/2026|planilha 366b8d9030a04e9f6203b6ae29ace49d3ffa3fa0c1f5a7a18b0c967b9a5a3cac aba P150A leiaute 12|e66ebcd142eaa7b4132f174b976383c45b992be5e8e3063ebbc046ebd26a20bc

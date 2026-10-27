@@ -34,6 +34,8 @@ public class ImportacaoPlanoReferencial {
     private static final Logger log = LoggerFactory.getLogger(ImportacaoPlanoReferencial.class);
     private static final String PASTA = "plano-referencial/";
     private static final String FONTE = "Sped Tabelas (sped.fazenda.gov.br/spedtabelas), pacote %s, tabela %s, arquivo %s";
+    /** 2022 em diante: planilha oficial da ECF (URL, data de atualização no portal, SHA-256 da planilha e aba). */
+    private static final String FONTE_PLANILHA = "Tabelas Dinâmicas e Planos de Contas Referenciais da ECF, %s (atualização %s), %s";
     private static final Pattern VERSAO = Pattern.compile("vers\\S*=(\\d+)");
 
     private final JdbcTemplate jdbc;
@@ -50,7 +52,8 @@ public class ImportacaoPlanoReferencial {
                 continue;
             }
             String[] f = linha.split("\\|");
-            importarTabela(f[0], Integer.parseInt(f[1]), f[2], f[3], FONTE.formatted(f[4], f[5], f[6]), f[7]);
+            String fonte = (f[4].startsWith("http") ? FONTE_PLANILHA : FONTE).formatted(f[4], f[5], f[6]);
+            importarTabela(f[0], Integer.parseInt(f[1]), f[2], f[3], fonte, f[7]);
         }
     }
 

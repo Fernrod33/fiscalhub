@@ -310,7 +310,7 @@ final class LeituraEcf extends LeituraSped {
                 int ordem = 0;
                 for (Linha l : p.de(registro)) {
                     linhas.add(new LinhaDemonstracao(l.codigo(), l.descricao() == null ? l.codigo() : l.descricao(), null, null,
-                            ++ordem, false, null, null, l.valor(), registro, l.r().linha(), false));
+                            ++ordem, false, null, null, l.valor(), registro, l.r().linha(), false, null));
                 }
                 contabil.inserirLinhas(id, linhas);
             }

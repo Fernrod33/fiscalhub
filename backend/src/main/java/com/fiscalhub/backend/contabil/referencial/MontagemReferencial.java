@@ -37,8 +37,9 @@ public class MontagemReferencial {
                          List<LinhaDemonstracao> resultadoPublicado) {
     }
 
+    /** herdadaDe: ano da tabela de onde veio a posição do código ausente na tabela do exercício (null: da própria). */
     private record ContaRef(String codigo, String descricao, String superior, int nivel, int ordem, boolean sintetica,
-                            String natureza) {
+                            String natureza, Integer herdadaDe) {
     }
 
     private final JdbcTemplate jdbc;
@@ -70,7 +71,8 @@ public class MontagemReferencial {
         Map<String, ContaRef> planoBp = plano(tabelas.get("BP"));
         Map<String, ContaRef> planoDre = plano(tabelas.get("DRE"));
         List<String> foraDasTabelas = referencialDaConta.values().stream()
-                .filter(c -> !planoBp.containsKey(c) && !planoDre.containsKey(c)).distinct().sorted().toList();
+                .filter(c -> !planoBp.containsKey(c) && !planoDre.containsKey(c)).distinct().sorted()
+                .filter(c -> !herdar(c, pedido, planoBp, planoDre, contexto)).toList();
         if (!foraDasTabelas.isEmpty()) {
             contexto.registrar(Severidade.ALERTA, null, null, "REFERENCIAL_FORA_DA_TABELA", "Código(s) referencial(is) "
                     + "que não existem nas tabelas " + tabelas.values() + " ficaram fora das demonstrações referenciais: "
@@ -88,7 +90,7 @@ public class MontagemReferencial {
                         .mapToInt(ContaRef::ordem).max().orElse(pl.ordem());
                 planoDoBalanco = new LinkedHashMap<>(planoBp);
                 planoDoBalanco.put(RESULTADO_NAO_ENCERRADO, new ContaRef(RESULTADO_NAO_ENCERRADO,
-                        "Resultado do período não encerrado", pl.codigo(), pl.nivel() + 1, ordem, false, "03"));
+                        "Resultado do período não encerrado", pl.codigo(), pl.nivel() + 1, ordem, false, "03", null));
                 referencialNoBalanco = new HashMap<>(referencialDaConta);
                 referencialNoBalanco.replaceAll((conta, ref) -> planoDre.containsKey(ref) ? RESULTADO_NAO_ENCERRADO : ref);
             }
@@ -107,10 +109,47 @@ public class MontagemReferencial {
                     SELECT codigo, descricao, codigo_superior, nivel, ordem, sintetica, natureza FROM conta_referencial
                     WHERE tabela = ? ORDER BY ordem""", rs -> {
                 plano.put(rs.getString(1), new ContaRef(rs.getString(1), rs.getString(2), rs.getString(3), rs.getInt(4),
-                        rs.getInt(5), rs.getBoolean(6), rs.getString(7)));
+                        rs.getInt(5), rs.getBoolean(6), rs.getString(7), null));
             }, tabela);
         }
         return plano;
+    }
+
+    /**
+     * Código do I051 que não existe na tabela do exercício: herda a posição (superior, nível, descrição) da tabela do ano
+     * anterior mais recente em que existir, com alerta e a linha marcada como herdada. Superiores também ausentes no ano
+     * são herdados junto. Devolve false se nenhum ano anterior tiver o código.
+     */
+    private boolean herdar(String codigo, Pedido pedido, Map<String, ContaRef> planoBp, Map<String, ContaRef> planoDre,
+                           ContextoProcessamento contexto) {
+        int exercicio = pedido.fim().getYear();
+        List<Map<String, Object>> anterior = jdbc.queryForList("""
+                SELECT t.ano, t.demonstracao, c.descricao, c.codigo_superior, c.nivel, c.sintetica, c.natureza
+                FROM conta_referencial c JOIN tabela_referencial t ON t.tabela = c.tabela
+                WHERE t.plano = ? AND t.ano < ? AND c.codigo = ? ORDER BY t.ano DESC LIMIT 1""",
+                pedido.plano(), exercicio, codigo);
+        if (anterior.isEmpty()) {
+            return false;
+        }
+        Map<String, Object> a = anterior.get(0);
+        int ano = (Integer) a.get("ano");
+        Map<String, ContaRef> plano = "BP".equals(a.get("demonstracao")) ? planoBp : planoDre;
+        String superior = (String) a.get("codigo_superior");
+        if (superior != null && !plano.containsKey(superior)) {
+            herdar(superior, pedido, planoBp, planoDre, contexto);
+        }
+        // fim do grupo do superior na tabela do ano: a linha herdada fica depois das irmãs
+        int ordem = plano.values().stream()
+                .filter(r -> superior != null && (r.codigo().equals(superior) || r.codigo().startsWith(superior + ".")))
+                .mapToInt(ContaRef::ordem).max().orElse(Integer.MAX_VALUE);
+        plano.put(codigo, new ContaRef(codigo, (String) a.get("descricao"), superior, (Integer) a.get("nivel"), ordem,
+                (Boolean) a.get("sintetica"), (String) a.get("natureza"), ano));
+        contexto.registrar(Severidade.ALERTA, "I051", null, "CODIGO_REFERENCIAL_AUSENTE_NO_ANO", "O código referencial "
+                + codigo + " não existe na tabela oficial de " + exercicio + ". Ele entrou na demonstração referencial na "
+                + "posição que tinha na tabela de " + ano + " (abaixo de " + (superior == null ? "nenhuma conta" : superior)
+                + "), marcado como hierarquia herdada. Confira o mapeamento: a conta pode ter sido extinta, renumerada ou "
+                + "realocada.");
+        return true;
     }
 
     /**
@@ -189,10 +228,10 @@ public class MontagemReferencial {
             return null;
         }
         List<LinhaDemonstracao> linhas = valores.keySet().stream().map(plano::get)
-                .sorted(Comparator.comparingInt(ContaRef::ordem))
+                .sorted(Comparator.comparingInt(ContaRef::ordem).thenComparing(ContaRef::codigo))
                 .map(r -> new LinhaDemonstracao(r.codigo(), r.descricao(), r.nivel(), r.superior(), r.ordem(), r.sintetica(),
                         grupo(tipo, r), valores.get(r.codigo())[0], valores.get(r.codigo())[1], null, null,
-                        RESULTADO_NAO_ENCERRADO.equals(r.codigo())))
+                        RESULTADO_NAO_ENCERRADO.equals(r.codigo()), r.herdadaDe()))
                 .toList();
         long demonstracaoId = repositorio.inserirDemonstracao(pedido.escrituracaoId(), tipo, "REFERENCIAL",
                 pedido.inicio(), pedido.fim(), tabela);
