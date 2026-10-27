@@ -1,0 +1,51 @@
+{
+  "ecd_resultado_por_ano": {
+    "2022": "428854.24",
+    "2023": "490459.10",
+    "2024": "-78771.68",
+    "2025": "-150156.17"
+  },
+  "ecf_lucro_real_2025": {
+    "ll": "-150156.17",
+    "adic": "18450.00",
+    "pf": "131706.17",
+    "receita": "12485017.79"
+  },
+  "prejuizo_fiscal_saldo_inicial_2025": "231071.68",
+  "efd_icms": {
+    "deb": "307500.00",
+    "cred": "192750.00",
+    "saldo_ant": "480000.00",
+    "transp": "365250.00",
+    "a_recolher": "0.00",
+    "st": "44850.00",
+    "venc_st": "2026-09-10",
+    "ipi_deb": "100000.00",
+    "ipi_cred": "72500.00",
+    "ipi_rec": "27500.00"
+  },
+  "efd_contribuicoes": {
+    "PIS": {
+      "debito": "27926.25",
+      "credito": "20744.63",
+      "devido": "7181.62",
+      "bc_deb": "1692500.00",
+      "bc_cred": "1257250.00"
+    },
+    "COFINS": {
+      "debito": "128630.00",
+      "credito": "95551.00",
+      "devido": "33079.00",
+      "bc_deb": "1692500.00",
+      "bc_cred": "1257250.00"
+    }
+  },
+  "dctfweb_082026_total": "148806.02",
+  "situacao_fiscal": {
+    "multa_cof": "318.45",
+    "juros_cof": "50.79",
+    "multa_ipi": "8240.00",
+    "juros_ipi": "856.96"
+  },
+  "pgfn_passivo_total": "512791.83"
+}
