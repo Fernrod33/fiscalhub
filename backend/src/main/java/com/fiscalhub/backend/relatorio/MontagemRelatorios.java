@@ -86,7 +86,9 @@ public class MontagemRelatorios {
         var id = identidade.consultar(ua);
         String responsavel = id.responsavelNome() == null ? null
                 : id.responsavelNome() + (id.responsavelRegistro() == null ? "" : " — " + id.responsavelRegistro());
-        Cabecalho cab = new Cabecalho(id.nomeExibicao() == null ? id.nome() : id.nomeExibicao(), identidade.chaveLogo(ua), id.corPrincipal(), id.rodape(),
+        Cabecalho cab = new Cabecalho(id.nomeExibicao() == null ? id.nome() : id.nomeExibicao(), identidade.chaveLogo(ua),
+                // a cor vai para um atributo style do template: só #rrggbb passa (defesa além da validação do PUT)
+                id.corPrincipal().matches("#[0-9a-f]{6}") ? id.corPrincipal() : IdentidadeEscritorioService.COR_PADRAO, id.rodape(),
                 responsavel, cliente.getRazaoSocial(), cliente.getCnpj(), periodo(p), emissao, null);
         List<Fonte> fontes = p.incluirFontes() ? fontes(clienteId, corpo.documentos()) : List.of();
         return new ModeloRelatorio(p.tipo(), p.tipo().titulo, cab, corpo.sumario(), corpo.secoes(), notas(p.tipo()), fontes,
