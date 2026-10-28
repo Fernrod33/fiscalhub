@@ -133,6 +133,8 @@
 ::view-transition-new(main) { animation: var(--dur-slow) var(--ease-emphasized) both entrada-pagina; }
 @keyframes saida-pagina { to { opacity: 0; transform: translateY(-8px); } }
 @keyframes entrada-pagina { from { opacity: 0; transform: translateY(8px); } }
+/* destaque de um alerta (ex.: revisão da CAPAG vantajosa): anel que se expande, sem mexer na opacidade do texto */
+@keyframes destaque-alerta { from { box-shadow: 0 0 0 0 var(--warning); } to { box-shadow: 0 0 0 8px transparent; } }
 
 /* Diálogo, gaveta, popover, menus e tooltip seguem os tokens (fora de @layer: vence as utilidades). */
 [data-slot='dialog-content'], [data-slot='dialog-overlay'], [data-slot='popover-content'],

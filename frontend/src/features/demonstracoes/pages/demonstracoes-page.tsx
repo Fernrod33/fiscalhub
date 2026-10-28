@@ -11,6 +11,7 @@ import * as fmt from '@/lib/formatadores';
 import { cn } from '@/lib/utils';
 import { useClienteId } from '@/features/clientes/rota';
 import { useComparativo, useEscrituracoes, type OrigemDemonstracao, type TipoDemonstracao } from '../api';
+import { DfcDireta } from '../components/dfc-direta';
 import { TabelaDemonstracao } from '../components/tabela-demonstracao';
 
 /** Aba Demonstrações: Balanço e DRE (referencial ou publicada), exercícios lado a lado, AH/AV e origem de cada valor. */
@@ -19,13 +20,13 @@ export default function DemonstracoesPage() {
   const escrituracoes = useEscrituracoes(clienteId);
   const anosDisponiveis = [...new Set((escrituracoes.data ?? []).filter((e) => e.situacao === 'VIGENTE')
     .map((e) => Number(e.dataFim.slice(0, 4))))].sort();
-  const [tipo, setTipo] = useState<TipoDemonstracao>('BP');
+  const [tipo, setTipo] = useState<TipoDemonstracao | 'DFC'>('BP');
   const [origem, setOrigem] = useState<OrigemDemonstracao>('REFERENCIAL');
   const [escolhidos, setEscolhidos] = useState<number[]>();
   const [mostrarAh, setMostrarAh] = useState(true);
   const [mostrarAv, setMostrarAv] = useState(false);
   const exercicios = escolhidos ?? anosDisponiveis.slice(-3); // padrão: os três mais recentes
-  const comparativo = useComparativo(clienteId, tipo, origem, exercicios);
+  const comparativo = useComparativo(clienteId, tipo === 'DFC' ? 'DRE' : tipo, origem, exercicios);
 
   if (escrituracoes.isPending) return <Skeleton className="h-96" />;
   if (anosDisponiveis.length === 0) {
@@ -45,7 +46,7 @@ export default function DemonstracoesPage() {
   return (
     <Reveal className="grid gap-4">
       <Cartao className="flex flex-wrap items-center gap-x-5 gap-y-3">
-        <Alternador rotulo="Demonstração" valor={tipo} aoMudar={setTipo} opcoes={[['BP', 'Balanço'], ['DRE', 'DRE']]} />
+        <Alternador rotulo="Demonstração" valor={tipo} aoMudar={setTipo} opcoes={[['BP', 'Balanço'], ['DRE', 'DRE'], ['DFC', 'DFC — método direto']]} />
         <Alternador rotulo="Origem" valor={origem} aoMudar={setOrigem} opcoes={[['REFERENCIAL', 'Referencial'], ['PUBLICADA', 'Publicada']]} />
         <fieldset className="flex flex-wrap items-center gap-2">
           <legend className="sr-only">Exercícios</legend>
@@ -81,7 +82,9 @@ export default function DemonstracoesPage() {
         </Alert>
       )}
 
-      {comparativo.isPending
+      {tipo === 'DFC'
+        ? <Cartao><DfcDireta clienteId={clienteId} /></Cartao>
+        : comparativo.isPending
         ? <Skeleton className="h-96" />
         : !comparativo.data || comparativo.data.linhas.length === 0
           ? <EstadoVazio icone={BookOpen} titulo={`Sem ${tipo === 'BP' ? 'balanço' : 'DRE'} ${origem === 'PUBLICADA' ? 'publicado(a)' : 'referencial'} nesses exercícios`}

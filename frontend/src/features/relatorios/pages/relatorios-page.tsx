@@ -38,11 +38,13 @@ export default function RelatoriosPage() {
   const [incluirDivergencias, setIncluirDivergencias] = useState(true);
   const [incluirFontes, setIncluirFontes] = useState(true);
   const anual = tipo === 'CARGA_TRIBUTARIA';
+  // retrato atual dos documentos, sem período: situação fiscal, capacidade e dossiê
+  const semPeriodo = tipo === 'SITUACAO_FISCAL' || tipo === 'CAPACIDADE' || tipo === 'DOSSIE_CAPAG';
   const pedido: PedidoRelatorio = {
     tipo,
-    // carga: o backend usa só o ano; situação fiscal: retrato atual, sem período
-    de: tipo === 'SITUACAO_FISCAL' || !de ? undefined : anual ? `${de}-01` : de,
-    ate: tipo === 'SITUACAO_FISCAL' || !ate ? undefined : anual ? `${ate}-12` : ate,
+    // carga: o backend usa só o ano
+    de: semPeriodo || !de ? undefined : anual ? `${de}-01` : de,
+    ate: semPeriodo || !ate ? undefined : anual ? `${ate}-12` : ate,
     incluirDivergencias, incluirFontes,
   };
   // texto: um objeto novo a cada render reiniciaria a espera para sempre
@@ -97,7 +99,7 @@ export default function RelatoriosPage() {
           </div>
         </fieldset>
         <div className="flex flex-wrap items-end gap-4">
-          {tipo !== 'SITUACAO_FISCAL' && (
+          {!semPeriodo && (
             <>
               <label className="grid gap-1 text-sm">
                 <span>{anual ? 'Exercício inicial' : 'Competência inicial'}</span>

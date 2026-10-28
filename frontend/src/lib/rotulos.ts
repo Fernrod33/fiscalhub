@@ -87,6 +87,8 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   IDENTIDADE_LOGO: 'Trocou o logotipo do escritório',
   RELATORIO_EMITIR: 'Emitiu relatório',
   RELATORIO_BAIXAR: 'Baixou relatório',
+  PARAMETROS_CAPACIDADE_ALTERAR: 'Alterou parâmetros da capacidade',
+  DFC_DEPARA_ALTERAR: 'Alterou o de-para da DFC',
 };
 
 export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado']>, { rotulo: string; tom: Tom }> = {
@@ -104,6 +106,8 @@ export const TIPOS_RELATORIO: Record<TipoRelatorio, { rotulo: string; descricao:
   TRIBUTOS: { rotulo: 'Tributos apurados, declarados e pagos', descricao: 'Conciliação por tributo e competência, totais, divergências com acréscimos e origem.' },
   CARGA_TRIBUTARIA: { rotulo: 'Carga tributária efetiva', descricao: 'Tributos ÷ receita bruta e IRPJ + CSLL ÷ lucro antes do IR, por exercício.' },
   SITUACAO_FISCAL: { rotulo: 'Situação fiscal resumida', descricao: 'Débitos, parcelamentos, pendências, CAPAG e o que impede a certidão.' },
+  CAPACIDADE: { rotulo: 'Capacidade de pagamento', descricao: 'CAPAG oficial × estimada, classificação do PR e análise gerencial, com critérios e parâmetros.' },
+  DOSSIE_CAPAG: { rotulo: 'Dossiê da revisão da CAPAG', descricao: 'BP e DRE referenciais, DFC direta, memória de cálculo e irrecuperáveis, para assinatura.' },
 };
 
 export const SITUACAO_DEBITO: Record<Debito['situacao'], { rotulo: string; tom: Tom }> = {

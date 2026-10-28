@@ -24,7 +24,7 @@ const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType
   demonstracoes: () => padrao(import('@/features/demonstracoes/pages/demonstracoes-page')),
   tributos: () => padrao(import('@/features/tributos/pages/tributos-page')),
   'situacao-fiscal': () => padrao(import('@/features/situacao-fiscal/pages/situacao-fiscal-page')),
-  capacidade: () => futuras().then((m) => m.CapacidadePage),
+  capacidade: () => padrao(import('@/features/capacidade/pages/capacidade-page')),
   simulacoes: () => padrao(import('@/features/simulacoes/pages/simulacoes-page')),
   'pontos-de-atencao': () => futuras().then((m) => m.PontosAtencaoPage),
   relatorios: () => padrao(import('@/features/relatorios/pages/relatorios-page')),

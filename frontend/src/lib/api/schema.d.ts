@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/escritorio/parametros-capacidade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["parametros"];
+        put: operations["alterarParametros"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/escritorio/identidade": {
         parameters: {
             query?: never;
@@ -52,7 +68,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/documentos/{documentoId}/planilha/depara": {
+    "/api/escritorio/dfc-depara": {
         parameters: {
             query?: never;
             header?: never;
@@ -60,6 +76,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["depara"];
+        put: operations["alterarDepara"];
+        post?: never;
+        delete: operations["removerDepara"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documentos/{documentoId}/planilha/depara": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["depara_1"];
         put: operations["associar"];
         post?: never;
         delete?: never;
@@ -270,6 +302,22 @@ export interface paths {
         get: operations["listarDocumentos"];
         put?: never;
         post: operations["importarDocumento"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/capacidade/pr/simulacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["simularPr"];
         delete?: never;
         options?: never;
         head?: never;
@@ -644,6 +692,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clientes/{clienteId}/dfc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["dfc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/dfc/exercicios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exerciciosDfc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/demonstracoes": {
         parameters: {
             query?: never;
@@ -756,7 +836,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/clientes/{clienteId}/capacidade-oficial": {
+    "/api/clientes/{clienteId}/capacidade": {
         parameters: {
             query?: never;
             header?: never;
@@ -764,6 +844,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["capacidade"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/capacidade/resumo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["resumo_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/capacidade-oficial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["capacidade_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -812,6 +924,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["alertas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/capacidade/regras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["regras"];
         put?: never;
         post?: never;
         delete?: never;
@@ -881,6 +1009,28 @@ export interface components {
             senhaAtual: string;
             novaSenha: string;
         };
+        ParametrosCapag: {
+            faixaA: number;
+            faixaB: number;
+            faixaC: number;
+            metodoConsiderado: string;
+            /** Format: int32 */
+            exercicios: number;
+            realizacaoDisponivel: number;
+            realizacaoCreditos: number;
+            realizacaoEstoques: number;
+            realizacaoImobilizado: number;
+        };
+        ParametrosEscritorio: {
+            capag: components["schemas"]["ParametrosCapag"];
+            gerencial: components["schemas"]["ParametrosGerencial"];
+            atualizadoPor?: string;
+            /** Format: date-time */
+            atualizadoEm?: string;
+        };
+        ParametrosGerencial: {
+            percentualFcoLivre: number;
+        };
         IdentidadeRequest: {
             nomeExibicao: string;
             corPrincipal: string;
@@ -898,6 +1048,15 @@ export interface components {
             rodape: string;
             responsavelNome: string;
             responsavelRegistro: string;
+        };
+        ItemDePara: {
+            prefixo: string;
+            categoria: string;
+        };
+        DeParaItem: {
+            prefixo: string;
+            categoria: string;
+            doEscritorio: boolean;
         };
         Associacao: {
             codigoConta: string;
@@ -1088,7 +1247,7 @@ export interface components {
         };
         PedidoRelatorio: {
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG";
             de?: string;
             ate?: string;
             incluirDivergencias?: boolean;
@@ -1096,7 +1255,7 @@ export interface components {
         };
         Parametros: {
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG";
             de: string;
             ate: string;
             incluirDivergencias: boolean;
@@ -1110,7 +1269,7 @@ export interface components {
             /** Format: int64 */
             numero: number;
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG";
             titulo: string;
             periodo: string;
             parametros: components["schemas"]["Parametros"];
@@ -1122,6 +1281,60 @@ export interface components {
             sha256Xlsx: string;
             versaoTemplate: string;
             versaoNormas: string;
+        };
+        PedidoSimulacao: {
+            quitar: string[];
+            parcelar: string[];
+        };
+        CriterioCapacidade: {
+            nome: string;
+            valor: string;
+            /** @enum {string} */
+            formato: "TEXTO" | "MOEDA" | "PERCENTUAL" | "INTEIRO" | "COMPETENCIA" | "DATA" | "CNPJ";
+            pontos: string;
+            faixa: string;
+            fundamento: string;
+            origens: components["schemas"]["OrigemValor"][];
+            naoDisponivel: string;
+        };
+        ItemCapacidade: {
+            id: string;
+            descricao: string;
+            valor: string;
+            indice: string;
+            classe: string;
+            classeOficial: string;
+            criterios: components["schemas"]["CriterioCapacidade"][];
+            observacao: string;
+        };
+        OrigemValor: {
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            tipoDocumento: string;
+            /** Format: int32 */
+            pagina: number;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            trecho: string;
+        };
+        ResultadoCapacidade: {
+            metodologia: string;
+            titulo: string;
+            /** @enum {string} */
+            rotulo: "OFICIAL" | "ESTIMATIVA" | "GERENCIAL";
+            rotuloTexto: string;
+            valor: number;
+            classe: string;
+            criterios: components["schemas"]["CriterioCapacidade"][];
+            itens: components["schemas"]["ItemCapacidade"][];
+            parametros: {
+                [key: string]: unknown;
+            };
+            normas: string[];
+            notas: string[];
+            alertas: string[];
         };
         SignupRequest: {
             nome: string;
@@ -1291,18 +1504,6 @@ export interface components {
             /** Format: int64 */
             linha: number;
         };
-        OrigemValor: {
-            /** Format: int64 */
-            documentoId: number;
-            arquivo: string;
-            tipoDocumento: string;
-            /** Format: int32 */
-            pagina: number;
-            registro: string;
-            /** Format: int64 */
-            linha: number;
-            trecho: string;
-        };
         PendenciaFiscal: {
             /** Format: int64 */
             id: number;
@@ -1375,6 +1576,39 @@ export interface components {
             planoReferencial: string;
             finalidade: string;
             situacao: string;
+        };
+        Dfc: {
+            /** Format: int32 */
+            exercicio: number;
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            linhas: components["schemas"]["LinhaDfc"][];
+            atividades: {
+                [key: string]: number;
+            };
+            variacaoDfc: number;
+            variacaoSaldos: number;
+            diferenca: number;
+            alerta: string;
+        };
+        LancamentoOrigem: {
+            numero: string;
+            /** Format: date */
+            data: string;
+            /** Format: int64 */
+            linha: number;
+            valor: number;
+        };
+        LinhaDfc: {
+            atividade: string;
+            categoria: string;
+            rotulo: string;
+            meses: {
+                [key: string]: number;
+            };
+            total: number;
+            origens: components["schemas"]["LancamentoOrigem"][];
         };
         Comparativo: {
             tipo: string;
@@ -1624,6 +1858,33 @@ export interface components {
             valor: number;
             carga: number;
         };
+        Capacidade: {
+            capagOficial: components["schemas"]["ResultadoCapacidade"];
+            metodologias: components["schemas"]["ResultadoCapacidade"][];
+            indicadores: components["schemas"]["IndicadoresGerenciais"][];
+            parametros: components["schemas"]["ParametrosEscritorio"];
+        };
+        IndicadoresGerenciais: {
+            /** Format: int32 */
+            exercicio: number;
+            ebitda: number;
+            fco: number;
+            investimento: number;
+            liquidezCorrente: number;
+            liquidezSeca: number;
+            liquidezGeral: number;
+            endividamento: number;
+            coberturaJuros: number;
+            cicloFinanceiro: number;
+        };
+        ResumoCapacidade: {
+            capagOficial: string;
+            capagEstimada: string;
+            revisaoVantajosa: boolean;
+            classePr: string;
+            classePrOficial: string;
+            parcelaSustentavel: number;
+        };
         CapacidadeOficial: {
             /** Format: int64 */
             id: number;
@@ -1698,6 +1959,23 @@ export interface components {
             linha: number;
             mensagem: string;
         };
+        JsonNode: unknown;
+        RegraCapacidade: {
+            chave: string;
+            orgao: string;
+            norma: string;
+            artigo: string;
+            /** Format: date */
+            vigenciaInicio: string;
+            /** Format: date */
+            vigenciaFim: string;
+            parametros: components["schemas"]["JsonNode"];
+            fonteUrl: string;
+            fonteSha256: string;
+            /** Format: date */
+            fonteData: string;
+            observacao: string;
+        };
         CsrfToken: {
             parameterName: string;
             token: string;
@@ -1710,7 +1988,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR";
+            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -1822,6 +2100,50 @@ export interface operations {
             };
         };
     };
+    parametros: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ParametrosEscritorio"];
+                };
+            };
+        };
+    };
+    alterarParametros: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParametrosEscritorio"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ParametrosEscritorio"];
+                };
+            };
+        };
+    };
     consultar: {
         parameters: {
             query?: never;
@@ -1867,6 +2189,72 @@ export interface operations {
         };
     };
     depara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeParaItem"][];
+                };
+            };
+        };
+    };
+    alterarDepara: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ItemDePara"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeParaItem"][];
+                };
+            };
+        };
+    };
+    removerDepara: {
+        parameters: {
+            query: {
+                prefixo: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeParaItem"][];
+                };
+            };
+        };
+    };
+    depara_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2414,6 +2802,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DocumentoFiscalResponseDTO"];
+                };
+            };
+        };
+    };
+    simularPr: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoSimulacao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ResultadoCapacidade"];
                 };
             };
         };
@@ -2975,6 +3389,52 @@ export interface operations {
             };
         };
     };
+    dfc: {
+        parameters: {
+            query: {
+                exercicio: number;
+            };
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Dfc"];
+                };
+            };
+        };
+    };
+    exerciciosDfc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": number[];
+                };
+            };
+        };
+    };
     comparativo: {
         parameters: {
             query?: {
@@ -3159,6 +3619,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "*/*": components["schemas"]["Capacidade"];
+                };
+            };
+        };
+    };
+    resumo_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ResumoCapacidade"];
+                };
+            };
+        };
+    };
+    capacidade_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "*/*": components["schemas"]["CapacidadeOficial"][];
                 };
             };
@@ -3231,6 +3735,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["Alerta"][];
+                };
+            };
+        };
+    };
+    regras: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegraCapacidade"][];
                 };
             };
         };

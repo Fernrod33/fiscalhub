@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { usePermissoes } from '@/features/auth/permissoes';
 import { useDocumentos } from '@/features/documentos/api';
 import { EscrituracoesCliente } from '@/features/demonstracoes/components/escrituracoes-cliente';
+import { ResumoCapacidade } from '@/features/capacidade/components/resumo-capacidade';
 import { CargaTributaria } from '@/features/relatorios/components/carga-tributaria';
 import { ResumoSituacao } from '@/features/situacao-fiscal/components/resumo-situacao';
 import { useCliente } from '../api';
@@ -61,6 +62,8 @@ export default function VisaoGeralPage() {
       <ResumoSituacao clienteId={id} />
 
       <CargaTributaria clienteId={id} />
+
+      <ResumoCapacidade clienteId={id} />
 
       <EscrituracoesCliente clienteId={id} />
 
