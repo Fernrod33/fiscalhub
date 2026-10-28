@@ -100,6 +100,8 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V19__hierarquia_herdada.sql` | `linha_demonstracao.hierarquia_herdada_de` (código do I051 ausente na tabela do exercício, posicionado pela de um ano anterior) |
 | `V20__situacao_fiscal.sql` | `debito` ampliado (escrituração, chave, fontes, encargo, total, origem por página e linha; vencimento e principal passam a aceitar nulo), `parcelamento`, `pendencia_fiscal`, `capacidade_pagamento_oficial`; `escrituracao_contabil.origem` e `versao_leiaute` mais largos |
 | `V21__declarado_e_pago.sql` | `debito_declarado` e `pagamento` |
+| `V22__identidade_do_escritorio.sql` | identidade nos relatórios no `escritorio` (nome de exibição, chave do logotipo, cor, rodapé, responsável técnico); tudo nulo nos existentes |
+| `V23__relatorio_emitido.sql` | `relatorio_emitido` (parâmetros, snapshot, versões, PDF e Excel com SHA-256, número por escritório), com trigger que impede `UPDATE` |
 
 **Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
 
@@ -300,6 +302,60 @@ ela, a própria EFD), pago dos DARF, do relatório e das GR-PR. Status: `CONCILI
 traz o débito correspondente do relatório de situação fiscal ou da conta corrente do PR; diferença sem débito
 (`DIFERENCA_SEM_DEBITO`) e débito em aberto sem diferença (`DEBITO_SEM_DIFERENCA`) viram alerta.
 
+## Relatórios (Fase 3)
+
+Relatórios **entregues ao cliente** do escritório: corretos, reproduzíveis e com a identidade do escritório. Exemplos
+gerados com a massa fictícia em `docs/relatorios/exemplos/` (PDF e Excel dos três tipos).
+
+**Tipos** (`ModeloRelatorio.TipoRelatorio`):
+
+| Tipo | Conteúdo | Serviços usados |
+|---|---|---|
+| `TRIBUTOS` | tributo × competência com apurado, declarado, pago, diferença e status; totais por tributo e por esfera; divergências com acréscimos e a origem de cada valor; gráficos apurado × pago e composição dos pagos | `ConciliacaoService` |
+| `CARGA_TRIBUTARIA` | tributos ÷ receita bruta, IRPJ + CSLL ÷ lucro antes do IR e carga por tributo, por exercício e com a variação; insumo faltante = "não disponível — importe X" (nada é estimado) | `CargaTributariaService` (sobre `DemonstracaoService`, `ApuracaoService` e o L300/P150 da ECF) |
+| `SITUACAO_FISCAL` | itens que impedem a certidão (em destaque), débitos por órgão e situação, parcelamentos e transações, pendências, CAPAG oficial | `SituacaoFiscalService` |
+
+Estrutura comum: capa (identidade, cliente, período, emissão), sumário executivo (3 a 5 números), corpo, notas
+metodológicas fixas por tipo (origem de cada número e a base legal dos acréscimos, `docs/normativas`), anexo de fontes
+(documentos usados com tipo, período, importação e SHA-256) e rodapé com número, página e o SHA-256 do snapshot.
+
+**Modelo → template → PDF/Excel** (pacote `relatorio/`):
+
+1. `MontagemRelatorios` monta o `ModeloRelatorio` (DTO único e genérico: cabeçalho, indicadores, seções com tabela e/ou
+   gráfico, notas, fontes, versões) a partir dos serviços. **Não recalcula**: agrupa, soma totais e escolhe o que mostrar.
+   Células em texto cru (`toPlainString`, datas ISO) com o `Formato` da coluna.
+2. `RenderizadorRelatorio.html` aplica **um só template** Thymeleaf (`templates/relatorios/relatorio.html`, XHTML bem
+   formado) — o mesmo para a prévia e para o PDF. Tudo entra por `th:text` (escapado); `th:utext` só para o SVG do
+   `GraficoSvg` (que escapa os próprios textos) e o CSS fixo das fontes da prévia.
+3. `RenderizadorRelatorio.pdf`: openhtmltopdf, A4, Inter e Source Serif 4 embutidas (`resources/relatorios/fontes`,
+   OFL), tabela com cabeçalho repetido e linhas que não quebram, nenhum recurso externo (só `data:`), SVG em modo seguro.
+4. `RenderizadorRelatorio.xlsx`: Apache POI em stream (`SXSSF`), uma aba por seção com tabela, Resumo, Notas e Fontes;
+   número como número (moeda, percentual, inteiro), cabeçalho congelado.
+5. `GraficoSvg`: barras, barras empilhadas e linha em SVG, paleta categórica do design system (`--chart-1..6`, validada
+   para daltonismo e ≥ 3:1), hachura por série além da cor, legenda; no máximo 6 séries ("Outros" agrupa o resto).
+6. `Formatos`: a única regra de moeda, percentual, competência, data e CNPJ do backend, igual à do frontend
+   (casos compartilhados em `frontend/src/lib/formatacao.casos.json`, conferidos nos dois lados).
+
+**Imutabilidade e snapshot** (`RelatorioService`, `V23`): a emissão monta o modelo, numera (sequencial por escritório,
+com trava na linha do escritório), grava o snapshot JSON exato (TEXT, para o SHA-256 conferir), **lê de volta** e gera
+o PDF e o Excel a partir do snapshot; os dois vão para o storage com SHA-256. Baixar devolve sempre o arquivo gravado.
+Reemitir monta tudo de novo e ganha outro número. A tabela tem trigger contra `UPDATE`. Emissão e download auditados
+(`RELATORIO_EMITIR`, `RELATORIO_BAIXAR`). A prévia (`/previa`) não grava nada.
+
+**Tipo de relatório novo:**
+1. um valor em `TipoRelatorio` (com o título);
+2. um método em `MontagemRelatorios` que lê dos serviços existentes e devolve sumário, seções e os ids dos documentos
+   usados; o caso no `switch` de `montar`;
+3. as notas metodológicas em `notas(tipo)`;
+4. o rótulo no frontend (`TIPOS_RELATORIO` em `lib/rotulos.ts`); o template e o Excel são genéricos e não mudam;
+5. um teste com a massa no `MassaFicticiaAceiteTest.Relatorios` conferindo os valores contra `valores_esperados.json`.
+
+**Identidade do escritório** (`IdentidadeEscritorioService`, `V22`): nome de exibição, logotipo, cor principal, rodapé
+e responsável técnico padrão. Só `ADMIN` altera (auditado: `IDENTIDADE_ALTERAR`, `IDENTIDADE_LOGO`). Logotipo: PNG ou
+JPEG pelo **conteúdo** (SVG recusado), até 1 MB e 4000 × 4000 px (conferido antes de decodificar), reduzido para caber
+em 600 × 200 e regravado como PNG (some metadado ou carga embutida); cada upload ganha uma chave nova (o snapshot dos
+emitidos aponta a antiga). Cor: contraste ≥ 4,5:1 (WCAG AA) sobre o branco do relatório, conferido no servidor.
+
 ## Modelo de apuração
 
 Um modelo só para todos os tributos e fontes (`fiscal/RepositorioApuracao`):
@@ -387,10 +443,12 @@ mvn test   # requer Docker em execução
   - ECD (cada leiaute, cliente pelo arquivo, retificação, cada validação, reprocessamento), demonstrações (referencial, publicada, AH/AV, conferência, origem, exercício sem tabela, plano não suportado) e balancete em planilha (assistente, de-para, papéis, auditoria, resultado não encerrado);
   - ECF, EFD-Contribuições e EFD ICMS/IPI (`ImportacaoFiscalTest`: apurações e origem, detalhe, saldos, fórmulas, contagem de registro pulado, conferência ECD × ECF nos dois sentidos, retificação, filial, isolamento);
   - situação fiscal, declarado e pago (`SituacaoFiscalTest`: retificação da DCTF, PDF × .dec, a mesma inscrição em duas fontes e a divergência, simulação com débito importado, layout desconhecido, PDF sem texto);
+  - relatórios e identidade (`RelatoriosEIdentidadeTest`: papéis, contraste, logotipo SVG/grande/redimensionado, isolamento entre escritórios, prévia sem gravar); com a massa (`MassaFicticiaAceiteTest.Relatorios`): valores dos três relatórios contra `valores_esperados.json` e a conciliação, carga "não disponível" sem estimativa, PDF (páginas, rodapé, números-chave pelo `LeitorPdf`), Excel (número como número, cabeçalho congelado, Fontes), dois downloads iguais, reemissão com outro número e trigger de imutabilidade;
   - **aceite com a massa fictícia** (`MassaFicticiaAceiteTest`): toda a massa pela central de importação, os valores de `_gerador/valores_esperados.json` e os problemas plantados do gabarito (itens 1, 2, 3, 5, 6, 7, 8 e 10; dados dos itens 4 e 9). No item 2, a multa (6.526,08) e os juros (828,12) do `AcrescimosMoratorios` batem exatamente com os do relatório de situação fiscal da massa;
   - auditoria;
   - ProblemDetail;
   - banco do zero só com as migrações.
+- **Relatório** (`relatorio/RenderizadorRelatorioTest`): `<script>` vindo de arquivo importado escapado no HTML e no SVG e o PDF gerado mesmo assim; formatação igual à do frontend; contraste WCAG.
 - **Storage** (`storage/`): o mesmo contrato para o local e para o S3 contra MinIO real.
 - **Leitura** (`sped/`, `contabil/planilha/`, `importacao/`, `pdf/`, `situacao/`): `LeitorSped`, leiaute por versão, detector de tipo, `.xlsx` (fórmula, zip bomb) e `.csv`; `LeitorPdf` (marca d'água, PDF sem texto, com senha, páginas demais, normalizadores), cada adaptador e o `.dec` (`AdaptadoresTest`), `AcrescimosMoratoriosTest` (30, 60 e 61 dias, virada de mês, falta de SELIC) e os status da conciliação.
 - **Massa fictícia** em `src/test/resources/massa-ficticia/` (gerador, arquivos, README com as limitações e o gabarito; como regenerar no README dela).
@@ -499,6 +557,24 @@ A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secur
 
 Não há criação manual: tudo vem da importação. Cliente de outro escritório: 404.
 
+### Relatórios e identidade do escritório
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| POST | `/api/clientes/{id}/relatorios/previa` | todos | HTML da prévia (`tipo`, `de`, `ate`, `incluirDivergencias`, `incluirFontes`); nada é gravado; `Content-Security-Policy` restrita |
+| POST | `/api/clientes/{id}/relatorios` | ADMIN, CONSULTOR | emite: número, snapshot, PDF e Excel gravados (201 com o registro) |
+| GET | `/api/clientes/{id}/relatorios` | todos | emitidos do cliente, mais recentes primeiro |
+| GET | `/api/clientes/{id}/relatorios/{rid}` | todos | um emitido (parâmetros, quem, quando, SHA-256 do snapshot, do PDF e do Excel, versões) |
+| GET | `/api/clientes/{id}/relatorios/{rid}/pdf` | todos | o PDF gravado na emissão (auditado) |
+| GET | `/api/clientes/{id}/relatorios/{rid}/xlsx` | todos | o Excel gravado na emissão (auditado) |
+| GET | `/api/clientes/{id}/carga-tributaria` | todos | carga efetiva por exercício (o mesmo serviço do relatório) |
+| GET | `/api/escritorio/identidade` | todos | identidade do escritório |
+| PUT | `/api/escritorio/identidade` | ADMIN | altera (cor com contraste AA); auditado |
+| POST | `/api/escritorio/identidade/logo` | ADMIN | logotipo (multipart `arquivo`; PNG/JPEG até 1 MB); auditado |
+| GET | `/api/escritorio/identidade/logo` | todos | o logotipo gravado (PNG) |
+
+Cliente ou relatório de outro escritório: 404.
+
 ### Simulações de parcelamento
 
 | Método | Rota | Papel | Descrição |
@@ -537,6 +613,7 @@ src/main/java/com/fiscalhub/backend/
 │   └── calculo/  # motor de parcelamento (RFB e SEFA-PR)
 ├── fiscal/       # ECF, EFD-Contribuições, EFD ICMS/IPI: leituras, ProcessadorFiscal, modelo de apuração, conferência ECD × ECF
 ├── pdf/          # LeitorPdf (PDFBox), DocumentoPdf (seção, tabela, campo), AdaptadorDocumentoPdf
+├── relatorio/    # identidade do escritório, carga tributária, ModeloRelatorio, MontagemRelatorios, RenderizadorRelatorio (HTML/PDF/Excel), GraficoSvg, Formatos, RelatorioService (emissão)
 ├── situacao/     # ProcessadorSituacao, RepositorioSituacao, SituacaoFiscalService, ConciliacaoService, AcrescimosMoratorios, CodigosReceita
 │   └── adaptadores/ # um adaptador por documento e versão de layout; LeitorDctfDec
 ├── importacao/   # pipeline: detector, ProcessadorDocumento, contexto, inconsistências, jobs, Escrituracoes (retificação)
@@ -551,7 +628,9 @@ src/main/resources/
 ├── sped/         # leiautes SPED por versão (gerados dos manuais)
 ├── plano-referencial/ # tabelas oficiais + tabelas.txt (fonte e SHA-256)
 ├── receitas/     # tabela de códigos de receita (fonte por código)
-└── dctf/         # layouts do .dec da DCTF por versão
+├── dctf/         # layouts do .dec da DCTF por versão
+├── templates/relatorios/ # template único dos relatórios (prévia e PDF)
+└── relatorios/fontes/    # Inter e Source Serif 4 (TTF do PDF, woff2 da prévia) e as licenças OFL
 scripts/          # geração de leiaute, amostras e download das tabelas oficiais
 ```
 
@@ -561,6 +640,7 @@ scripts/          # geração de leiaute, amostras e download das tabelas oficia
 - Segredos só por variável de ambiente, sem valor padrão no código.
 - Isolamento por escritório num único ponto (`AcessoRecursoService`) e papéis por `@PreAuthorize`.
 - CORS só para as origens em `CORS_ALLOWED_ORIGINS`, com credenciais (cookie). Frontend e API precisam estar no mesmo site.
+- Relatórios: dados importados só por `th:text` (escapado); o SVG dos gráficos escapa os textos; prévia num iframe com `sandbox` vazio e CSP `default-src 'none'`; openhtmltopdf sem recurso externo (só `data:`) e SVG sem script; logotipo só PNG/JPEG pelo conteúdo, limitado e regravado.
 - Sessão em cookie `httpOnly` (o JS não lê o JWT) e CSRF por cookie + cabeçalho em todo método que altera estado; logout invalida o JWT no servidor.
 - Arquivos não confiáveis: limite de tamanho de linha (SPED, CSV), de linhas e colunas (planilha), de registros de apuração guardados em memória (200 mil, ECF e EFD), zip bomb e XXE no `.xlsx`, fórmulas nunca avaliadas; PDF com 20 MB e 300 páginas no máximo, sem senha, cache em disco, sem execução de scripts nem recursos externos; `.dec` com o mesmo limite de tamanho. Linhas de registros pulados não são montadas.
 - O `app.jwt.secret` antigo ficou no histórico do git: **gere um segredo novo** para qualquer ambiente real.

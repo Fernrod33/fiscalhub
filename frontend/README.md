@@ -64,12 +64,21 @@ Regras que valem para todo o código:
 - **Parcelamentos e transações** com a barra de parcelas (`BarraProgresso`, scaleX, respeita movimento reduzido), **pendências** e a **CAPAG oficial** (classe, razão capacidade ÷ passivo e alerta de inconsistência com a Portaria).
 - **Visão geral** do cliente: total por órgão, divergências da conciliação e certidão (`AnimatedNumber`, `Stagger`).
 
+## Aba Relatórios e Configurações → Escritório
+
+- **Relatórios** (`features/relatorios`): tipo, período (competências; na carga, exercícios) e opções; **prévia** do HTML gerado pelo backend (o mesmo template do PDF) num `iframe` com `sandbox` vazio (sem script nem origem), atualizada 400 ms depois da última mudança; **Emitir** (ADMIN e CONSULTOR); histórico com número, tipo, período, quem, quando, hash abreviado do PDF e download do PDF e do Excel gravados na emissão.
+- **Escritório** (`features/escritorio`, só ADMIN): nome de exibição, logotipo (PNG/JPEG até 1 MB), cor principal com o contraste WCAG sobre o branco do relatório (obrigatório AA) e sobre o escuro do app (aviso) e um botão com o ajuste sugerido (`lib/contraste.ts`, a mesma conta do backend), rodapé e responsável técnico; prévia ao vivo do cabeçalho e do rodapé.
+- **Gráficos** (`components/grafico.tsx`, Recharts): apurado × pago por competência acima da matriz de Tributos e carga tributária efetiva por exercício na visão geral. Paleta `--chart-1..6` dos tokens (a mesma do `GraficoSvg` do PDF, validada para daltonismo e ≥ 3:1 nos dois temas), hachura por série, legenda, tooltip formatado, tabela para leitor de tela e animação só sem `prefers-reduced-motion`. Os gráficos dos relatórios são SVG gerados no backend: usos diferentes, código separado.
+
+**Por que Recharts** (e não ECharts): componentes React declarativos em SVG, cores por variável CSS (os tokens dos dois temas sem código extra), animação desligável por gráfico; o ECharts é canvas, imperativo e maior. Fica num chunk só das telas com gráfico.
+
 ## Design system
 
 Referência visual: `npm run dev` e abra `/laboratorio-design` (a rota não existe no build de produção).
 
 **Tokens** (`src/styles/globals.css`): cores semânticas em `:root` (claro) e `.dark` — `background`, `surface`, `foreground`, `muted`, `border`, `primary` (azul-petróleo), `success`/`warning`/`danger`/`info` com `-bg`, e `sidebar-*` (menu escuro nos dois temas). Use as classes do Tailwind geradas por eles (`bg-surface`, `text-muted-foreground`…), nunca cor literal.
 
+- Gráficos: paleta categórica `--chart-1..6` em ordem fixa (nunca cor gerada; mais de 6 séries viram "Outros").
 - Tipografia: Inter em tudo; Source Serif 4 (`font-serif`) só no h1 da página e no h2 dos cartões.
 - Números em Inter com `tabular-nums` (já aplicado a `td`, `.num` e `[data-numerico]`).
 - Cor só indica estado (ex.: KPI "Com erro" > 0 em perigo). Nada de cor decorativa.
@@ -103,11 +112,15 @@ Não edite `schema.d.ts`; os aliases usados no código ficam em `src/lib/api/tip
 npm test                  # Vitest (jsdom): formatadores, http (ProblemDetail, CSRF, upload, 202),
                           # DataTable, useMovimentoReduzido, ClienteForm, paleta de comandos,
                           # tabela de demonstração (AH/AV, recolher, origem), assistente da planilha,
-                          # aba Tributos (matriz e periodicidade, detalhe da célula, lucro real, estados vazios)
+                          # aba Tributos (matriz e periodicidade, detalhe da célula, lucro real, estados vazios),
+                          # gráfico (tabela acessível, movimento reduzido), contraste e formulário de identidade,
+                          # formatação igual à do backend (formatacao.casos.json)
 npx playwright install chromium   # uma vez
 npx playwright test       # e2e: fumaça, ECD → Demonstrações → origem do valor,
                           # ECD + ECF + EFD → Tributos → célula → origem,
-                          # acessibilidade (axe, WCAG A/AA, dois temas) nas telas principais
+                          # acessibilidade (axe, WCAG A/AA, dois temas) nas telas principais,
+                          # massa → Relatórios → prévia → emitir → PDF e Excel (hash igual ao emitido),
+                          # Configurações → Escritório (contraste e prévia)
 ```
 
 O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo. Os arquivos de teste (ECD, ECF, EFD, planilhas) são as amostras sintéticas do backend (`backend/src/test/resources/amostras`).
