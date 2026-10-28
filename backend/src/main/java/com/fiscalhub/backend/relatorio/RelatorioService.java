@@ -71,7 +71,7 @@ public class RelatorioService {
         var c = montado.cabecalho();
         ModeloRelatorio comNumero = new ModeloRelatorio(montado.tipo(), montado.titulo(), new ModeloRelatorio.Cabecalho(c.escritorio(),
                 c.logoChave(), c.cor(), c.rodape(), c.responsavel(), c.clienteRazaoSocial(), c.clienteCnpj(), c.periodo(), c.emissao(), numero),
-                montado.sumario(), montado.secoes(), montado.notas(), montado.fontes(), montado.versoes());
+                montado.sumario(), montado.secoes(), montado.notas(), montado.fontes(), montado.versoes(), montado.assinaturas());
         String snapshot = escrever(comNumero);
         String hash = sha256(snapshot.getBytes(StandardCharsets.UTF_8));
         ModeloRelatorio doSnapshot = ler(snapshot); // PDF e Excel saem do snapshot gravado, não do objeto em memória

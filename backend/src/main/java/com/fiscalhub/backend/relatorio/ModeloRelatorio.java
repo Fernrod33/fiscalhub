@@ -11,12 +11,14 @@ import java.util.List;
  * que não é número numa coluna numérica (ex.: "não disponível") sai como texto.
  */
 public record ModeloRelatorio(TipoRelatorio tipo, String titulo, Cabecalho cabecalho, List<Indicador> sumario,
-                              List<Secao> secoes, List<String> notas, List<Fonte> fontes, Versoes versoes) {
+                              List<Secao> secoes, List<String> notas, List<Fonte> fontes, Versoes versoes, List<String> assinaturas) {
 
     public enum TipoRelatorio {
         TRIBUTOS("Relatório de tributos apurados, declarados e pagos"),
         CARGA_TRIBUTARIA("Carga tributária efetiva"),
-        SITUACAO_FISCAL("Situação fiscal resumida");
+        SITUACAO_FISCAL("Situação fiscal resumida"),
+        CAPACIDADE("Capacidade de pagamento"),
+        DOSSIE_CAPAG("Dossiê de apoio à revisão da CAPAG");
 
         public final String titulo;
 

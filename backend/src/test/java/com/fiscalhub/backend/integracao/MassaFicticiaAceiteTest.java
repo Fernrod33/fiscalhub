@@ -455,6 +455,33 @@ class MassaFicticiaAceiteTest {
             assertThat(linha(secao(m, "Carga efetiva por exercício"), "2026").get(3).asText()).isEqualTo("não disponível");
         }
 
+        @Test
+        void relatorioDeCapacidadeEDossieDaCapagComRotulosDfcEAssinatura() throws Exception {
+            JsonNode cap = emitir("{\"tipo\":\"CAPACIDADE\"}");
+            JsonNode m = snapshot(cap);
+            assertThat(m.at("/sumario/0/valor").asText()).isEqualTo("C");
+            assertThat(m.at("/sumario/2/valor").asText()).isEqualTo(esperados.at("/classificacao_pr/classe").asText());
+            assertThat(m.get("secoes").findValuesAsText("titulo")).anySatisfy(t -> assertThat(t).contains("estimativa do consultor"))
+                    .anySatisfy(t -> assertThat(t).contains("não é critério oficial")).contains("Parâmetros das estimativas (escritório)");
+            String texto = textoPdf(baixar("/api/clientes/{c}/relatorios/" + cap.get("id").asLong() + "/pdf"));
+            assertThat(texto).contains("Capacidade de pagamento", "CAPAG oficial", "Resolução Conjunta PGE/SEFA 01/2025", "2023.0045678");
+
+            JsonNode dos = emitir("{\"tipo\":\"DOSSIE_CAPAG\"}");
+            JsonNode d = snapshot(dos);
+            assertThat(d.get("secoes").findValuesAsText("titulo")).contains("DFC pelo método direto — 2024", "DFC pelo método direto — 2025",
+                    "Balanço patrimonial (plano referencial)", "Demonstração do resultado (plano referencial)");
+            assertThat(d.get("assinaturas")).hasSize(2);
+            JsonNode dfc2025 = secao(d, "DFC pelo método direto — 2025");
+            assertThat(dfc2025.at("/tabela/totais/2").asText()).isEqualTo(esperados.at("/dfc_direta/2025/variacao_caixa").asText());
+            assertThat(textoPdf(baixar("/api/clientes/{c}/relatorios/" + dos.get("id").asLong() + "/pdf")))
+                    .contains("Assinaturas", "Contador responsável", "Finalidade");
+            assertThat(secao(d, "Finalidade").get("texto").asText()).contains("são feitas pelo contribuinte e pelo contador");
+        }
+
+        private String textoPdf(byte[] pdf) {
+            return String.join(System.lineSeparator(), LeitorPdf.ler(pdf).linhas().stream().map(DocumentoPdf.Linha::texto).toList());
+        }
+
         private JsonNode emitir(String corpo) throws Exception {
             return json.readTree(mvc.perform(post("/api/clientes/{c}/relatorios", metalurgica.getId()).with(sessao)
                     .contentType(MediaType.APPLICATION_JSON).content(corpo)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());

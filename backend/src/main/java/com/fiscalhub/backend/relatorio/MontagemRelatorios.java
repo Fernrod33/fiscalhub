@@ -54,10 +54,13 @@ public class MontagemRelatorios {
     private final CargaTributariaService carga;
     private final IdentidadeEscritorioService identidade;
     private final NamedParameterJdbcTemplate jdbc;
+    private final RelatoriosCapacidade capacidade;
     private final String versaoNormas;
 
     public MontagemRelatorios(AcessoRecursoService acesso, ConciliacaoService conciliacao, SituacaoFiscalService situacao,
-                              CargaTributariaService carga, IdentidadeEscritorioService identidade, NamedParameterJdbcTemplate jdbc) {
+                              CargaTributariaService carga, IdentidadeEscritorioService identidade, NamedParameterJdbcTemplate jdbc,
+                              RelatoriosCapacidade capacidade) {
+        this.capacidade = capacidade;
         this.acesso = acesso;
         this.conciliacao = conciliacao;
         this.situacao = situacao;
@@ -77,6 +80,8 @@ public class MontagemRelatorios {
             case TRIBUTOS -> tributos(clienteId, p, ua);
             case CARGA_TRIBUTARIA -> carga(clienteId, p, ua);
             case SITUACAO_FISCAL -> situacao(clienteId, ua);
+            case CAPACIDADE -> capacidade.capacidade(clienteId, ua);
+            case DOSSIE_CAPAG -> capacidade.dossie(clienteId, ua);
         };
         var id = identidade.consultar(ua);
         String responsavel = id.responsavelNome() == null ? null
@@ -86,11 +91,20 @@ public class MontagemRelatorios {
                 id.corPrincipal().matches("#[0-9a-f]{6}") ? id.corPrincipal() : IdentidadeEscritorioService.COR_PADRAO, id.rodape(),
                 responsavel, cliente.getRazaoSocial(), cliente.getCnpj(), periodo(p), emissao, null);
         List<Fonte> fontes = p.incluirFontes() ? fontes(clienteId, corpo.documentos()) : List.of();
-        return new ModeloRelatorio(p.tipo(), p.tipo().titulo, cab, corpo.sumario(), corpo.secoes(), notas(p.tipo()), fontes,
-                new Versoes(VERSAO_TEMPLATE, versaoNormas));
+        List<String> notas = new ArrayList<>(notas(p.tipo()));
+        notas.addAll(0, corpo.notas());
+        List<String> assinaturas = p.tipo() == TipoRelatorio.DOSSIE_CAPAG ? List.of(
+                "Contador responsável" + (responsavel == null ? "" : ": " + responsavel), "Representante legal do contribuinte: "
+                        + cliente.getRazaoSocial()) : null;
+        return new ModeloRelatorio(p.tipo(), p.tipo().titulo, cab, corpo.sumario(), corpo.secoes(), notas, fontes,
+                new Versoes(VERSAO_TEMPLATE, versaoNormas), assinaturas);
     }
 
-    private record Corpo(List<Indicador> sumario, List<Secao> secoes, Set<Long> documentos) {
+    /** notas: notas metodológicas próprias do conteúdo (ex.: as normas e versões usadas), antes das fixas do tipo. */
+    record Corpo(List<Indicador> sumario, List<Secao> secoes, Set<Long> documentos, List<String> notas) {
+        Corpo(List<Indicador> sumario, List<Secao> secoes, Set<Long> documentos) {
+            this(sumario, secoes, documentos, List.of());
+        }
     }
 
     // ---------------------------------------------------------------- tributos apurados, declarados e pagos
@@ -421,7 +435,7 @@ public class MontagemRelatorios {
     }
 
     private static String periodo(Parametros p) {
-        if (p.tipo() == TipoRelatorio.SITUACAO_FISCAL) return "posição dos documentos importados";
+        if (EnumSet.of(TipoRelatorio.SITUACAO_FISCAL, TipoRelatorio.CAPACIDADE, TipoRelatorio.DOSSIE_CAPAG).contains(p.tipo())) return "posição dos documentos importados";
         if (p.tipo() == TipoRelatorio.CARGA_TRIBUTARIA) {
             return p.de() == null && p.ate() == null ? "todos os exercícios importados"
                     : "exercícios " + (p.de() == null ? "…" : p.de().getYear()) + " a " + (p.ate() == null ? "…" : p.ate().getYear());
@@ -456,6 +470,15 @@ public class MontagemRelatorios {
                     "A razão só é apresentada com todos os insumos: a receita do exercício e os 12 meses de cada escrituração fiscal "
                             + "que o cliente tem no FiscalHub. Faltando algum, a linha mostra \"não disponível\" e o que importar; "
                             + "com prejuízo antes do IR, a razão IRPJ + CSLL ÷ LAIR não se aplica.");
+            case CAPACIDADE, DOSSIE_CAPAG -> List.of(
+                    "Três camadas separadas, sem misturar: a CAPAG oficial (importada do Regularize, nunca estimada), as "
+                            + "estimativas do consultor (CAPAG pelos dois métodos e recálculo da classificação do PR pela norma) e a "
+                            + "análise gerencial, que não é critério oficial.",
+                    "Onde a norma não fixa a fórmula (GRF, PLR, faixas A-D da CAPAG, método que prevalece), o cálculo usa os "
+                            + "parâmetros do escritório listados neste relatório e o resultado é rotulado como estimativa.",
+                    "Fontes normativas: Portaria PGFN 6.757/2022 (arts. 21, 24, 25 e 30, com as Portarias 1.241/2023 e "
+                            + "1.457/2024) e Resolução Conjunta PGE/SEFA 01/2025 (com a RC 15/2026), textos baixados em 28/10/2026 "
+                            + "com URL e SHA-256 na tabela de regras.");
             case SITUACAO_FISCAL -> List.of(
                     "Débitos, parcelamentos, pendências e CAPAG dos relatórios dos órgãos importados (Relatório de Situação Fiscal "
                             + "da RFB, extrato do Regularize/PGFN, conta corrente e RTI da SEFA-PR), o mais recente de cada tipo. "

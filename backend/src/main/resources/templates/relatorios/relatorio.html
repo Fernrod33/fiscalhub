@@ -15,7 +15,7 @@
     }
     @page capa { @bottom-left { content: none; } }
     * { box-sizing: border-box; }
-    html { color: #0f1c2e; font-family: 'Inter', sans-serif; font-size: 9pt; line-height: 1.45; background: #ffffff; }
+    html { color: #0f1c2e; font-family: 'Inter', sans-serif; font-size: 9pt; line-height: 1.45; background: #ffffff; font-variant-ligatures: none; }
     body { margin: 0; }
     .previa body { max-width: 210mm; margin: 0 auto; padding: 12mm 14mm; background: #ffffff; }
     h1, h2, h3 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; margin: 0; }
@@ -57,6 +57,9 @@
     ol.notas li { margin-bottom: 4pt; }
     .hash { font-family: monospace; font-size: 7pt; word-wrap: break-word; }
     .anexo { page-break-before: always; }
+    .assinaturas { page-break-inside: avoid; margin-top: 12mm; }
+    .assinatura { display: inline-block; width: 46%; margin: 14mm 3% 0 0; vertical-align: top; font-size: 8.5pt; }
+    .linha-assinatura { border-top: 1px solid #0f1c2e; margin-bottom: 2mm; }
     .previa .anexo { page-break-before: auto; }
 
     .rodape { position: running(rodape); font-size: 7pt; color: #556378; width: 100%; }
@@ -149,6 +152,14 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="assinaturas" th:unless="${#lists.isEmpty(m.assinaturas)}">
+    <h2>Assinaturas</h2>
+    <div class="assinatura" th:each="a : ${m.assinaturas}">
+      <div class="linha-assinatura"></div>
+      <span th:text="${a}">Contador responsável</span>
+    </div>
   </div>
 
   <div class="rodape-previa" th:if="${previa}">

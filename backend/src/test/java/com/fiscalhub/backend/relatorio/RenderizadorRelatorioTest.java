@@ -35,7 +35,7 @@ class RenderizadorRelatorioTest {
                         new Grafico(TipoGrafico.EMPILHADAS, SCRIPT, Formato.MOEDA, List.of("08/2026 " + SCRIPT),
                                 List.of(new Serie(SCRIPT, List.of(new BigDecimal("10"))))))),
                 List.of("nota " + SCRIPT), List.of(new Fonte(1, "PDF", "arquivo" + SCRIPT + ".pdf", "—", LocalDateTime.now(), "ab")),
-                new Versoes("t", "n"));
+                new Versoes("t", "n"), null);
 
         String html = r.html(m, null, null);
         assertThat(html).doesNotContain("<script").contains("&lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;");
