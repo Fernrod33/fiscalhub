@@ -112,13 +112,16 @@ public class MontagemRelatorios {
                 cru(i.apurado() == null ? null : i.apurado().valor()), cru(i.declarado() == null ? null : i.declarado().valor()),
                 cru(i.pago() == null ? null : i.pago().valor()), cru(i.diferenca()), STATUS.get(i.status()))).toList();
         List<Secao> secoes = new ArrayList<>();
-        secoes.add(new Secao("Apurado × pago por competência", null, false, null, graficoApuradoPago(itens)));
+        String semDados = itens.isEmpty() ? "Nenhum tributo apurado, declarado ou pago no período." : null;
+        secoes.add(new Secao("Apurado × pago por competência", semDados, false, null, itens.isEmpty() ? null : graficoApuradoPago(itens)));
         secoes.add(new Secao("Tributos por competência", "Diferença: devido − pago (positivo = falta pagar); quando o apurado "
                 + "difere do declarado ou não foi declarado, apurado − declarado.", false,
                 new Tabela(colunas, linhas, null), null));
         secoes.add(new Secao("Totais por tributo", null, false, totais(itens, i -> esfera(i.esfera()) + "|" + tributo(i), "Tributo"), null));
         secoes.add(new Secao("Totais por esfera", null, false, totais(itens, i -> esfera(i.esfera()), "Esfera"), null));
-        secoes.add(new Secao("Composição dos tributos pagos", null, false, null, graficoComposicaoPaga(itens)));
+        boolean algumPago = itens.stream().anyMatch(i -> i.pago() != null);
+        secoes.add(new Secao("Composição dos tributos pagos", algumPago ? null : "Nenhum pagamento no período.", false, null,
+                algumPago ? graficoComposicaoPaga(itens) : null));
 
         List<ItemConciliacao> divergentes = itens.stream().filter(i -> DIVERGENCIAS.contains(i.status())).toList();
         BigDecimal acrescimos = divergentes.stream().map(ItemConciliacao::acrescimos).filter(Objects::nonNull)
@@ -261,7 +264,9 @@ public class MontagemRelatorios {
             secoes.add(new Secao("Insumos que faltam", "Nada é estimado: sem o insumo, a razão fica como não disponível.", true,
                     new Tabela(List.of(new Coluna("Exercício", Formato.TEXTO), new Coluna("O que importar", Formato.TEXTO)), faltas, null), null));
         }
-        secoes.add(new Secao("Carga efetiva por exercício (gráfico)", null, false, null, new Grafico(TipoGrafico.LINHA,
+        boolean algumaCarga = exercicios.stream().anyMatch(e -> e.carga() != null);
+        secoes.add(new Secao("Carga efetiva por exercício (gráfico)", algumaCarga ? null
+                : "Gráfico não disponível: nenhum exercício com a carga calculada.", false, null, !algumaCarga ? null : new Grafico(TipoGrafico.LINHA,
                 "Carga tributária efetiva por exercício", Formato.PERCENTUAL, exercicios.stream().map(e -> String.valueOf(e.exercicio())).toList(),
                 List.of(new Serie("Carga efetiva", exercicios.stream().map(ExercicioCarga::carga).toList())))));
         List<List<String>> porTributo = exercicios.stream().flatMap(e -> e.porTributo().stream().map(t -> List.of(String.valueOf(e.exercicio()),
@@ -269,7 +274,9 @@ public class MontagemRelatorios {
         secoes.add(new Secao("Carga por tributo", porTributo.isEmpty() ? "Nenhuma apuração importada no período." : null, false,
                 porTributo.isEmpty() ? null : new Tabela(List.of(new Coluna("Exercício", Formato.TEXTO), new Coluna("Tributo", Formato.TEXTO),
                         new Coluna("Valor a recolher", Formato.MOEDA), new Coluna("Carga", Formato.PERCENTUAL)), porTributo, null), null));
-        List<ExercicioCarga> comTributo = exercicios.stream().filter(e -> e.porTributo().stream().anyMatch(t -> t.carga() != null)).toList();
+        // só desenha com algum valor positivo: um gráfico de barras zeradas não diz nada (os zeros estão na tabela)
+        List<ExercicioCarga> comTributo = exercicios.stream()
+                .filter(e -> e.porTributo().stream().anyMatch(t -> t.carga() != null && t.carga().signum() > 0)).toList();
         if (!comTributo.isEmpty()) {
             List<ExercicioCarga> ultimos = comTributo.subList(Math.max(0, comTributo.size() - MAX_SERIES), comTributo.size());
             List<String> tributos = ultimos.stream().flatMap(e -> e.porTributo().stream()).map(CargaTributariaService.TributoCarga::tributo)

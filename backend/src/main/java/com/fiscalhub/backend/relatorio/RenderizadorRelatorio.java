@@ -235,6 +235,11 @@ public class RenderizadorRelatorio {
             return Formatos.dataHora(d);
         }
 
+        /** Colunas de nomes longos sem espaço (arquivos): podem quebrar no meio da palavra. */
+        public boolean quebra(String coluna) {
+            return coluna.startsWith("Origem") || coluna.startsWith("Arquivo");
+        }
+
         public String svg(Grafico g) {
             return GraficoSvg.svg(g);
         }

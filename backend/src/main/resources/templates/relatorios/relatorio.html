@@ -23,7 +23,7 @@
     h3 { font-size: 10.5pt; margin: 10pt 0 4pt; page-break-after: avoid; }
     p { margin: 0 0 6pt; }
     .muted { color: #556378; }
-    .num { text-align: right; white-space: nowrap; }
+    .num { text-align: right; } /* "R$" e o valor ficam juntos pelo espaço não separável */
 
     .capa { page: capa; page-break-after: always; min-height: 240mm; position: relative; }
     .previa .capa { min-height: 0; border-bottom: 1px solid #d7dee7; padding-bottom: 12mm; margin-bottom: 8mm; }
@@ -35,19 +35,19 @@
     .capa dd { margin: 1mm 0 0; font-size: 11pt; }
     .marca-previa { display: inline-block; border: 1px solid #8a5300; color: #8a5300; padding: 1mm 3mm; margin-bottom: 6mm; font-weight: 600; }
 
-    .sumario { width: 100%; border-collapse: separate; border-spacing: 3mm 0; margin: 0 -3mm 4mm; }
-    .sumario td { border: 1px solid #d7dee7; padding: 3mm; vertical-align: top; width: 20%; }
+    .sumario { width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 4mm; }
+    .sumario td { border: 1px solid #d7dee7; padding: 2.5mm; vertical-align: top; }
     .sumario .rotulo { color: #556378; font-size: 8pt; }
-    .sumario .valor { font-size: 13pt; font-weight: 600; margin-top: 1mm; }
+    .sumario .valor { font-size: 11.5pt; font-weight: 600; margin-top: 1mm; }
     .sumario .nota { color: #556378; font-size: 7.5pt; margin-top: 1mm; }
 
-    table.dados { width: 100%; border-collapse: collapse; margin: 2pt 0 8pt; -fs-table-paginate: paginate; }
+    table.dados { width: 100%; border-collapse: collapse; margin: 2pt 0 8pt; font-size: 8pt; -fs-table-paginate: paginate; }
     table.dados thead { display: table-header-group; }
     table.dados tr { page-break-inside: avoid; }
     table.dados th { text-align: left; font-weight: 600; font-size: 8pt; color: #556378; border-bottom: 1.5px solid #0f1c2e; padding: 3pt 4pt; }
     table.dados td { border-bottom: 1px solid #d7dee7; padding: 3pt 4pt; vertical-align: top; }
     table.dados tfoot td { font-weight: 600; border-top: 1.5px solid #0f1c2e; border-bottom: none; }
-    td.texto { word-wrap: break-word; }
+    td.quebra { word-wrap: break-word; } /* só origem e arquivo: nomes longos sem espaço */
     .secao { margin-bottom: 6pt; }
     .destaque { border-left: 3pt solid #a1262b; padding-left: 8pt; }
     .destaque h2::before { content: "Atenção · "; color: #a1262b; }
@@ -55,7 +55,9 @@
     .grafico svg { width: 100%; height: auto; }
     ol.notas { padding-left: 14pt; margin: 0; }
     ol.notas li { margin-bottom: 4pt; }
-    .hash { font-family: monospace; font-size: 7pt; word-break: break-all; }
+    .hash { font-family: monospace; font-size: 7pt; word-wrap: break-word; }
+    .anexo { page-break-before: always; }
+    .previa .anexo { page-break-before: auto; }
 
     .rodape { position: running(rodape); font-size: 7pt; color: #556378; width: 100%; }
     .rodape .pagina::after { content: "Página " counter(page) " de " counter(pages); }
@@ -70,9 +72,10 @@
         <span th:text="${m.cabecalho.escritorio}">Escritório</span><span th:if="${m.cabecalho.rodape}" th:text="${' · ' + m.cabecalho.rodape}"></span>
       </td>
       <td style="text-align: right;">
-        <span th:text="${numero}">Relatório nº 1</span> · <span class="pagina"></span><br />
-        <span class="hash" th:text="${'SHA-256 do snapshot ' + hash}">hash</span>
+        <span th:text="${numero}">Relatório nº 1</span> · <span class="pagina"></span>
       </td>
+    </tr><tr>
+      <td colspan="2" class="hash" th:text="${'SHA-256 do snapshot: ' + hash}">hash</td>
     </tr></table>
   </div>
 
@@ -117,7 +120,7 @@
       <tbody>
         <tr th:each="l : ${s.tabela.linhas}">
           <td th:each="c, st : ${s.tabela.colunas}" th:text="${f.celula(l[st.index], c.formato)}"
-              th:class="${f.numerico(c.formato)} ? 'num' : 'texto'">valor</td>
+              th:class="${f.numerico(c.formato)} ? 'num' : (${f.quebra(c.nome)} ? 'texto quebra' : 'texto')">valor</td>
         </tr>
       </tbody>
       <tfoot th:if="${s.tabela.totais}"><tr>
@@ -131,7 +134,7 @@
   <ol class="notas"><li th:each="n : ${m.notas}" th:text="${n}">nota</li></ol>
   <p class="muted" th:text="${'Versão do template: ' + m.versoes.template + ' · tabelas e normas: ' + m.versoes.normas}">versões</p>
 
-  <th:block th:unless="${#lists.isEmpty(m.fontes)}">
+  <div class="anexo" th:unless="${#lists.isEmpty(m.fontes)}">
     <h2>Anexo — fontes</h2>
     <p class="muted">Documentos importados usados neste relatório. O SHA-256 identifica o arquivo exatamente como foi importado.</p>
     <table class="dados">
@@ -139,14 +142,14 @@
       <tbody>
         <tr th:each="d : ${m.fontes}">
           <td th:text="${d.tipo}">tipo</td>
-          <td class="texto" th:text="${d.arquivo}">arquivo</td>
+          <td class="texto quebra" th:text="${d.arquivo}">arquivo</td>
           <td th:text="${d.periodo}">período</td>
           <td th:text="${f.dataHora(d.importadoEm)}">data</td>
           <td class="hash" th:text="${d.sha256}">sha</td>
         </tr>
       </tbody>
     </table>
-  </th:block>
+  </div>
 
   <div class="rodape-previa" th:if="${previa}">
     <span th:text="${m.cabecalho.escritorio}">Escritório</span><span th:if="${m.cabecalho.rodape}" th:text="${' · ' + m.cabecalho.rodape}"></span>
