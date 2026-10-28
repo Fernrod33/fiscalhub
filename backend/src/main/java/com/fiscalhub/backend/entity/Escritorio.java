@@ -28,6 +28,26 @@ public class Escritorio {
     @Column(nullable = false)
     private Boolean ativo = true;
 
+    /** Identidade nos relatórios (Configurações → Escritório). Sem nome de exibição, vale o nome. */
+    @Column(name = "nome_exibicao", length = 150)
+    private String nomeExibicao;
+
+    /** Chave do logotipo (PNG redimensionado) no storage; cada upload ganha uma chave nova (relatórios emitidos apontam a antiga). */
+    @Column(name = "logo_chave", length = 300)
+    private String logoChave;
+
+    @Column(name = "cor_principal", length = 7)
+    private String corPrincipal;
+
+    @Column(name = "rodape_relatorio", length = 500)
+    private String rodapeRelatorio;
+
+    @Column(name = "responsavel_nome", length = 150)
+    private String responsavelNome;
+
+    @Column(name = "responsavel_registro", length = 60)
+    private String responsavelRegistro;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
