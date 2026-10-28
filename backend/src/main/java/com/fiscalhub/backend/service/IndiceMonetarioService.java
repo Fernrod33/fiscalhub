@@ -17,7 +17,8 @@ import java.util.List;
  * (SELIC, UFPR, IPCA) utilizados nos cálculos de parcelamento.
  */
 @Service
-@Transactional(readOnly = true)
+// noRollbackFor: "falta SELIC" é resposta, não falha; quem chama (conciliação, capacidade) captura e segue na mesma transação
+@Transactional(readOnly = true, noRollbackFor = com.fiscalhub.backend.exception.BusinessRuleException.class)
 public class IndiceMonetarioService {
 
     private final IndiceMonetarioRepository indiceMonetarioRepository;
