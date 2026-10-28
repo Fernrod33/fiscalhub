@@ -5,7 +5,7 @@ import com.fiscalhub.backend.capacidade.CapacidadeService;
 import com.fiscalhub.backend.capacidade.DfcDiretaService;
 import com.fiscalhub.backend.capacidade.MetodologiaCapacidade;
 import com.fiscalhub.backend.capacidade.ResultadoCapacidade;
-import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Criterio;
+import com.fiscalhub.backend.capacidade.ResultadoCapacidade.CriterioCapacidade;
 import com.fiscalhub.backend.contabil.DemonstracaoService;
 import com.fiscalhub.backend.relatorio.ModeloRelatorio.*;
 import com.fiscalhub.backend.relatorio.MontagemRelatorios.Corpo;
@@ -53,7 +53,7 @@ class RelatoriosCapacidade {
         secoes.add(secao("Créditos irrecuperáveis (art. 25)", "Nenhuma inscrição na PGFN nos documentos importados.", false, est.itens(),
                 colunas("Inscrição", "Valor:MOEDA", "Situação", "Fundamento"), i -> linha(i.id(), i.valor(),
                         i.classe() == null ? ND : i.classe().equals("IRRECUPERAVEL") ? "irrecuperável" : "recuperável",
-                        i.observacao() == null ? i.criterios().stream().filter(x -> x.naoDisponivel() != null).map(Criterio::naoDisponivel)
+                        i.observacao() == null ? i.criterios().stream().filter(x -> x.naoDisponivel() != null).map(CriterioCapacidade::naoDisponivel)
                                 .findFirst().orElse("nenhum inciso do art. 25 se aplica") : i.observacao()), null, null));
         secoes.add(criterios(pr, documentos));
         secoes.add(secao("CDAs do Paraná — classe recalculada × oficial", "Nenhuma CDA de ICMS nos documentos importados.", false, pr.itens(),
@@ -61,18 +61,18 @@ class RelatoriosCapacidade {
                 i -> linha(i.id(), i.valor(), Objects.toString(i.indice(), ND), Objects.toString(i.classe(), ND),
                         Objects.toString(i.classeOficial(), "—"), Objects.toString(i.observacao(), "")), null, null));
         secoes.add(criterios(ger, documentos));
-        secoes.add(secao("Indicadores gerenciais por exercício", "Sem demonstrações importadas.", false, c.indicadores(),
+        secoes.add(secao("IndicadoresGerenciais gerenciais por exercício", "Sem demonstrações importadas.", false, c.indicadores(),
                 colunas("Exercício", "EBITDA:MOEDA", "Caixa operacional:MOEDA", "Liquidez corrente", "Liquidez seca", "Liquidez geral",
                         "Endividamento", "Cobertura de juros", "Ciclo financeiro (dias)"),
                 i -> linha(String.valueOf(i.exercicio()), cru(i.ebitda()), cru(i.fco()), nd(i.liquidezCorrente()),
                         nd(i.liquidezSeca()), nd(i.liquidezGeral()), nd(i.endividamento()), nd(i.coberturaJuros()), nd(i.cicloFinanceiro())),
                 null, "Análise do consultor — não é critério oficial."));
         if (!c.indicadores().isEmpty()) {
-            List<AnaliseGerencial.Indicadores> com = c.indicadores();
+            List<AnaliseGerencial.IndicadoresGerenciais> com = c.indicadores();
             secoes.add(new Secao("EBITDA × caixa operacional", null, false, null, new Grafico(TipoGrafico.BARRAS, "EBITDA × caixa operacional por exercício",
                     Formato.MOEDA, com.stream().map(i -> String.valueOf(i.exercicio())).toList(),
-                    List.of(new Serie("EBITDA", com.stream().map(AnaliseGerencial.Indicadores::ebitda).toList()),
-                            new Serie("Caixa operacional", com.stream().map(AnaliseGerencial.Indicadores::fco).toList())))));
+                    List.of(new Serie("EBITDA", com.stream().map(AnaliseGerencial.IndicadoresGerenciais::ebitda).toList()),
+                            new Serie("Caixa operacional", com.stream().map(AnaliseGerencial.IndicadoresGerenciais::fco).toList())))));
         }
         secoes.add(parametros(c));
         List<Indicador> sumario = List.of(

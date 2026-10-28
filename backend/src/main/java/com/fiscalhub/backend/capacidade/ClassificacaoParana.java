@@ -1,8 +1,8 @@
 package com.fiscalhub.backend.capacidade;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Criterio;
-import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Item;
+import com.fiscalhub.backend.capacidade.ResultadoCapacidade.CriterioCapacidade;
+import com.fiscalhub.backend.capacidade.ResultadoCapacidade.ItemCapacidade;
 import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Rotulo;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
 import com.fiscalhub.backend.entity.enums.SituacaoDebito;
@@ -43,7 +43,7 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
     }
 
     /** Uma CDA classificada (para o critério das CDAs do devedor e para a tela). */
-    record Cda(String numero, String classe, Item item) {
+    record Cda(String numero, String classe, ItemCapacidade item) {
     }
 
     @Override
@@ -63,28 +63,28 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
                 .filter(d -> !sim.quitar().contains(d.numeroInscricao())).toList();
         List<Cda> classificadas = cdas.stream().map(d -> cda(d, in, situacao, regraCda, regraClasseCda, data)).toList();
 
-        List<Criterio> criterios = new ArrayList<>();
+        List<CriterioCapacidade> criterios = new ArrayList<>();
         String fund7 = regraDevedor.citacao();
         // I — situação cadastral
         if (cadastro == null) {
-            criterios.add(Criterio.faltando("Situação cadastral", fund7 + ", I", "importe a conta corrente do ICMS com a situação do CAD/ICMS"));
+            criterios.add(CriterioCapacidade.faltando("Situação cadastral", fund7 + ", I", "importe a conta corrente do ICMS com a situação do CAD/ICMS"));
         } else {
             JsonNode pts = regraDevedor.parametros().get("situacaoCadastral").get(situacao);
-            criterios.add(new Criterio("Situação cadastral", cadastro.situacao(), Formato.TEXTO, pts == null ? null : pts.asText(),
+            criterios.add(new CriterioCapacidade("Situação cadastral", cadastro.situacao(), Formato.TEXTO, pts == null ? null : pts.asText(),
                     cadastro.situacao(), fund7 + ", I", List.of(cadastro.origem()), pts == null ? "não disponível — situação \""
                     + cadastro.situacao() + "\" fora das faixas da norma" : null));
         }
         // II — tempo de inatividade
         if (cadastro == null) {
-            criterios.add(Criterio.faltando("Tempo de inatividade", fund7 + ", II", "importe a conta corrente do ICMS com a situação do CAD/ICMS"));
+            criterios.add(CriterioCapacidade.faltando("Tempo de inatividade", fund7 + ", II", "importe a conta corrente do ICMS com a situação do CAD/ICMS"));
         } else if (situacao.startsWith("ATIVA")) {
-            criterios.add(new Criterio("Tempo de inatividade", "empresa ativa", Formato.TEXTO, "4", "empresa ativa", fund7 + ", II",
+            criterios.add(new CriterioCapacidade("Tempo de inatividade", "empresa ativa", Formato.TEXTO, "4", "empresa ativa", fund7 + ", II",
                     List.of(cadastro.origem()), null));
         } else if (cadastro.desde() == null) {
-            criterios.add(Criterio.faltando("Tempo de inatividade", fund7 + ", II", "o documento não traz desde quando a empresa está inativa"));
+            criterios.add(CriterioCapacidade.faltando("Tempo de inatividade", fund7 + ", II", "o documento não traz desde quando a empresa está inativa"));
         } else {
             BigDecimal anos = anos(cadastro.desde(), data);
-            criterios.add(new Criterio("Tempo de inatividade", anos.toPlainString(), Formato.TEXTO,
+            criterios.add(new CriterioCapacidade("Tempo de inatividade", anos.toPlainString(), Formato.TEXTO,
                     faixaSemAtiva(regraDevedor.parametros().get("inatividadeAnos"), anos).toPlainString(),
                     anos.toPlainString() + " anos", fund7 + ", II", List.of(cadastro.origem()), null));
         }
@@ -93,14 +93,14 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
         BigDecimal exigivel = cdas.stream().filter(d -> exigivel(d) && !sim.parcelar().contains(d.numeroInscricao()))
                 .map(SituacaoFiscalService.DebitoConsolidado::valorTotal).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (fat == null || !fat.faltando().isEmpty() || fat.valor() == null || fat.valor().signum() <= 0) {
-            criterios.add(Criterio.faltando("Índice de endividamento", fund7 + ", III", "importe a EFD ICMS/IPI dos meses "
+            criterios.add(CriterioCapacidade.faltando("Índice de endividamento", fund7 + ", III", "importe a EFD ICMS/IPI dos meses "
                     + (fat == null ? "dos 12 meses anteriores ao cálculo" : fat.faltando().stream().map(m -> String.format("%02d/%d",
                     m.getMonthValue(), m.getYear())).toList()) + " (faturamento declarado em 12 meses)"));
         } else {
             BigDecimal razao = exigivel.divide(fat.valor(), 6, RoundingMode.HALF_EVEN);
             List<OrigemValor> origens = new ArrayList<>(fat.origens());
             cdas.stream().filter(this::exigivel).forEach(d -> d.origens().forEach(o -> origens.add(o.origem())));
-            criterios.add(new Criterio("Índice de endividamento", razao.multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_EVEN)
+            criterios.add(new CriterioCapacidade("Índice de endividamento", razao.multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_EVEN)
                     .toPlainString(), Formato.PERCENTUAL, regraDevedor.faixa("endividamento", razao).toPlainString(),
                     "dívida exigível " + exigivel.toPlainString() + " ÷ faturamento " + fat.valor().toPlainString() + " ("
                             + String.format("%02d/%d", fat.de().getMonthValue(), fat.de().getYear()) + " a "
@@ -112,10 +112,10 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
                 .filter(p -> "GR_PR".equals(p.documento()) && p.dataPagamento() != null && !p.dataPagamento().isAfter(data))
                 .max(Comparator.comparing(SituacaoFiscalService.PagamentoConsolidado::dataPagamento));
         if (ultimo.isEmpty()) {
-            criterios.add(Criterio.faltando("Indicativo de pagamento", fund7 + ", IV", "importe a relação de pagamentos GR-PR"));
+            criterios.add(CriterioCapacidade.faltando("Indicativo de pagamento", fund7 + ", IV", "importe a relação de pagamentos GR-PR"));
         } else {
             BigDecimal dias = BigDecimal.valueOf(ChronoUnit.DAYS.between(ultimo.get().dataPagamento(), data));
-            criterios.add(new Criterio("Indicativo de pagamento", dias.toPlainString(), Formato.INTEIRO,
+            criterios.add(new CriterioCapacidade("Indicativo de pagamento", dias.toPlainString(), Formato.INTEIRO,
                     regraDevedor.faixa("pagamentoDias", dias).toPlainString(), "último recolhimento em "
                     + ultimo.get().dataPagamento() + " (" + dias + " dias); " + regraDevedor.rotuloFaixa("pagamentoDias", dias),
                     fund7 + ", IV", ultimo.get().origens(), null));
@@ -123,10 +123,10 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
         // V — classificação das CDAs
         JsonNode cdasRegra = regraDevedor.parametros().get("cdas");
         if (classificadas.isEmpty()) {
-            criterios.add(new Criterio("Classificação das CDAs", "sem débitos inscritos", Formato.TEXTO,
+            criterios.add(new CriterioCapacidade("Classificação das CDAs", "sem débitos inscritos", Formato.TEXTO,
                     cdasRegra.get("semDebitos").asText(), "sem débitos inscritos em dívida ativa", fund7 + ", V", List.of(), null));
         } else if (classificadas.stream().anyMatch(c -> c.classe() == null)) {
-            criterios.add(Criterio.faltando("Classificação das CDAs", fund7 + ", V",
+            criterios.add(CriterioCapacidade.faltando("Classificação das CDAs", fund7 + ", V",
                     "importe a conta corrente do ICMS com o detalhamento da dívida ativa (inscrição, origem, ajuizamento)"));
         } else {
             long ab = classificadas.stream().filter(c -> "A".equals(c.classe()) || "B".equals(c.classe())).count();
@@ -138,7 +138,7 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
                     break;
                 }
             }
-            criterios.add(new Criterio("Classificação das CDAs", pct.multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_EVEN)
+            criterios.add(new CriterioCapacidade("Classificação das CDAs", pct.multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_EVEN)
                     .toPlainString(), Formato.PERCENTUAL, pontos, ab + " de " + classificadas.size() + " CDAs em classe A ou B",
                     fund7 + ", V", List.of(), null));
         }
@@ -176,17 +176,17 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
     }
 
     /** CDA de ICMS: 6 índices do art. 3º, média geométrica (art. 4º) e o ajuste por parcelamento ativo (art. 5º). */
-    Cda cda(SituacaoFiscalService.DebitoConsolidado d, Insumos in, String situacao, RegrasCapacidade.Regra regra,
-            RegrasCapacidade.Regra classes, LocalDate data) {
+    Cda cda(SituacaoFiscalService.DebitoConsolidado d, Insumos in, String situacao, RegrasCapacidade.RegraCapacidade regra,
+            RegrasCapacidade.RegraCapacidade classes, LocalDate data) {
         Detalhe det = in.detalhes().get(d.numeroInscricao());
         boolean parcelarSimulado = in.simulacao().parcelar().contains(d.numeroInscricao());
         String fund = regra.citacao();
-        List<Criterio> c = new ArrayList<>();
+        List<CriterioCapacidade> c = new ArrayList<>();
         JsonNode p = regra.parametros();
         if (det == null || det.dataInscricao() == null || det.origemDivida() == null || det.ajuizamento() == null || det.parcelamentos() == null) {
             String importe = "importe a conta corrente do ICMS com o detalhamento da dívida ativa";
-            c.add(Criterio.faltando("Dados da CDA", fund, importe));
-            return new Cda(d.numeroInscricao(), null, new Item(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), null, null,
+            c.add(CriterioCapacidade.faltando("Dados da CDA", fund, importe));
+            return new Cda(d.numeroInscricao(), null, new ItemCapacidade(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), null, null,
                     det == null ? null : det.classeOficial(), c, "não disponível — " + importe));
         }
         int parcelamentos = det.parcelamentos() + (parcelarSimulado ? 1 : 0);
@@ -204,8 +204,8 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
         indices.add(add(c, "Ajuizamento", det.ajuizamento(), ajuizamento, fund + ", V", det.origens()));
         JsonNode sit = situacao == null ? null : p.get("situacaoCadastral").get(situacao);
         if (sit == null) {
-            c.add(Criterio.faltando("Situação cadastral", fund + ", VI", "importe a conta corrente do ICMS com a situação do CAD/ICMS"));
-            return new Cda(d.numeroInscricao(), null, new Item(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), null, null,
+            c.add(CriterioCapacidade.faltando("Situação cadastral", fund + ", VI", "importe a conta corrente do ICMS com a situação do CAD/ICMS"));
+            return new Cda(d.numeroInscricao(), null, new ItemCapacidade(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), null, null,
                     det.classeOficial(), c, "não disponível — situação cadastral"));
         }
         indices.add(add(c, "Situação cadastral do devedor", situacao, sit.decimalValue(), fund + ", VI", List.of()));
@@ -225,12 +225,12 @@ public class ClassificacaoParana implements MetodologiaCapacidade {
                     + (ajustada == null ? "abaixo de 30%: vale o índice" : "classe " + ajustada + " pelo art. 5º");
             classe = ajustada == null ? classe : ajustada;
         }
-        return new Cda(d.numeroInscricao(), classe, new Item(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), media.toPlainString(),
+        return new Cda(d.numeroInscricao(), classe, new ItemCapacidade(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), media.toPlainString(),
                 classe, det.classeOficial(), c, obs));
     }
 
-    private static BigDecimal add(List<Criterio> c, String nome, String valor, BigDecimal indice, String fundamento, List<OrigemValor> origens) {
-        c.add(new Criterio(nome, valor, Formato.TEXTO, indice.toPlainString(), null, fundamento, origens, null));
+    private static BigDecimal add(List<CriterioCapacidade> c, String nome, String valor, BigDecimal indice, String fundamento, List<OrigemValor> origens) {
+        c.add(new CriterioCapacidade(nome, valor, Formato.TEXTO, indice.toPlainString(), null, fundamento, origens, null));
         return indice;
     }
 

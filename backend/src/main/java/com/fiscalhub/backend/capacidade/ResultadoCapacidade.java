@@ -13,7 +13,7 @@ import java.util.Map;
  * os relatórios só exibem: nenhuma regra é recalculada fora do backend.
  */
 public record ResultadoCapacidade(String metodologia, String titulo, Rotulo rotulo, String rotuloTexto, BigDecimal valor,
-                                  String classe, List<Criterio> criterios, List<Item> itens, Map<String, Object> parametros,
+                                  String classe, List<CriterioCapacidade> criterios, List<ItemCapacidade> itens, Map<String, Object> parametros,
                                   List<String> normas, List<String> notas, List<String> alertas) {
 
     /** OFICIAL: do documento do órgão; ESTIMATIVA: calculada pelo FiscalHub; GERENCIAL: análise não normativa. */
@@ -33,21 +33,21 @@ public record ResultadoCapacidade(String metodologia, String titulo, Rotulo rotu
      * Um critério: valor apurado (texto cru, no formato), pontos ou índice, faixa em que caiu, fundamento (norma e artigo)
      * e as origens do insumo. naoDisponivel: o que importar quando falta insumo (aí pontos e faixa ficam nulos).
      */
-    public record Criterio(String nome, String valor, Formato formato, String pontos, String faixa, String fundamento,
+    public record CriterioCapacidade(String nome, String valor, Formato formato, String pontos, String faixa, String fundamento,
                            List<OrigemValor> origens, String naoDisponivel) {
 
-        public static Criterio faltando(String nome, String fundamento, String importe) {
-            return new Criterio(nome, null, Formato.TEXTO, null, null, fundamento, List.of(), "não disponível — " + importe);
+        public static CriterioCapacidade faltando(String nome, String fundamento, String importe) {
+            return new CriterioCapacidade(nome, null, Formato.TEXTO, null, null, fundamento, List.of(), "não disponível — " + importe);
         }
     }
 
-    /** Item classificado (CDA, inscrição, exercício): os próprios critérios, a classe calculada e a oficial, se houver. */
-    public record Item(String id, String descricao, String valor, String indice, String classe, String classeOficial,
-                       List<Criterio> criterios, String observacao) {
+    /** ItemCapacidade classificado (CDA, inscrição, exercício): os próprios critérios, a classe calculada e a oficial, se houver. */
+    public record ItemCapacidade(String id, String descricao, String valor, String indice, String classe, String classeOficial,
+                       List<CriterioCapacidade> criterios, String observacao) {
     }
 
     public static ResultadoCapacidade de(String metodologia, String titulo, Rotulo rotulo, BigDecimal valor, String classe,
-                                         List<Criterio> criterios, List<Item> itens, Map<String, Object> parametros,
+                                         List<CriterioCapacidade> criterios, List<ItemCapacidade> itens, Map<String, Object> parametros,
                                          List<String> normas, List<String> notas, List<String> alertas) {
         return new ResultadoCapacidade(metodologia, titulo, rotulo, rotulo.texto, valor, classe, criterios, itens, parametros,
                 normas, notas, alertas);

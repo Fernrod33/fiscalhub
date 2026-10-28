@@ -20,7 +20,7 @@ import java.util.List;
 @Component
 public class RegrasCapacidade {
 
-    public record Regra(String chave, String orgao, String norma, String artigo, LocalDate vigenciaInicio, LocalDate vigenciaFim,
+    public record RegraCapacidade(String chave, String orgao, String norma, String artigo, LocalDate vigenciaInicio, LocalDate vigenciaFim,
                         JsonNode parametros, String fonteUrl, String fonteSha256, LocalDate fonteData, String observacao) {
 
         /** "Resolução Conjunta PGE/SEFA 01/2025, art. 8º (redação da RC 15/2026), vigente desde 24/08/2026". */
@@ -65,12 +65,12 @@ public class RegrasCapacidade {
     }
 
     /** A regra vigente em data (a de início mais recente que já valia e ainda não acabou). */
-    public Regra vigente(String chave, LocalDate data) {
+    public RegraCapacidade vigente(String chave, LocalDate data) {
         return jdbc.query("""
                 SELECT chave, orgao, norma, artigo, vigencia_inicio, vigencia_fim, parametros::text, fonte_url, fonte_sha256,
                        fonte_data, observacao FROM regra_capacidade_pagamento
                 WHERE chave = ? AND vigencia_inicio <= ? AND (vigencia_fim IS NULL OR vigencia_fim >= ?)
-                ORDER BY vigencia_inicio DESC LIMIT 1""", (rs, i) -> new Regra(rs.getString(1), rs.getString(2), rs.getString(3),
+                ORDER BY vigencia_inicio DESC LIMIT 1""", (rs, i) -> new RegraCapacidade(rs.getString(1), rs.getString(2), rs.getString(3),
                 rs.getString(4), rs.getDate(5).toLocalDate(), rs.getDate(6) == null ? null : rs.getDate(6).toLocalDate(),
                 ler(rs.getString(7)), rs.getString(8), rs.getString(9), rs.getDate(10).toLocalDate(), rs.getString(11)),
                 chave, Date.valueOf(data), Date.valueOf(data)).stream().findFirst()
@@ -78,11 +78,11 @@ public class RegrasCapacidade {
     }
 
     /** Todas as versões (tela de regras e README). */
-    public List<Regra> todas() {
+    public List<RegraCapacidade> todas() {
         return jdbc.query("""
                 SELECT chave, orgao, norma, artigo, vigencia_inicio, vigencia_fim, parametros::text, fonte_url, fonte_sha256,
                        fonte_data, observacao FROM regra_capacidade_pagamento ORDER BY orgao, chave, vigencia_inicio""",
-                (rs, i) -> new Regra(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getDate(5).toLocalDate(),
+                (rs, i) -> new RegraCapacidade(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getDate(5).toLocalDate(),
                         rs.getDate(6) == null ? null : rs.getDate(6).toLocalDate(), ler(rs.getString(7)), rs.getString(8),
                         rs.getString(9), rs.getDate(10).toLocalDate(), rs.getString(11)));
     }

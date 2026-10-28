@@ -32,7 +32,7 @@ public class ParametrosCapacidade {
      * classe (MENOR, MAIOR, RESULTADO_OPERACIONAL, FLUXO_DE_CAIXA). exercicios: quantos exercícios entram nas médias.
      * realizacao: % de realização no PLR de disponível, créditos, estoques e imobilizado.
      */
-    public record Capag(@NotNull @DecimalMin("0") BigDecimal faixaA, @NotNull @DecimalMin("0") BigDecimal faixaB,
+    public record ParametrosCapag(@NotNull @DecimalMin("0") BigDecimal faixaA, @NotNull @DecimalMin("0") BigDecimal faixaB,
                         @NotNull @DecimalMin("0") BigDecimal faixaC,
                         @NotNull @Pattern(regexp = "MENOR|MAIOR|RESULTADO_OPERACIONAL|FLUXO_DE_CAIXA") String metodoConsiderado,
                         @NotNull @Min(1) @Max(5) Integer exercicios,
@@ -43,17 +43,17 @@ public class ParametrosCapacidade {
     }
 
     /** percentualFcoLivre: fração do caixa operacional livre que pode ir para parcelas (padrão 30%). */
-    public record Gerencial(@NotNull @DecimalMin("1") @DecimalMax("100") BigDecimal percentualFcoLivre) {
+    public record ParametrosGerencial(@NotNull @DecimalMin("1") @DecimalMax("100") BigDecimal percentualFcoLivre) {
     }
 
-    public record Parametros(@NotNull @Valid Capag capag, @NotNull @Valid Gerencial gerencial, String atualizadoPor,
+    public record ParametrosEscritorio(@NotNull @Valid ParametrosCapag capag, @NotNull @Valid ParametrosGerencial gerencial, String atualizadoPor,
                              LocalDateTime atualizadoEm) {
     }
 
-    public static final Parametros PADRAO = new Parametros(
-            new Capag(new BigDecimal("2"), new BigDecimal("1"), new BigDecimal("0.5"), "MENOR", 2,
+    public static final ParametrosEscritorio PADRAO = new ParametrosEscritorio(
+            new ParametrosCapag(new BigDecimal("2"), new BigDecimal("1"), new BigDecimal("0.5"), "MENOR", 2,
                     new BigDecimal("100"), new BigDecimal("80"), new BigDecimal("50"), new BigDecimal("30")),
-            new Gerencial(new BigDecimal("30")), null, null);
+            new ParametrosGerencial(new BigDecimal("30")), null, null);
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
@@ -64,24 +64,24 @@ public class ParametrosCapacidade {
     }
 
     @Transactional(readOnly = true)
-    public Parametros consultar(long escritorioId) {
+    public ParametrosEscritorio consultar(long escritorioId) {
         return jdbc.query("""
                 SELECT p.parametros::text, u.nome, p.atualizado_em FROM parametro_capacidade p JOIN usuario u ON u.id = p.atualizado_por
                 WHERE p.escritorio_id = ?""", (rs, i) -> {
-            Parametros p = ler(rs.getString(1));
-            return new Parametros(p.capag(), p.gerencial(), rs.getString(2), rs.getTimestamp(3).toLocalDateTime());
+            ParametrosEscritorio p = ler(rs.getString(1));
+            return new ParametrosEscritorio(p.capag(), p.gerencial(), rs.getString(2), rs.getTimestamp(3).toLocalDateTime());
         }, escritorioId).stream().findFirst().orElse(PADRAO);
     }
 
     @Transactional
-    public Parametros alterar(Parametros p, UsuarioAutenticado ua) {
-        Capag c = p.capag();
+    public ParametrosEscritorio alterar(ParametrosEscritorio p, UsuarioAutenticado ua) {
+        ParametrosCapag c = p.capag();
         if (c.faixaA().compareTo(c.faixaB()) <= 0 || c.faixaB().compareTo(c.faixaC()) <= 0) {
             throw new BusinessRuleException("As faixas da CAPAG precisam ser decrescentes: A > B > C.");
         }
         String texto;
         try {
-            texto = json.writeValueAsString(new Parametros(c, p.gerencial(), null, null));
+            texto = json.writeValueAsString(new ParametrosEscritorio(c, p.gerencial(), null, null));
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }
@@ -93,9 +93,9 @@ public class ParametrosCapacidade {
         return consultar(ua.escritorioId());
     }
 
-    private Parametros ler(String texto) {
+    private ParametrosEscritorio ler(String texto) {
         try {
-            return json.readValue(texto, Parametros.class);
+            return json.readValue(texto, ParametrosEscritorio.class);
         } catch (JsonProcessingException e) {
             throw new IllegalStateException(e);
         }

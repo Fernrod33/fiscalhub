@@ -53,7 +53,7 @@ public interface MetodologiaCapacidade {
                    DemonstracaoService.Comparativo bp, Map<Integer, Dfc> dfcs, List<SituacaoFiscalService.DebitoConsolidado> debitos,
                    List<SituacaoFiscalService.ParcelamentoFiscal> parcelamentos, List<SituacaoFiscalService.PagamentoConsolidado> pagamentos,
                    List<SituacaoFiscalService.CapacidadeOficial> capacidadesOficiais, Map<String, Detalhe> detalhes,
-                   Map<String, SituacaoCadastral> situacoes, Faturamento faturamento, ParametrosCapacidade.Parametros parametros,
+                   Map<String, SituacaoCadastral> situacoes, Faturamento faturamento, ParametrosCapacidade.ParametrosEscritorio parametros,
                    Simulacao simulacao) {
 
         /** Valor de uma linha do comparativo (DRE ou BP referencial) no exercício; sem a linha: null. */

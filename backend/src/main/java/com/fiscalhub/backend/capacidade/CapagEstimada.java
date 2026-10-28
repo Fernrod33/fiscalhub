@@ -2,8 +2,8 @@ package com.fiscalhub.backend.capacidade;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fiscalhub.backend.capacidade.DfcDiretaService.Dfc;
-import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Criterio;
-import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Item;
+import com.fiscalhub.backend.capacidade.ResultadoCapacidade.CriterioCapacidade;
+import com.fiscalhub.backend.capacidade.ResultadoCapacidade.ItemCapacidade;
 import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Rotulo;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
 import com.fiscalhub.backend.relatorio.ModeloRelatorio.Formato;
@@ -72,7 +72,7 @@ public class CapagEstimada implements MetodologiaCapacidade {
         var p = in.parametros().capag();
         List<Integer> exercicios = in.dre().exercicios().stream().map(e -> e.exercicio()).sorted(Comparator.reverseOrder())
                 .limit(p.exercicios()).sorted().toList();
-        List<Criterio> criterios = new ArrayList<>();
+        List<CriterioCapacidade> criterios = new ArrayList<>();
         List<String> notas = new ArrayList<>();
         String fundEst = "estimativa do consultor — parâmetro do escritório (o texto da Portaria não fixa)";
 
@@ -80,13 +80,13 @@ public class CapagEstimada implements MetodologiaCapacidade {
         BigDecimal grf = null;
         BigDecimal plr = null;
         if (exercicios.isEmpty()) {
-            criterios.add(Criterio.faltando("GRF — geração de resultados futuros", fundEst, "importe a ECD (DRE no plano referencial)"));
-            criterios.add(Criterio.faltando("PLR — patrimônio líquido realizável", fundEst, "importe a ECD (BP no plano referencial)"));
+            criterios.add(CriterioCapacidade.faltando("GRF — geração de resultados futuros", fundEst, "importe a ECD (DRE no plano referencial)"));
+            criterios.add(CriterioCapacidade.faltando("PLR — patrimônio líquido realizável", fundEst, "importe a ECD (BP no plano referencial)"));
         } else {
             List<BigDecimal> ebitdas = exercicios.stream().map(a -> ebitda(in, a)).filter(Objects::nonNull).toList();
             BigDecimal media = ebitdas.stream().reduce(BigDecimal.ZERO, BigDecimal::add).divide(BigDecimal.valueOf(ebitdas.size()), 2, RoundingMode.HALF_EVEN);
             grf = media.max(BigDecimal.ZERO).multiply(BigDecimal.valueOf(anos));
-            criterios.add(new Criterio("GRF — geração de resultados futuros", cru(grf), Formato.MOEDA, null,
+            criterios.add(new CriterioCapacidade("GRF — geração de resultados futuros", cru(grf), Formato.MOEDA, null,
                     "EBITDA médio de " + exercicios + " (" + media.toPlainString() + ") × " + anos + " anos (negativo conta zero)",
                     fundEst + "; prazo de " + anos + " anos: " + horizonte.citacao(), exercicios.stream()
                     .map(a -> Insumos.origem(in.dre(), a, "3.01")).filter(Objects::nonNull).toList(), null));
@@ -97,7 +97,7 @@ public class CapagEstimada implements MetodologiaCapacidade {
             BigDecimal realizavel = pct(disp, p.realizacaoDisponivel()).add(pct(cred, p.realizacaoCreditos()))
                     .add(pct(est, p.realizacaoEstoques())).add(pct(imob, p.realizacaoImobilizado()));
             plr = realizavel.subtract(trab).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_EVEN);
-            criterios.add(new Criterio("PLR — patrimônio líquido realizável", cru(plr), Formato.MOEDA, null,
+            criterios.add(new CriterioCapacidade("PLR — patrimônio líquido realizável", cru(plr), Formato.MOEDA, null,
                     "BP " + ult + ": disponível " + disp + " × " + p.realizacaoDisponivel() + "% + créditos " + cred + " × "
                             + p.realizacaoCreditos() + "% + estoques " + est + " × " + p.realizacaoEstoques() + "% + imobilizado "
                             + imob + " × " + p.realizacaoImobilizado() + "% − obrigações trabalhistas " + trab + " (preferência)",
@@ -109,13 +109,13 @@ public class CapagEstimada implements MetodologiaCapacidade {
         List<Integer> comDfc = exercicios.stream().filter(in.dfcs()::containsKey).toList();
         BigDecimal fluxo = null;
         if (comDfc.isEmpty()) {
-            criterios.add(Criterio.faltando("Fluxo de caixa (DFC direta)", fundEst, "importe a ECD com os lançamentos (DFC pelo método direto)"));
+            criterios.add(CriterioCapacidade.faltando("Fluxo de caixa (DFC direta)", fundEst, "importe a ECD com os lançamentos (DFC pelo método direto)"));
         } else {
             BigDecimal media = comDfc.stream().map(a -> fco(in.dfcs().get(a))).reduce(BigDecimal.ZERO, BigDecimal::add)
                     .divide(BigDecimal.valueOf(comDfc.size()), 2, RoundingMode.HALF_EVEN);
             BigDecimal trab = Optional.ofNullable(Insumos.linha(in.bp(), "2.01.01.01", comDfc.getLast())).orElse(BigDecimal.ZERO).negate();
             fluxo = media.max(BigDecimal.ZERO).multiply(BigDecimal.valueOf(anos)).subtract(trab).max(BigDecimal.ZERO);
-            criterios.add(new Criterio("Fluxo de caixa (DFC direta)", cru(fluxo), Formato.MOEDA, null,
+            criterios.add(new CriterioCapacidade("Fluxo de caixa (DFC direta)", cru(fluxo), Formato.MOEDA, null,
                     "caixa operacional médio de " + comDfc + " (" + media.toPlainString() + ") × " + anos + " anos − obrigações trabalhistas "
                             + trab, fundEst + "; DFC direta exigida na revisão: Portaria PGFN 6.757/2022, art. 30, I (redação da 1.457/2024)",
                     comDfc.stream().map(a -> new OrigemValor(in.dfcs().get(a).documentoId(), in.dfcs().get(a).arquivo(), "ECD", null,
@@ -124,12 +124,12 @@ public class CapagEstimada implements MetodologiaCapacidade {
 
         // ---- dívida consolidada na PGFN e irrecuperáveis (art. 25)
         List<SituacaoFiscalService.DebitoConsolidado> pgfn = in.debitos().stream().filter(d -> d.orgaoCredor() == OrgaoCredor.PGFN).toList();
-        List<Item> irrecuperaveis = pgfn.stream().map(d -> irrecuperavel(d, in, irrecRegra)).toList();
+        List<ItemCapacidade> irrecuperaveis = pgfn.stream().map(d -> irrecuperavel(d, in, irrecRegra)).toList();
         BigDecimal divida = pgfn.stream().map(SituacaoFiscalService.DebitoConsolidado::valorTotal).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal irrec = pgfn.stream().filter(d -> irrecuperaveis.stream().anyMatch(i -> i.id().equals(d.numeroInscricao()) && "IRRECUPERAVEL".equals(i.classe())))
                 .map(SituacaoFiscalService.DebitoConsolidado::valorTotal).filter(Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal considerada = divida.subtract(irrec);
-        criterios.add(new Criterio("Dívida consolidada na PGFN", cru(considerada), Formato.MOEDA, null,
+        criterios.add(new CriterioCapacidade("Dívida consolidada na PGFN", cru(considerada), Formato.MOEDA, null,
                 "total " + divida + (irrec.signum() > 0 ? " − irrecuperáveis " + irrec : "") + " (" + pgfn.size() + " inscrições, FGTS incluído se importado)",
                 "Portaria PGFN 6.757/2022, art. 24", pgfn.stream().flatMap(d -> d.origens().stream().map(SituacaoFiscalService.OrigemDebito::origem)).toList(), null));
 
@@ -144,7 +144,7 @@ public class CapagEstimada implements MetodologiaCapacidade {
         if (valor != null && considerada.signum() > 0) {
             BigDecimal razao = valor.divide(considerada, 4, RoundingMode.HALF_EVEN);
             classe = classe(razao, p);
-            criterios.add(new Criterio("Classe", razao.toPlainString(), Formato.TEXTO, null, "CAPAG ÷ dívida = " + razao + " → classe " + classe
+            criterios.add(new CriterioCapacidade("Classe", razao.toPlainString(), Formato.TEXTO, null, "CAPAG ÷ dívida = " + razao + " → classe " + classe
                     + " (faixas do escritório: A ≥ " + p.faixaA() + "; B ≥ " + p.faixaB() + "; C ≥ " + p.faixaC() + "; D abaixo)",
                     "Portaria PGFN 6.757/2022, art. 24 (classes); faixas numéricas: " + fundEst, List.of(), null));
         } else if (valor != null) {
@@ -187,56 +187,56 @@ public class CapagEstimada implements MetodologiaCapacidade {
         return estimada != null && oficial != null && (estimada.equals("C") || estimada.equals("D")) && estimada.compareTo(oficial) > 0;
     }
 
-    public static String classe(BigDecimal razao, ParametrosCapacidade.Capag p) {
+    public static String classe(BigDecimal razao, ParametrosCapacidade.ParametrosCapag p) {
         return razao.compareTo(p.faixaA()) >= 0 ? "A" : razao.compareTo(p.faixaB()) >= 0 ? "B" : razao.compareTo(p.faixaC()) >= 0 ? "C" : "D";
     }
 
     /** Art. 25: cada inscrição com os critérios que dá para conferir com o que foi importado. */
-    Item irrecuperavel(SituacaoFiscalService.DebitoConsolidado d, Insumos in, RegrasCapacidade.Regra regra) {
+    ItemCapacidade irrecuperavel(SituacaoFiscalService.DebitoConsolidado d, Insumos in, RegrasCapacidade.RegraCapacidade regra) {
         JsonNode r = regra.parametros();
         Detalhe det = in.detalhes().get(d.numeroInscricao());
         var cnpj = in.situacoes().get("RFB");
         String fund = regra.citacao();
-        List<Criterio> c = new ArrayList<>();
+        List<CriterioCapacidade> c = new ArrayList<>();
         List<String> enquadra = new ArrayList<>();
         if (det == null || det.dataInscricao() == null) {
-            c.add(Criterio.faltando("Inscrita há mais de 15 anos sem garantia nem suspensão", fund + ", I",
+            c.add(CriterioCapacidade.faltando("Inscrita há mais de 15 anos sem garantia nem suspensão", fund + ", I",
                     "importe o extrato do Regularize com os dados das inscrições"));
         } else {
             BigDecimal anos = ClassificacaoParana.anos(det.dataInscricao(), in.hoje()).setScale(1, RoundingMode.HALF_EVEN);
             boolean semGarantia = det.garantia() == null || det.garantia().toUpperCase().startsWith("SEM");
             boolean sim = anos.compareTo(r.get("inscricaoSemGarantiaAnos").decimalValue()) > 0 && semGarantia && det.suspensaoDesde() == null;
-            c.add(new Criterio("Inscrita há mais de 15 anos sem garantia nem suspensão", anos + " anos", Formato.TEXTO, null,
+            c.add(new CriterioCapacidade("Inscrita há mais de 15 anos sem garantia nem suspensão", anos + " anos", Formato.TEXTO, null,
                     sim ? "sim" : "não", fund + ", I", det.origens(), null));
             if (sim) {
                 enquadra.add("art. 25, I");
             }
             boolean susp = det.suspensaoDesde() != null && ClassificacaoParana.anos(det.suspensaoDesde(), in.hoje())
                     .compareTo(r.get("suspensaoJudicialAnos").decimalValue()) > 0;
-            c.add(new Criterio("Suspensa por decisão judicial há mais de 10 anos", det.suspensaoDesde() == null ? "sem suspensão"
+            c.add(new CriterioCapacidade("Suspensa por decisão judicial há mais de 10 anos", det.suspensaoDesde() == null ? "sem suspensão"
                     : det.suspensaoDesde().toString(), Formato.TEXTO, null, susp ? "sim" : "não", fund + ", II", det.origens(), null));
             if (susp) {
                 enquadra.add("art. 25, II");
             }
         }
         if (cnpj == null) {
-            c.add(Criterio.faltando("Situação do devedor no CNPJ (falência, recuperação, baixa, inaptidão)", fund + ", III e IV",
+            c.add(CriterioCapacidade.faltando("Situação do devedor no CNPJ (falência, recuperação, baixa, inaptidão)", fund + ", III e IV",
                     "importe o extrato do Regularize com a situação cadastral no CNPJ"));
         } else {
             String s = java.text.Normalizer.normalize(cnpj.situacao().toUpperCase(), java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
             boolean naoPresume = contem(r.get("naoPresume"), s); // § 2º
             boolean sim = !naoPresume && (contem(r.get("cnpj"), s) || contem(r.get("devedor"), s.replace(' ', '_')));
-            c.add(new Criterio("Situação do devedor no CNPJ (falência, recuperação, baixa, inaptidão)", cnpj.situacao(), Formato.TEXTO,
+            c.add(new CriterioCapacidade("Situação do devedor no CNPJ (falência, recuperação, baixa, inaptidão)", cnpj.situacao(), Formato.TEXTO,
                     null, sim ? "sim" : "não", fund + ", III e IV (§ 2º: liquidação voluntária não presume)", List.of(cnpj.origem()), null));
             if (sim) {
                 enquadra.add("art. 25, III/IV");
             }
         }
-        c.add(Criterio.faltando("Execução fiscal arquivada (art. 40 da LEF) há mais de 3 anos", fund + ", VI",
+        c.add(CriterioCapacidade.faltando("Execução fiscal arquivada (art. 40 da LEF) há mais de 3 anos", fund + ", VI",
                 "os documentos importados não trazem o arquivamento da execução"));
         String classe = enquadra.isEmpty() ? (c.stream().anyMatch(x -> x.naoDisponivel() != null && !x.nome().startsWith("Execução"))
                 ? null : "RECUPERAVEL") : "IRRECUPERAVEL";
-        return new Item(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), null, classe, null, c,
+        return new ItemCapacidade(d.numeroInscricao(), d.periodo(), cru(d.valorTotal()), null, classe, null, c,
                 enquadra.isEmpty() ? null : "irrecuperável: " + String.join(", ", enquadra));
     }
 

@@ -2,7 +2,7 @@ package com.fiscalhub.backend.capacidade;
 
 import com.fiscalhub.backend.capacidade.DfcDiretaService.Dfc;
 import com.fiscalhub.backend.capacidade.MetodologiaCapacidade.*;
-import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Criterio;
+import com.fiscalhub.backend.capacidade.ResultadoCapacidade.CriterioCapacidade;
 import com.fiscalhub.backend.capacidade.ResultadoCapacidade.Rotulo;
 import com.fiscalhub.backend.contabil.DemonstracaoService;
 import com.fiscalhub.backend.relatorio.ModeloRelatorio.Formato;
@@ -33,11 +33,11 @@ public class CapacidadeService {
 
     /** oficial: CAPAG importada (null sem documento); metodologias: estimada, PR e gerencial, nessa ordem. */
     public record Capacidade(ResultadoCapacidade capagOficial, List<ResultadoCapacidade> metodologias,
-                             List<AnaliseGerencial.Indicadores> indicadores, ParametrosCapacidade.Parametros parametros) {
+                             List<AnaliseGerencial.IndicadoresGerenciais> indicadores, ParametrosCapacidade.ParametrosEscritorio parametros) {
     }
 
     /** Cartão da visão geral. */
-    public record Resumo(String capagOficial, String capagEstimada, boolean revisaoVantajosa, String classePr, String classePrOficial,
+    public record ResumoCapacidade(String capagOficial, String capagEstimada, boolean revisaoVantajosa, String classePr, String classePrOficial,
                          BigDecimal parcelaSustentavel) {
     }
 
@@ -70,7 +70,7 @@ public class CapacidadeService {
     public Capacidade capacidade(long clienteId, UsuarioAutenticado ua) {
         Insumos in = insumos(clienteId, ua, Simulacao.NENHUMA);
         List<ResultadoCapacidade> resultados = metodologias.stream().map(m -> m.calcular(in)).toList();
-        List<AnaliseGerencial.Indicadores> indicadores = in.dre().exercicios().stream().map(e -> e.exercicio()).distinct().sorted()
+        List<AnaliseGerencial.IndicadoresGerenciais> indicadores = in.dre().exercicios().stream().map(e -> e.exercicio()).distinct().sorted()
                 .map(a -> AnaliseGerencial.indicadores(in, a)).toList();
         return new Capacidade(capagOficial(in), resultados, indicadores, in.parametros());
     }
@@ -81,13 +81,13 @@ public class CapacidadeService {
         return metodologias.stream().filter(m -> "PR".equals(m.chave())).findFirst().orElseThrow().calcular(in);
     }
 
-    public Resumo resumo(long clienteId, UsuarioAutenticado ua) {
+    public ResumoCapacidade resumo(long clienteId, UsuarioAutenticado ua) {
         Capacidade c = capacidade(clienteId, ua);
         ResultadoCapacidade est = c.metodologias().stream().filter(m -> "CAPAG_ESTIMADA".equals(m.metodologia())).findFirst().orElseThrow();
         ResultadoCapacidade pr = c.metodologias().stream().filter(m -> "PR".equals(m.metodologia())).findFirst().orElseThrow();
         ResultadoCapacidade ger = c.metodologias().stream().filter(m -> "GERENCIAL".equals(m.metodologia())).findFirst().orElseThrow();
         String oficial = c.capagOficial() == null ? null : c.capagOficial().classe();
-        return new Resumo(oficial, est.classe(), CapagEstimada.revisaoVantajosa(est.classe(), oficial), pr.classe(),
+        return new ResumoCapacidade(oficial, est.classe(), CapagEstimada.revisaoVantajosa(est.classe(), oficial), pr.classe(),
                 (String) pr.parametros().get("oficial"), ger.valor());
     }
 
@@ -111,11 +111,11 @@ public class CapacidadeService {
     private ResultadoCapacidade capagOficial(Insumos in) {
         return in.capacidadesOficiais().stream().filter(c -> "PGFN".equals(c.fonte())).findFirst().map(c -> ResultadoCapacidade.de(
                 "CAPAG_OFICIAL", "CAPAG oficial (Regularize)", Rotulo.OFICIAL, c.capacidade(), c.classe(), List.of(
-                        new Criterio("Capacidade de pagamento presumida", ResultadoCapacidade.cru(c.capacidade()), Formato.MOEDA, null, null,
+                        new CriterioCapacidade("Capacidade de pagamento presumida", ResultadoCapacidade.cru(c.capacidade()), Formato.MOEDA, null, null,
                                 "Portaria PGFN 6.757/2022, arts. 21 a 23 (calculada pela PGFN)", List.of(c.origem()), null),
-                        new Criterio("Passivo na PGFN", ResultadoCapacidade.cru(c.passivo()), Formato.MOEDA, null, null,
+                        new CriterioCapacidade("Passivo na PGFN", ResultadoCapacidade.cru(c.passivo()), Formato.MOEDA, null, null,
                                 "documento do órgão", List.of(c.origem()), null),
-                        new Criterio("Razão capacidade ÷ passivo", ResultadoCapacidade.cru(c.razao()), Formato.TEXTO, null,
+                        new CriterioCapacidade("Razão capacidade ÷ passivo", ResultadoCapacidade.cru(c.razao()), Formato.TEXTO, null,
                                 Boolean.FALSE.equals(c.classeConsistente()) ? "classe inconsistente com as faixas do escritório" : "classe consistente",
                                 "faixas A-D: parâmetro do escritório (a Portaria não fixa os múltiplos)", List.of(c.origem()), null)),
                 List.of(), Map.of(), List.of("Portaria PGFN 6.757/2022"), List.of("Classe e capacidade importadas do Regularize, como no documento."),

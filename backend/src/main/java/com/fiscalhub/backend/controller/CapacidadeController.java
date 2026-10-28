@@ -51,7 +51,7 @@ public class CapacidadeController {
     }
 
     @GetMapping("/clientes/{clienteId}/capacidade/resumo")
-    public CapacidadeService.Resumo resumo(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
+    public CapacidadeService.ResumoCapacidade resumo(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
         return capacidade.resumo(clienteId, ua);
     }
 
@@ -74,14 +74,14 @@ public class CapacidadeController {
     }
 
     @GetMapping("/escritorio/parametros-capacidade")
-    public ParametrosCapacidade.Parametros parametros(@AuthenticationPrincipal UsuarioAutenticado ua) {
+    public ParametrosCapacidade.ParametrosEscritorio parametros(@AuthenticationPrincipal UsuarioAutenticado ua) {
         return parametros.consultar(ua.escritorioId());
     }
 
     @PutMapping("/escritorio/parametros-capacidade")
     @ConsultorOuAdmin
     @Auditavel(AcaoAuditoria.PARAMETROS_CAPACIDADE_ALTERAR)
-    public ParametrosCapacidade.Parametros alterarParametros(@Valid @RequestBody ParametrosCapacidade.Parametros corpo,
+    public ParametrosCapacidade.ParametrosEscritorio alterarParametros(@Valid @RequestBody ParametrosCapacidade.ParametrosEscritorio corpo,
                                                              @AuthenticationPrincipal UsuarioAutenticado ua) {
         return parametros.alterar(corpo, ua);
     }
@@ -107,7 +107,7 @@ public class CapacidadeController {
 
     /** As regras das normas, com vigência e fonte (para a tela e para conferência). */
     @GetMapping("/capacidade/regras")
-    public List<RegrasCapacidade.Regra> regras() {
+    public List<RegrasCapacidade.RegraCapacidade> regras() {
         return regras.todas();
     }
 }
