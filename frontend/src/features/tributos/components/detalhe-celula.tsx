@@ -58,6 +58,9 @@ function ItemDetalhado({ clienteId, item, apuracoes }: { clienteId: number; item
         Vencimento {fmt.data(item.vencimento)}
         {item.pago?.dataPagamento && <> · pago em {fmt.data(item.pago.dataPagamento)}</>}
         {item.codigosReceita.length > 0 && <> · código {item.codigosReceita.join(', ')}</>}
+        {item.codigosIlustrativos.length > 0 && (
+          <> · <Selo tom="warning">código ilustrativo: {item.codigosIlustrativos.join(', ')}</Selo></>
+        )}
       </p>
       <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
         {([['Apurado', item.apurado], ['Declarado', item.declarado], ['Pago', item.pago]] as const).map(([nome, v]) => (

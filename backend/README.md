@@ -281,9 +281,11 @@ trecho; no `.dec`, registro e linha).
   com mensagem clara (o cálculo da PGFN é da Fase 5).
 
 **Tabela de códigos de receita** (`resources/receitas/codigos-receita.txt`): código (sem a variação) → esfera, órgão e
-tributo, ou `PARCELAMENTO`; fonte por linha (`RFB-SICALC`: códigos de uso corrente registrados à mão, a conferir;
-`DCTFWEB-MASSA` e `PR-ILUSTRATIVO`: como na massa fictícia, a conferir com as tabelas oficiais antes de usar com
-documentos reais; `PR-CONFERIR`). Código fora da tabela gera `CODIGO_RECEITA_DESCONHECIDO` e fica fora da conciliação.
+tributo, ou `PARCELAMENTO`; fonte e data da conferência por linha (cabeçalho do arquivo) e a coluna `ilustrativo`. Conferidos em 28/10/2026: 1082,
+1138 e 1646 (DCTFWeb, material da RFB) e 1015 (página oficial da GR-PR, 101-5). Ilustrativos (`ilustrativo=true`, só
+valem para a massa e aparecem marcados no detalhe da conciliação): os de terceiros da DCTFWeb (1170, 1176, 1181, 1184,
+1191), 1023 e 2011 do PR (na tabela oficial, 102-3 é regime especial e 201-1 é IPVA). Os `RFB-SICALC` são de uso
+corrente, não reconferidos online. Código fora da tabela gera `CODIGO_RECEITA_DESCONHECIDO` e fica fora da conciliação.
 
 **Acréscimos moratórios** (`AcrescimosMoratorios`, componente único da regra federal, Lei 9.430/96, art. 61): multa de
 0,33% ao dia, do dia seguinte ao vencimento ao do pagamento, limitada a 20%; juros pela **soma** da SELIC mensal do mês
@@ -385,7 +387,7 @@ mvn test   # requer Docker em execução
   - ECD (cada leiaute, cliente pelo arquivo, retificação, cada validação, reprocessamento), demonstrações (referencial, publicada, AH/AV, conferência, origem, exercício sem tabela, plano não suportado) e balancete em planilha (assistente, de-para, papéis, auditoria, resultado não encerrado);
   - ECF, EFD-Contribuições e EFD ICMS/IPI (`ImportacaoFiscalTest`: apurações e origem, detalhe, saldos, fórmulas, contagem de registro pulado, conferência ECD × ECF nos dois sentidos, retificação, filial, isolamento);
   - situação fiscal, declarado e pago (`SituacaoFiscalTest`: retificação da DCTF, PDF × .dec, a mesma inscrição em duas fontes e a divergência, simulação com débito importado, layout desconhecido, PDF sem texto);
-  - **aceite com a massa fictícia** (`MassaFicticiaAceiteTest`): toda a massa pela central de importação, os valores de `_gerador/valores_esperados.json` e os problemas plantados do gabarito (itens 1, 2, 3, 5, 6, 7, 8 e 10; dados dos itens 4 e 9);
+  - **aceite com a massa fictícia** (`MassaFicticiaAceiteTest`): toda a massa pela central de importação, os valores de `_gerador/valores_esperados.json` e os problemas plantados do gabarito (itens 1, 2, 3, 5, 6, 7, 8 e 10; dados dos itens 4 e 9). No item 2, a multa (6.526,08) e os juros (828,12) do `AcrescimosMoratorios` batem exatamente com os do relatório de situação fiscal da massa;
   - auditoria;
   - ProblemDetail;
   - banco do zero só com as migrações.

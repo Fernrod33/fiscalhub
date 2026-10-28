@@ -1,34 +1,42 @@
 # Códigos de receita -> tributo e esfera: chave da conciliação apurado x declarado x pago (DARF, DCTF, DCTFWeb, GR-PR).
 # Código sem a variação ("5123-01" -> 5123). tributo = TipoTributo, ou PARCELAMENTO (parcela de parcelamento ou
 # transação: vai para o parcelamento, não para o tributo do período).
-# Fontes:
-#   RFB-SICALC: códigos de uso corrente da tabela de códigos de receita da RFB (Sicalc). Registrados à mão, sem
-#     conferência automática com a tabela publicada: confira ao atualizar.
-#   DCTFWEB-MASSA: códigos da DCTFWeb como aparecem na massa fictícia (ficticio-2026-10). Conferir com a tabela oficial
-#     da DCTFWeb antes de usar com documentos reais.
-#   PR-ILUSTRATIVO: código estadual da massa fictícia, declarado ilustrativo no README dela. Conferir com a tabela de
-#     receitas da SEFA-PR antes de usar com documentos reais.
-#   PR-CONFERIR: código da GR-PR conhecido, ainda não conferido com a tabela publicada pela SEFA-PR.
+# ilustrativo = true: código NÃO confirmado numa fonte oficial; vale para a massa fictícia e aparece marcado como
+# ilustrativo no detalhe da conciliação. Não invente códigos: confirme na fonte e só então mude para false.
+# Fontes (conferência de 28/10/2026):
+#   RFB-SICALC: códigos de uso corrente da tabela de códigos de receita da RFB (Sicalc), registrados na Fase 2b. Não
+#     reconferidos online nesta rodada (a tabela do Sicalc não é pública sem login): confira ao atualizar.
+#   RFB-DCTFWEB-2023 (28/10/2026): apresentação "DCTFWeb", Cláudio Maia, Auditor-Fiscal da RFB, TCE-PI, abr/2023
+#     (tcepi.tc.br/wp-content/uploads/2023/04/DCTFWeb-TCE-PI.pdf), lista "eSocial - Códigos de Receita": 1082-01
+#     Desconto Segurado Empregado, 1138-01 Patronal - Seg. Empregado, 1646-01 GILRAT. O manual da DCTFWeb no gov.br
+#     exige login; trocar a fonte pelo manual quando houver acesso.
+#   DCTFWEB-MASSA: códigos de terceiros como aparecem na massa fictícia (ficticio-2026-10). Não encontrados em fonte
+#     oficial em 28/10/2026 (só em sites de terceiros): ilustrativos.
+#   SEFA-PR-GRPR (28/10/2026): fazenda.pr.gov.br/Pagina/Instrucoes-de-preenchimento-da-GR-PR, campo 01: 101-5 = ICMS,
+#     regime mensal de apuração (EFD/ICMS, GIA-ST ou DeSTDA).
+#   PR-ILUSTRATIVO: código estadual da massa fictícia. Na mesma página oficial, 102-3 é "regime de controle,
+#     fiscalização e pagamento" (não ICMS-ST: a ST apurada na EFD também vai no 101-5), 201-1 é IPVA e o parcelamento
+#     do ICMS é 163-5. Por isso 1023 e 2011 ficam ilustrativos e não valem para documentos reais.
 # Para mudar: edite este arquivo (versionado); um código que não está aqui gera alerta CODIGO_RECEITA_DESCONHECIDO.
-# codigo|esfera|orgao|tributo|descricao|fonte
-0561|FEDERAL|RFB|IRRF|IRRF - Rendimento do trabalho assalariado|RFB-SICALC
-2089|FEDERAL|RFB|IRPJ|IRPJ - Lucro presumido|RFB-SICALC
-2362|FEDERAL|RFB|IRPJ|IRPJ - Estimativa mensal (lucro real)|RFB-SICALC
-2372|FEDERAL|RFB|CSLL|CSLL - Lucro presumido|RFB-SICALC
-2484|FEDERAL|RFB|CSLL|CSLL - Estimativa mensal (lucro real)|RFB-SICALC
-5123|FEDERAL|RFB|IPI|IPI - Demais produtos|RFB-SICALC
-6912|FEDERAL|RFB|PIS|PIS - Não cumulativo|RFB-SICALC
-8109|FEDERAL|RFB|PIS|PIS - Faturamento (cumulativo)|RFB-SICALC
-5856|FEDERAL|RFB|COFINS|COFINS - Não cumulativa|RFB-SICALC
-2172|FEDERAL|RFB|COFINS|COFINS - Faturamento (cumulativa)|RFB-SICALC
-1082|FEDERAL|RFB|INSS|CP descontada do segurado|DCTFWEB-MASSA
-1138|FEDERAL|RFB|INSS|CP patronal|DCTFWEB-MASSA
-1646|FEDERAL|RFB|INSS|CP GILRAT (RAT x FAP)|DCTFWEB-MASSA
-1170|FEDERAL|RFB|TERCEIROS|Salário-educação|DCTFWEB-MASSA
-1176|FEDERAL|RFB|TERCEIROS|INCRA|DCTFWEB-MASSA
-1181|FEDERAL|RFB|TERCEIROS|SENAI|DCTFWEB-MASSA
-1184|FEDERAL|RFB|TERCEIROS|SESI|DCTFWEB-MASSA
-1191|FEDERAL|RFB|TERCEIROS|SEBRAE|DCTFWEB-MASSA
-1015|ESTADUAL|SEFA_PR|ICMS|ICMS - Operações próprias|PR-CONFERIR
-1023|ESTADUAL|SEFA_PR|ICMS_ST|ICMS-ST - Substituição tributária|PR-ILUSTRATIVO
-2011|ESTADUAL|SEFA_PR|PARCELAMENTO|Parcelamento de ICMS|PR-ILUSTRATIVO
+# codigo|esfera|orgao|tributo|descricao|fonte|ilustrativo
+0561|FEDERAL|RFB|IRRF|IRRF - Rendimento do trabalho assalariado|RFB-SICALC|false
+2089|FEDERAL|RFB|IRPJ|IRPJ - Lucro presumido|RFB-SICALC|false
+2362|FEDERAL|RFB|IRPJ|IRPJ - Estimativa mensal (lucro real)|RFB-SICALC|false
+2372|FEDERAL|RFB|CSLL|CSLL - Lucro presumido|RFB-SICALC|false
+2484|FEDERAL|RFB|CSLL|CSLL - Estimativa mensal (lucro real)|RFB-SICALC|false
+5123|FEDERAL|RFB|IPI|IPI - Demais produtos|RFB-SICALC|false
+6912|FEDERAL|RFB|PIS|PIS - Não cumulativo|RFB-SICALC|false
+8109|FEDERAL|RFB|PIS|PIS - Faturamento (cumulativo)|RFB-SICALC|false
+5856|FEDERAL|RFB|COFINS|COFINS - Não cumulativa|RFB-SICALC|false
+2172|FEDERAL|RFB|COFINS|COFINS - Faturamento (cumulativa)|RFB-SICALC|false
+1082|FEDERAL|RFB|INSS|CP descontada do segurado empregado|RFB-DCTFWEB-2023|false
+1138|FEDERAL|RFB|INSS|CP patronal - segurado empregado|RFB-DCTFWEB-2023|false
+1646|FEDERAL|RFB|INSS|CP GILRAT (RAT x FAP)|RFB-DCTFWEB-2023|false
+1170|FEDERAL|RFB|TERCEIROS|Salário-educação|DCTFWEB-MASSA|true
+1176|FEDERAL|RFB|TERCEIROS|INCRA|DCTFWEB-MASSA|true
+1181|FEDERAL|RFB|TERCEIROS|SENAI|DCTFWEB-MASSA|true
+1184|FEDERAL|RFB|TERCEIROS|SESI|DCTFWEB-MASSA|true
+1191|FEDERAL|RFB|TERCEIROS|SEBRAE|DCTFWEB-MASSA|true
+1015|ESTADUAL|SEFA_PR|ICMS|ICMS - Regime mensal de apuração (operações próprias)|SEFA-PR-GRPR|false
+1023|ESTADUAL|SEFA_PR|ICMS_ST|ICMS-ST - Substituição tributária|PR-ILUSTRATIVO|true
+2011|ESTADUAL|SEFA_PR|PARCELAMENTO|Parcelamento de ICMS|PR-ILUSTRATIVO|true

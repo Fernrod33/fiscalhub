@@ -1402,6 +1402,7 @@ export interface components {
             acrescimos: components["schemas"]["Acrescimos"];
             erroAcrescimos: string;
             codigosReceita: string[];
+            codigosIlustrativos: string[];
             debitos: components["schemas"]["DebitoRelacionado"][];
         };
         PagoConciliado: {

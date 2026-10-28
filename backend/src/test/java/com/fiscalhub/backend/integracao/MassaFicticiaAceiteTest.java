@@ -176,14 +176,10 @@ class MassaFicticiaAceiteTest {
         assertThat(item.at("/debitos/0/orgao").asText()).isEqualTo("RFB");
         BigDecimal multa = new BigDecimal(item.at("/acrescimos/multa").asText());
         BigDecimal juros = new BigDecimal(item.at("/acrescimos/juros").asText());
-        // 0,33% × 48 dias = 15,84%; SELIC jan/2025 (1,01%) + 1% no mês do pagamento = 2,01%
-        assertThat(multa).isEqualByComparingTo("6526.08");
-        assertThat(juros).isEqualByComparingTo("828.12");
-        BigDecimal multaDoRelatorio = new BigDecimal(esperados.at("/situacao_fiscal/multa_ipi").asText());
-        BigDecimal jurosDoRelatorio = new BigDecimal(esperados.at("/situacao_fiscal/juros_ipi").asText());
-        // não forçado: a massa usa multa de 20% fixa e juros de 2,08% (simplificação declarada no README dela)
-        System.out.printf("[gabarito item 2] multa calculada %s x relatório %s (dif. %s); juros calculados %s x relatório %s (dif. %s)%n",
-                multa, multaDoRelatorio, multa.subtract(multaDoRelatorio), juros, jurosDoRelatorio, juros.subtract(jurosDoRelatorio));
+        // art. 61 da Lei 9.430/96, igual ao relatório de situação fiscal da massa: 0,33% × 48 dias = 15,84% (6.526,08);
+        // SELIC jan/2025 (1,01%) + 1% no mês do pagamento = 2,01% (828,12)
+        assertThat(multa).isEqualByComparingTo(esperados.at("/situacao_fiscal/multa_ipi").asText());
+        assertThat(juros).isEqualByComparingTo(esperados.at("/situacao_fiscal/juros_ipi").asText());
     }
 
     @Test

@@ -70,10 +70,12 @@ public class ConciliacaoService {
     /**
      * Um item da conciliação. diferenca: devido − pago (positivo = falta pagar); na divergência, apurado − declarado.
      * acrescimos: devidos pelo atraso (federal), até o pagamento ou, se não pago, até a data de cálculo.
+     * codigosIlustrativos: os códigos de receita do item ainda não confirmados numa fonte oficial (CodigosReceita).
      */
     public record ItemConciliacao(String id, String esfera, TipoTributo tributo, String uf, YearMonth periodo, LocalDate vencimento,
                        Status status, ValorConciliado apurado, ValorConciliado declarado, PagoConciliado pago, BigDecimal diferenca, Acrescimos acrescimos,
-                       String erroAcrescimos, List<String> codigosReceita, List<DebitoRelacionado> debitos) {
+                       String erroAcrescimos, List<String> codigosReceita, List<String> codigosIlustrativos,
+                       List<DebitoRelacionado> debitos) {
     }
 
     public record AlertaConciliacao(String regra, String itemId, Long debitoId, String mensagem) {
@@ -217,11 +219,12 @@ public class ConciliacaoService {
                 erro = e.getMessage() + " Carregue a SELIC para calcular os acréscimos.";
             }
         }
+        List<String> codigos = m.codigos.stream().filter(Objects::nonNull).distinct().sorted().toList();
         return new ItemConciliacao(m.id(), m.esfera, m.tributo, m.uf, m.periodo, m.vencimento, status,
                 m.apurado == null ? null : new ValorConciliado(m.apurado, m.origensApurado),
                 m.declarado == null ? null : new ValorConciliado(m.declarado, m.origensDeclarado),
                 m.pago == null ? null : new PagoConciliado(m.pago, m.multaPaga, m.jurosPagos, m.dataPagamento, m.origensPago),
-                diferenca, devidos, erro, m.codigos.stream().filter(Objects::nonNull).distinct().sorted().toList(), relacionados);
+                diferenca, devidos, erro, codigos, codigos.stream().filter(CodigosReceita::ilustrativo).toList(), relacionados);
     }
 
     /**

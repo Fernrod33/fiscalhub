@@ -39,7 +39,7 @@ const item = (id: string, tributo: string, esfera: string, uf: string | null, pe
     pagina: null, registro: 'M600', linha: 40, trecho: null }] },
   declarado: declarado == null ? null : { valor: declarado, origens: [] },
   pago: pago == null ? null : { valor: pago, multa: 0, juros: 0, dataPagamento: `${periodo}-25`, origens: [ORIGEM_DARF] },
-  diferenca, acrescimos: null, erroAcrescimos: null, codigosReceita: [], debitos: [], ...extra,
+  diferenca, acrescimos: null, erroAcrescimos: null, codigosReceita: [], codigosIlustrativos: [], debitos: [], ...extra,
 });
 const CONCILIACAO = {
   tolerancia: 0.01, dataCalculo: '2026-10-27', alertas: [],

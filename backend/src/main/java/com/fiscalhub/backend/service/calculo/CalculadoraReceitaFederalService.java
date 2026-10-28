@@ -27,6 +27,9 @@ import java.util.List;
  * - Art. 13 da Lei 9.065/95 (juros SELIC)
  * - Lei 10.522/02 (parcelamento ordinário, até 60x)
  * - Portaria PGFN/RFB n° 15/2009 (parcela mínima)
+ *
+ * ponytail: multa e juros de mora calculados aqui, à parte do AcrescimosMoratorios (regra única do art. 61 usada na
+ * conciliação). Gatilho: Fase 5 — passar a usar o AcrescimosMoratorios e apagar este cálculo.
  */
 @Service
 public class CalculadoraReceitaFederalService implements CalculoParcelamentoStrategy {

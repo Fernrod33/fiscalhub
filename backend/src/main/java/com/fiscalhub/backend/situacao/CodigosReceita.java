@@ -16,8 +16,12 @@ import java.util.Optional;
  */
 public final class CodigosReceita {
 
-    /** tributo null: parcela de parcelamento ou transação (vai para o parcelamento). */
-    public record Receita(String codigo, String esfera, String orgao, TipoTributo tributo, String descricao, String fonte) {
+    /**
+     * tributo null: parcela de parcelamento ou transação (vai para o parcelamento). ilustrativo: código não confirmado
+     * numa fonte oficial (vale para a massa fictícia; ver o cabeçalho do arquivo).
+     */
+    public record Receita(String codigo, String esfera, String orgao, TipoTributo tributo, String descricao, String fonte,
+                          boolean ilustrativo) {
         public boolean parcelamento() {
             return tributo == null;
         }
@@ -32,6 +36,10 @@ public final class CodigosReceita {
     public static Optional<Receita> receita(String codigo) {
         String digitos = codigo == null ? "" : codigo.trim().replaceAll("^(\\d{4}).*", "$1");
         return Optional.ofNullable(RECEITAS.get(digitos));
+    }
+
+    public static boolean ilustrativo(String codigo) {
+        return receita(codigo).map(Receita::ilustrativo).orElse(false);
     }
 
     public static Optional<TipoTributo> tributo(String codigo) {
@@ -54,7 +62,7 @@ public final class CodigosReceita {
                 }
                 String[] f = linha.split("\\|");
                 receitas.put(f[0], new Receita(f[0], f[1], f[2], "PARCELAMENTO".equals(f[3]) ? null : TipoTributo.valueOf(f[3]),
-                        f[4], f[5]));
+                        f[4], f[5], Boolean.parseBoolean(f[6])));
             }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
