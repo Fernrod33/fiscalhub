@@ -101,6 +101,7 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V20__situacao_fiscal.sql` | `debito` ampliado (escrituração, chave, fontes, encargo, total, origem por página e linha; vencimento e principal passam a aceitar nulo), `parcelamento`, `pendencia_fiscal`, `capacidade_pagamento_oficial`; `escrituracao_contabil.origem` e `versao_leiaute` mais largos |
 | `V21__declarado_e_pago.sql` | `debito_declarado` e `pagamento` |
 | `V22__identidade_do_escritorio.sql` | identidade nos relatórios no `escritorio` (nome de exibição, chave do logotipo, cor, rodapé, responsável técnico); tudo nulo nos existentes |
+| `V24__capacidade_de_pagamento.sql` | `divida_detalhe`, `situacao_cadastral`, `regra_capacidade_pagamento` (com as regras dos textos oficiais), `parametro_capacidade` e `dfc_depara_escritorio` |
 | `V23__relatorio_emitido.sql` | `relatorio_emitido` (parâmetros, snapshot, versões, PDF e Excel com SHA-256, número por escritório), com trigger que impede `UPDATE` |
 
 **Banco do zero:** `CREATE DATABASE fiscalhub;` e suba o app; o Flyway cria tudo a partir da V1.
@@ -356,6 +357,57 @@ JPEG pelo **conteúdo** (SVG recusado), até 1 MB e 4000 × 4000 px (conferido a
 em 600 × 200 e regravado como PNG (some metadado ou carga embutida); cada upload ganha uma chave nova (o snapshot dos
 emitidos aponta a antiga). Cor: contraste ≥ 4,5:1 (WCAG AA) sobre o branco do relatório, conferido no servidor.
 
+## Capacidade de pagamento (Fase 4)
+
+Três camadas, sem misturar (pacote `capacidade/`, interface `MetodologiaCapacidade`, resultado único
+`ResultadoCapacidade`: valor, classe, critérios com pontos/índice, faixa, fundamento e origem, parâmetros e rótulo):
+
+| Camada | Classe | Rótulo | O que a norma fixa | O que é parâmetro do escritório |
+|---|---|---|---|---|
+| CAPAG oficial | (importada, `capacidade_pagamento_oficial`) | `OFICIAL` | — (calculada pela PGFN) | — |
+| CAPAG estimada | `CapagEstimada` | `ESTIMATIVA` | horizonte de 5 anos (art. 21); irrecuperáveis (art. 25); DFC direta na revisão (art. 30, I, pela 1.457/2024) | faixas A–D (padrão 2 / 1 / 0,5), GRF (EBITDA médio × anos), PLR (% de realização dos ativos − obrigações trabalhistas), método que define a classe (padrão: o menor) |
+| Classificação do PR | `ClassificacaoParana` | `ESTIMATIVA` ("recálculo pela norma — não é a classificação oficial"; na simulação, "simulação") | tudo: índices e faixas dos arts. 3º a 8º da Res. Conj. PGE/SEFA 01/2025 | — (só a interpretação da janela de faturamento, registrada na regra) |
+| Análise gerencial | `AnaliseGerencial` | `GERENCIAL` ("análise do consultor — não é critério oficial") | nada (não normativa) | % do caixa operacional livre para a parcela (padrão 30%) |
+
+**Regras como dado** (`regra_capacidade_pagamento`, V24): faixas, índices e prazos com órgão, norma, artigo, vigência e
+fonte (URL, data, SHA-256 do texto baixado). `RegrasCapacidade.vigente(chave, data)` pega a versão vigente na data do
+cálculo — o art. 8º do PR tem as duas redações (até 23/08/2026 e desde 24/08/2026). Os textos baixados em 28/10/2026:
+Res. Conj. PGE/SEFA 01/2025 (PDF oficial em `docs/normativas/fontes/`), Portaria PGFN 6.757/2022 compilada e a
+1.457/2024 (URLs e hashes na tabela). Nada de faixa ou índice em constante no código.
+
+**Atualizar quando a norma mudar:** nova migração com `INSERT` da regra (mesma `chave`, `vigencia_inicio` nova) e
+`UPDATE ... SET vigencia_fim` da anterior; registre a URL e o SHA-256 do texto novo. Relatórios emitidos guardam a
+citação da versão usada. Se mudar a estrutura (critério novo), a calculadora muda junto e o teste de valores-limite
+(`CapacidadeRegrasEAcessoTest`) também.
+
+**Insumos** (`CapacidadeService.insumos`, montados uma vez, só de dados importados): demonstrações referenciais, DFC
+direta, débitos/parcelamentos/pagamentos/CAPAG da situação fiscal, `divida_detalhe` (inscrição, origem, ajuizamento,
+parcelamentos, garantia, suspensão, classe no RTI), `situacao_cadastral` (CAD/ICMS e CNPJ) e o faturamento de 12
+meses (C190 das saídas da EFD ICMS/IPI). Insumo faltando: o critério sai "não disponível — importe X" e a classe não é
+calculada; nada é estimado em critério normativo.
+
+**PR:** data do cálculo = posição da conta corrente do ICMS importada; faturamento = 12 últimos períodos cuja EFD venceu
+até essa data (dia 25 do mês seguinte); dívida exigível = CDAs de ICMS inscritas sem parcelamento ou suspensão;
+indicativo de pagamento = último GR-PR. CDA: média geométrica dos 6 índices (6 casas), parcelamento ativo pelo
+percentual pago. **Simulação** (`POST .../capacidade/pr/simulacao`): CDAs a quitar ou parcelar; recalcula sem gravar.
+
+**CAPAG estimada:** dívida considerada = inscrições na PGFN − irrecuperáveis; alerta "revisão da CAPAG potencialmente
+vantajosa" quando a estimada é C ou D e mais favorável que a oficial (o desconto depende do edital: Fase 5).
+
+**Parâmetros** (`parametro_capacidade`, por escritório; `GET/PUT /api/escritorio/parametros-capacidade`, ADMIN e
+CONSULTOR, auditado): aparecem em todo resultado e relatório que os usa.
+
+### DFC pelo método direto
+
+`DfcDiretaService` relê os lançamentos I200/I250 do arquivo da ECD guardado no storage (`ReleituraSped`, sem
+reimportar; cache em memória por escrituração). Caixa e equivalentes = contas com referencial em 1.01.01. Cada
+lançamento que movimenta caixa: a variação líquida do caixa é rateada entre as contrapartidas do **mesmo sentido**
+(créditos, se entrou caixa; débitos, se saiu), na proporção dos valores; a última leva o resto do arredondamento.
+Lançamento só entre contas de caixa: ignorado. Categoria da contrapartida = de-para do plano referencial (prefixo mais
+longo, por nível): padrão versionado em `resources/capacidade/dfc-depara.txt`, sobreposto por escritório
+(`/api/escritorio/dfc-depara`, auditado). Conferência: a soma da DFC tem que bater com a variação dos saldos de caixa
+no I155; diferença vira alerta. Cada linha traz os lançamentos que a compõem (número, data e linha do arquivo).
+
 ## Modelo de apuração
 
 Um modelo só para todos os tributos e fontes (`fiscal/RepositorioApuracao`):
@@ -444,11 +496,13 @@ mvn test   # requer Docker em execução
   - ECF, EFD-Contribuições e EFD ICMS/IPI (`ImportacaoFiscalTest`: apurações e origem, detalhe, saldos, fórmulas, contagem de registro pulado, conferência ECD × ECF nos dois sentidos, retificação, filial, isolamento);
   - situação fiscal, declarado e pago (`SituacaoFiscalTest`: retificação da DCTF, PDF × .dec, a mesma inscrição em duas fontes e a divergência, simulação com débito importado, layout desconhecido, PDF sem texto);
   - relatórios e identidade (`RelatoriosEIdentidadeTest`: papéis, contraste, logotipo SVG/grande/redimensionado, isolamento entre escritórios, prévia sem gravar); com a massa (`MassaFicticiaAceiteTest.Relatorios`): valores dos três relatórios contra `valores_esperados.json` e a conciliação, carga "não disponível" sem estimativa, PDF (páginas, rodapé, números-chave pelo `LeitorPdf`), Excel (número como número, cabeçalho congelado, Fontes), dois downloads iguais, reemissão com outro número e trigger de imutabilidade;
+  - capacidade (`CapacidadeRegrasEAcessoTest`: faixas das duas normas nos valores-limite com as regras da tabela, versão do art. 8º por data, faixas da CAPAG como parâmetro, insumo faltando, isolamento, papéis e auditoria); com a massa (`MassaFicticiaAceiteTest.Capacidade`): DFC direta 2024/2025 por categoria e a conferência de caixa, classificação do PR (pontos, índices das CDAs com 6 casas, classe), simulação, CAPAG oficial C, irrecuperáveis e o relatório e o dossiê;
   - **aceite com a massa fictícia** (`MassaFicticiaAceiteTest`): toda a massa pela central de importação, os valores de `_gerador/valores_esperados.json` e os problemas plantados do gabarito (itens 1, 2, 3, 5, 6, 7, 8 e 10; dados dos itens 4 e 9). No item 2, a multa (6.526,08) e os juros (828,12) do `AcrescimosMoratorios` batem exatamente com os do relatório de situação fiscal da massa;
   - auditoria;
   - ProblemDetail;
   - banco do zero só com as migrações.
 - **Relatório** (`relatorio/RenderizadorRelatorioTest`): `<script>` vindo de arquivo importado escapado no HTML e no SVG e o PDF gerado mesmo assim; formatação igual à do frontend; contraste WCAG.
+- **DFC** (`capacidade/DfcRateioTest`): rateio entre contrapartidas, saída de caixa, transferência entre contas de caixa e prefixo por nível. **Limite de frequência** (`security/LimiteFrequenciaTest`).
 - **Storage** (`storage/`): o mesmo contrato para o local e para o S3 contra MinIO real.
 - **Leitura** (`sped/`, `contabil/planilha/`, `importacao/`, `pdf/`, `situacao/`): `LeitorSped`, leiaute por versão, detector de tipo, `.xlsx` (fórmula, zip bomb) e `.csv`; `LeitorPdf` (marca d'água, PDF sem texto, com senha, páginas demais, normalizadores), cada adaptador e o `.dec` (`AdaptadoresTest`), `AcrescimosMoratoriosTest` (30, 60 e 61 dias, virada de mês, falta de SELIC) e os status da conciliação.
 - **Massa fictícia** em `src/test/resources/massa-ficticia/` (gerador, arquivos, README com as limitações e o gabarito; como regenerar no README dela).
@@ -575,6 +629,21 @@ Não há criação manual: tudo vem da importação. Cliente de outro escritóri
 
 Cliente ou relatório de outro escritório: 404.
 
+### Capacidade de pagamento e DFC direta
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/api/clientes/{id}/capacidade` | todos | CAPAG oficial, as três metodologias (estimada, PR, gerencial), indicadores por exercício e os parâmetros |
+| GET | `/api/clientes/{id}/capacidade/resumo` | todos | classes (CAPAG oficial e estimada, PR) e parcela sustentável (cartão da visão geral) |
+| POST | `/api/clientes/{id}/capacidade/pr/simulacao` | todos | `{quitar: [CDA], parcelar: [CDA]}`: recalcula a classificação do PR sem gravar |
+| GET | `/api/clientes/{id}/dfc/exercicios` | todos | exercícios com ECD vigente |
+| GET | `/api/clientes/{id}/dfc?exercicio=` | todos | DFC direta por mês e categoria, com os lançamentos e a conferência com o I155 |
+| GET/PUT | `/api/escritorio/parametros-capacidade` | todos / ADMIN, CONSULTOR | parâmetros das estimativas (auditado) |
+| GET/PUT/DELETE | `/api/escritorio/dfc-depara` | todos / ADMIN, CONSULTOR | de-para da DFC do escritório (auditado) |
+| GET | `/api/capacidade/regras` | todos | regras das normas com vigência e fonte |
+
+Relatórios novos (`POST /api/clientes/{id}/relatorios`): `CAPACIDADE` e `DOSSIE_CAPAG`. Emissão e prévia têm limite por usuário (`fiscalhub.relatorios.emissoes-por-minuto`, padrão 10; `previas-por-minuto`, padrão 60): acima, 429 com `Retry-After`.
+
 ### Simulações de parcelamento
 
 | Método | Rota | Papel | Descrição |
@@ -613,6 +682,7 @@ src/main/java/com/fiscalhub/backend/
 │   └── calculo/  # motor de parcelamento (RFB e SEFA-PR)
 ├── fiscal/       # ECF, EFD-Contribuições, EFD ICMS/IPI: leituras, ProcessadorFiscal, modelo de apuração, conferência ECD × ECF
 ├── pdf/          # LeitorPdf (PDFBox), DocumentoPdf (seção, tabela, campo), AdaptadorDocumentoPdf
+├── capacidade/   # DFC direta (ReleituraSped, DfcDiretaService), MetodologiaCapacidade (CapagEstimada, ClassificacaoParana, AnaliseGerencial), RegrasCapacidade, ParametrosCapacidade, CapacidadeService
 ├── relatorio/    # identidade do escritório, carga tributária, ModeloRelatorio, MontagemRelatorios, RenderizadorRelatorio (HTML/PDF/Excel), GraficoSvg, Formatos, RelatorioService (emissão)
 ├── situacao/     # ProcessadorSituacao, RepositorioSituacao, SituacaoFiscalService, ConciliacaoService, AcrescimosMoratorios, CodigosReceita
 │   └── adaptadores/ # um adaptador por documento e versão de layout; LeitorDctfDec

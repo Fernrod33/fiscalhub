@@ -72,6 +72,14 @@ Regras que valem para todo o código:
 
 **Por que Recharts** (e não ECharts): componentes React declarativos em SVG, cores por variável CSS (os tokens dos dois temas sem código extra), animação desligável por gráfico; o ECharts é canvas, imperativo e maior. Fica num chunk só das telas com gráfico.
 
+## Aba Capacidade
+
+- **PGFN**: CAPAG oficial e estimada lado a lado, com o selo do rótulo (oficial, estimativa, gerencial) e o texto do backend; alerta de revisão vantajosa com um anel animado (só sem `prefers-reduced-motion`); memória de cálculo e irrecuperáveis (art. 25).
+- **Paraná**: classe recalculada × oficial (RTI), critérios recolhíveis (`TabelaCriterios`: valor, pontos, faixa, fundamento e origem no popover), CDAs e o **simulador** (quitar/parcelar → antes × depois com `AnimatedNumber`).
+- **Gerencial**: parcela sustentável, gráficos EBITDA × caixa operacional e composição da DFC direta.
+- **Parâmetros** das estimativas editáveis (ADMIN e CONSULTOR). Visão geral: cartão com CAPAG oficial, classe do PR e parcela sustentável. Demonstrações: opção "DFC — método direto", mês a mês, com os lançamentos de cada linha.
+- Nada é calculado na tela: tudo vem pronto do backend (`ResultadoCapacidade`).
+
 ## Design system
 
 Referência visual: `npm run dev` e abra `/laboratorio-design` (a rota não existe no build de produção).
@@ -120,7 +128,8 @@ npx playwright test       # e2e: fumaça, ECD → Demonstrações → origem do 
                           # ECD + ECF + EFD → Tributos → célula → origem,
                           # acessibilidade (axe, WCAG A/AA, dois temas) nas telas principais,
                           # massa → Relatórios → prévia → emitir → PDF e Excel (hash igual ao emitido),
-                          # Configurações → Escritório (contraste e prévia)
+                          # Configurações → Escritório (contraste e prévia),
+                          # massa completa → Capacidade (CAPAG C × estimada, simulação no PR) → relatório e dossiê
 ```
 
 O e2e usa o Vite em `:5173` (sobe sozinho se não estiver rodando) e precisa do backend em `:8080` com banco; cada execução cria um escritório novo. Os arquivos de teste (ECD, ECF, EFD, planilhas) são as amostras sintéticas do backend (`backend/src/test/resources/amostras`).

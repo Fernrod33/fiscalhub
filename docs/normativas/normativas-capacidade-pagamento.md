@@ -115,6 +115,35 @@ Seis variáveis, cada uma com um índice:
 - **Fase 5:** a simulação de transação usa a classe da camada normativa (oficial importada ou estimada, sempre indicando qual) para definir desconto e prazo.
 - **Fase 6:** novos pontos de atenção — revisão de CAPAG potencialmente vantajosa; CDAs perto de mudar de classe; endividamento estadual perto de uma faixa de pontuação.
 
+## Conferência com os textos oficiais (28/10/2026)
+
+Textos baixados e registrados (URL, data e SHA-256) na tabela `regra_capacidade_pagamento`:
+
+- **Resolução Conjunta PGE/SEFA 01/2025** (PDF oficial da SEFA-PR, SHA-256 `92ae28f2…`, em `fontes/`), com a RC 15/2026:
+  - **confirmou** todos os índices do art. 3º e os limites do art. 4º; as faixas que estavam **[confirmar]**: valor
+    (3,850 · 2,820 · 1,967 · 1,459 · 1,195 · 1,000, cortes em 499,99 / 2.499,99 / 7.499,99 / 24.999,99 / 249.999,99) e
+    situação cadastral da CDA (ativa 7,861 · ativa CEC 4,422 · baixada ou paralisada 2,631 · cancelada 1,000 · devedor não
+    cadastrado 2,451);
+  - **confirmou** o critério V do art. 7º (incluído pela RC 15/2026, efeitos de 24/08/2026): sem débitos 5; acima de 80%
+    das CDAs em A/B 4; acima de 50% a 80% 3; acima de 20% a 50% 2; até 20% 1;
+  - **confirmou** o art. 8º desde 24/08/2026 (A > 17 · B 15–17 · C 12–14 · D < 12) e registrou a **redação original**
+    (14/04/2025 a 23/08/2026: A > 12 · B 10–12 · C 7–9 · D < 7);
+  - art. 5º: o percentual de parcelas pagas **substitui** o índice (≥ 70% A; 30% a 69% B; abaixo de 30% vale o índice);
+  - art. 10 (outros créditos): idade com pontos 1 (até 2 anos) a 4 (mais de 4); valor 1 (até R$ 10 mil) a 4 (acima de
+    R$ 500 mil), pesos 1,0 e 0,66.
+- **Portaria PGFN 6.757/2022** (compilada com 6.941/2022, 10.826/2022 e 1.241/2023) e **Portaria PGFN 1.457/2024**:
+  - art. 25 **corrigiu** a lista do documento: além de falência/recuperação/liquidação/intervenção e da suspensão
+    judicial há mais de 10 anos, entram PF com indicativo de óbito e execução arquivada pelo art. 40 da LEF há mais de 3
+    anos; a lista de situações do CNPJ é fechada (baixado por inaptidão, inexistência de fato, omissão contumaz,
+    encerramento da falência ou da liquidação; inapto por localização desconhecida, inexistência de fato, omisso e não
+    localização, omissão contumaz; suspenso por inexistência de fato) — o "inapto por omissão de declarações" foi
+    revogado pela 1.241/2023; a 1.457/2024 incluiu que a baixa por liquidação voluntária **não** presume a
+    irrecuperabilidade e como comprovar a recuperação extrajudicial;
+  - art. 30, I (1.457/2024): a DFC é **pelo método direto**, dos dois últimos exercícios e do exercício em curso;
+  - **não estão no texto**: os múltiplos das classes A–D (2x, 1x, 0,5x), as fórmulas de GRF e PLR, os percentuais de
+    realização e qual método prevalece (a CAPAG efetiva é calculada pela PGFN, art. 32). No FiscalHub viraram parâmetros
+    do escritório, e o resultado é rotulado como estimativa.
+
 ## Fontes
 - [PGFN — perguntas frequentes sobre capacidade de pagamento](https://www.gov.br/pgfn/pt-br/servicos/perguntas-frequentes/sobre-a-capacidade-de-pagamento)
 - [PGFN — pedir revisão de capacidade de pagamento](https://www.gov.br/pgfn/pt-br/servicos/orientacoes-contribuintes/pedir-revisao-de-capacidade-de-pagamento-para-fins-de-negociacao-perante-a-fazenda-nacional)
