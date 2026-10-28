@@ -57,7 +57,7 @@ mesmo). Depois de regenerar, rode `mvn test -Dtest=MassaFicticiaAceiteTest`: se 
 ## Pontos de atenção plantados (gabarito)
 
 1. **COFINS 08/2026 paga a menor:** declarada 33.079,00 (EFD-Contribuições e DCTFWeb), DARF com 28.000,00 → diferença 5.079,00, que aparece como débito na Situação Fiscal.
-2. **IPI 11/2024 pago em atraso sem acréscimos:** vencimento 24/12/2024, pago 10/02/2025 só o principal → multa 8.240,00 e juros 856,96 em aberto no SIEF.
+2. **IPI 11/2024 pago em atraso sem acréscimos:** vencimento 24/12/2024, pago 10/02/2025 só o principal (48 dias de atraso) → multa 6.526,08 (0,33% × 48 dias = 15,84%) e juros 828,12 (SELIC jan/2025 1,01% + 1%) em aberto no SIEF, conforme o art. 61 da Lei 9.430/96.
 3. **ICMS-ST 08/2026 não recolhido** apesar do saldo credor de ICMS próprio (o saldo credor não quita ST) → "EM ABERTO" na conta corrente PR e ausente na relação de GR-PR.
 4. **Saldo credor de ICMS crescente** (402 mil em 03/2026 → 480 mil em 07/2026 → 365 mil em 08/2026) — monitorar acúmulo/transferência.
 5. **Omissão** da EFD-Contribuições de 06/2026 na Situação Fiscal.
@@ -85,3 +85,5 @@ mesmo). Depois de regenerar, rode `mvn test -Dtest=MassaFicticiaAceiteTest`: se 
   - **Transação PGFN:** "Pagas 33 de 60" não batia com a contabilidade, que mostra 48 parcelas de R$ 8.000,00 de 2022 a 2025 + 9 em 2026, com saldo de R$ 52.000,00. O número passa a ser calculado (57 de 64, a última parcela de R$ 4.000,00), e o número da transação passou para 2021.009871-4, porque os pagamentos começam em jan/2022.
   - **Plano referencial e códigos da ECF:** alinhados às tabelas oficiais e às amostras do backend (ver Limitações).
   - Os valores esperados (`_gerador/valores_esperados.json`) não mudaram.
+
+- **27/10/2026:** acréscimos do IPI 11/2024 corrigidos. A massa aplicava multa fixa de 20% e juros de 2,08%. Pela lei, com 48 dias de atraso, a multa é 15,84% (R$ 6.526,08) e os juros 2,01% (R$ 828,12), os mesmos valores que o componente `AcrescimosMoratorios` calcula.

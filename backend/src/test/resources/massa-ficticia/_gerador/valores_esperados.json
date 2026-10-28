@@ -44,8 +44,8 @@
   "situacao_fiscal": {
     "multa_cof": "318.45",
     "juros_cof": "50.79",
-    "multa_ipi": "8240.00",
-    "juros_ipi": "856.96"
+    "multa_ipi": "6526.08",
+    "juros_ipi": "828.12"
   },
   "pgfn_passivo_total": "512791.83"
 }

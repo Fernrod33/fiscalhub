@@ -142,7 +142,12 @@ def situacao_fiscal(base, c):
     dias = (EMISSAO.date() - c["venc_pc"]).days
     multa_cof = q((c["cof"] - c["cof_pago"]) * min(D("0.0033") * dias, D("0.20")))
     juros_cof = q((c["cof"] - c["cof_pago"]) * D("0.01"))
-    multa_ipi, juros_ipi = q(D("41200.00") * D("0.20")), q(D("41200.00") * D("0.0208"))
+    # IPI 11/2024 pago em atraso só pelo principal: acréscimos pelo art. 61 da Lei 9.430/96 —
+    # multa de 0,33% por dia (dia seguinte ao vencimento até o pagamento), limitada a 20%; juros = soma da SELIC
+    # mensal do mês seguinte ao vencimento até o mês anterior ao pagamento (jan/2025 = 1,01%, BCB SGS 4390) + 1%
+    dias_ipi = (c["ipi_pg"] - c["dctf"][0][3]).days
+    multa_ipi = q(D("41200.00") * min(D("0.0033") * dias_ipi, D("0.20")))
+    juros_ipi = q(D("41200.00") * (D("0.0101") + D("0.01")))
     s = head("MINISTÉRIO DA FAZENDA — SECRETARIA ESPECIAL DA RECEITA FEDERAL / PGFN (simulação)",
              "INFORMAÇÕES DE APOIO PARA EMISSÃO DE CERTIDÃO",
              f"Por meio do e-CAC — CNPJ do certificado: {fmt_cnpj(a['cnpj'])} — {EMISSAO:%d/%m/%Y %H:%M}")
