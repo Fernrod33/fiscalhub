@@ -9,6 +9,8 @@ import com.fiscalhub.backend.relatorio.MontagemRelatorios.Parametros;
 import com.fiscalhub.backend.relatorio.RelatorioService;
 import com.fiscalhub.backend.relatorio.RelatorioService.RelatorioEmitido;
 import com.fiscalhub.backend.security.ConsultorOuAdmin;
+import com.fiscalhub.backend.security.LimiteFrequencia;
+import org.springframework.beans.factory.annotation.Value;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -47,16 +49,25 @@ public class RelatorioController {
 
     private final RelatorioService relatorios;
     private final CargaTributariaService carga;
+    private final LimiteFrequencia limite;
+    private final int emissoesPorMinuto;
+    private final int previasPorMinuto;
 
-    public RelatorioController(RelatorioService relatorios, CargaTributariaService carga) {
+    public RelatorioController(RelatorioService relatorios, CargaTributariaService carga, LimiteFrequencia limite,
+                               @Value("${fiscalhub.relatorios.emissoes-por-minuto:10}") int emissoesPorMinuto,
+                               @Value("${fiscalhub.relatorios.previas-por-minuto:60}") int previasPorMinuto) {
         this.relatorios = relatorios;
         this.carga = carga;
+        this.limite = limite;
+        this.emissoesPorMinuto = emissoesPorMinuto;
+        this.previasPorMinuto = previasPorMinuto;
     }
 
     /** Prévia: só leitura, todos os papéis (emitir é que exige ADMIN ou CONSULTOR). */
     @PostMapping(value = "/relatorios/previa", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> previa(@PathVariable long clienteId, @Valid @RequestBody PedidoRelatorio pedido,
                                          @AuthenticationPrincipal UsuarioAutenticado ua) {
+        limite.verificar("prévias", ua.id(), previasPorMinuto);
         return ResponseEntity.ok().header("Content-Security-Policy", CSP_PREVIA)
                 .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
                 .body(relatorios.previa(clienteId, pedido.parametros(), ua));
@@ -67,6 +78,7 @@ public class RelatorioController {
     @Auditavel(AcaoAuditoria.RELATORIO_EMITIR)
     public ResponseEntity<RelatorioEmitido> emitir(@PathVariable long clienteId, @Valid @RequestBody PedidoRelatorio pedido,
                                                    @AuthenticationPrincipal UsuarioAutenticado ua) {
+        limite.verificar("emissões", ua.id(), emissoesPorMinuto);
         return ResponseEntity.status(HttpStatus.CREATED).body(relatorios.emitir(clienteId, pedido.parametros(), ua));
     }
 

@@ -30,11 +30,15 @@ const LINHAS_IRPJ = [
   { grupo: 'CALCULO', codigo: '26', descricao: 'IMPOSTO DE RENDA A PAGAR', valor: 480, registro: 'N630', linha: 65 },
 ];
 
+// os rótulos vêm da API (ConciliacaoService.Status): o teste usa os mesmos textos
+const ROTULOS: Record<string, string> = { CONCILIADO: 'Conciliado', PAGO_A_MENOR: 'Pago a menor', NAO_PAGO: 'Não pago',
+  PAGO_EM_ATRASO_SEM_ACRESCIMOS: 'Atraso sem acréscimos', NAO_DECLARADO: 'Não declarado', DIVERGENCIA_APURADO_DECLARADO: 'Apurado ≠ declarado',
+  PAGO_A_MAIOR: 'Pago a maior', PARCELADO: 'Parcelado', COMPENSADO_OU_SUSPENSO: 'Compensado/suspenso' };
 const ORIGEM_DARF = { documentoId: 20, arquivo: 'DARF_COFINS.pdf', tipoDocumento: 'DARF', pagina: 1, registro: null, linha: 13,
   trecho: '5856-01 | COFINS - Não cumulativa | 28.000,00' };
 const item = (id: string, tributo: string, esfera: string, uf: string | null, periodo: string, status: string,
               apurado: number | null, declarado: number | null, pago: number | null, diferenca: number, extra: object = {}) => ({
-  id, tributo, esfera, uf, periodo, vencimento: `${periodo}-25`, status,
+  id, tributo, esfera, uf, periodo, vencimento: `${periodo}-25`, status, statusRotulo: ROTULOS[status] ?? status,
   apurado: apurado == null ? null : { valor: apurado, origens: [{ documentoId: 9, arquivo: 'efd.txt', tipoDocumento: 'EFD_CONTRIBUICOES',
     pagina: null, registro: 'M600', linha: 40, trecho: null }] },
   declarado: declarado == null ? null : { valor: declarado, origens: [] },

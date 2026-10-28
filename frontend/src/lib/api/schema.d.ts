@@ -1314,6 +1314,8 @@ export interface components {
             /** Format: date */
             dataReferencia: string;
             origem: components["schemas"]["OrigemValor"];
+            impedeCertidao: boolean;
+            fundamento: string;
         };
         ParcelamentoFiscal: {
             /** Format: int64 */
@@ -1578,6 +1580,7 @@ export interface components {
             vencimento: string;
             /** @enum {string} */
             status: "CONCILIADO" | "DIVERGENCIA_APURADO_DECLARADO" | "NAO_DECLARADO" | "PAGO_A_MENOR" | "PAGO_A_MAIOR" | "NAO_PAGO" | "PAGO_EM_ATRASO_SEM_ACRESCIMOS" | "COMPENSADO_OU_SUSPENSO" | "PARCELADO";
+            statusRotulo: string;
             apurado: components["schemas"]["ValorConciliado"];
             declarado: components["schemas"]["ValorConciliado"];
             pago: components["schemas"]["PagoConciliado"];

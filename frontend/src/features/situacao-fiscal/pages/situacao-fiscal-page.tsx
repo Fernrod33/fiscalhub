@@ -188,6 +188,7 @@ function Pendencias({ clienteId }: { clienteId: number }) {
                     <span className="font-medium">{p.descricao}</span>
                     {p.situacao && <Selo tom="danger">{p.situacao}</Selo>}
                   </span>
+                  {p.impedeCertidao && <span><Selo tom="danger">Impede certidão</Selo> <span className="text-xs text-muted-foreground">{p.fundamento}</span></span>}
                   <ListaOrigens clienteId={clienteId} origens={[p.origem]} />
                 </li>
               ))}

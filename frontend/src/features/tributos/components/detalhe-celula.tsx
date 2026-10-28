@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { Apuracao, ItemConciliacao } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
-import { CAMPOS_APURACAO, ORGAO_CREDOR, REGIMES, SITUACAO_DEBITO, STATUS_CONCILIACAO, TRIBUTOS } from '@/lib/rotulos';
+import { CAMPOS_APURACAO, ORGAO_CREDOR, REGIMES, SITUACAO_DEBITO, TOM_STATUS, TRIBUTOS } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
 import { ListaOrigens, ValorDocumento } from '@/features/situacao-fiscal/components/origem-documento';
 import { useDetalheApuracao } from '../api';
@@ -45,7 +45,7 @@ export function DetalheCelula({ clienteId, celula, apuracoes, aoFechar }: {
 }
 
 function ItemDetalhado({ clienteId, item, apuracoes }: { clienteId: number; item: ItemConciliacao; apuracoes: Apuracao[] }) {
-  const status = STATUS_CONCILIACAO[item.status];
+  const status = { rotulo: item.statusRotulo, tom: TOM_STATUS[item.status] };
   const rotulo = `${TRIBUTOS[item.tributo] ?? item.tributo} ${item.periodo.slice(5, 7)}/${item.periodo.slice(0, 4)}`;
   const a = item.acrescimos;
   return (

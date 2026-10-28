@@ -4,6 +4,8 @@ import com.fiscalhub.backend.relatorio.ModeloRelatorio.Grafico;
 import com.fiscalhub.backend.relatorio.ModeloRelatorio.Serie;
 import com.fiscalhub.backend.relatorio.ModeloRelatorio.TipoGrafico;
 
+import org.springframework.web.util.HtmlUtils;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
@@ -168,22 +170,8 @@ public final class GraficoSvg {
         return String.format(Locale.ROOT, "<text x=\"%.1f\" y=\"%.1f\" text-anchor=\"%s\" fill=\"%s\">%s</text>", x, y, ancora, cor, esc(t));
     }
 
-    /** Escape XML de todo texto que entra no SVG. */
+    /** Escape de todo texto que entra no SVG; caracteres de controle (inválidos em XML) viram espaço. */
     static String esc(String t) {
-        if (t == null) {
-            return "";
-        }
-        StringBuilder b = new StringBuilder(t.length());
-        for (char ch : t.toCharArray()) {
-            switch (ch) {
-                case '<' -> b.append("&lt;");
-                case '>' -> b.append("&gt;");
-                case '&' -> b.append("&amp;");
-                case '"' -> b.append("&quot;");
-                case '\'' -> b.append("&#39;");
-                default -> b.append(ch < 0x20 && ch != '\n' && ch != '\t' ? ' ' : ch);
-            }
-        }
-        return b.toString();
+        return t == null ? "" : HtmlUtils.htmlEscape(t.replaceAll("\\p{Cntrl}", " "), "UTF-8");
     }
 }

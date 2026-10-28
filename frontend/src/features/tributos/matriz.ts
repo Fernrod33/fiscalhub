@@ -1,5 +1,5 @@
 import type { ItemConciliacao, StatusConciliacao } from '@/lib/api/tipos';
-import { ESFERAS, STATUS_CONCILIACAO, TRIBUTOS } from '@/lib/rotulos';
+import { ESFERAS, TOM_STATUS, TRIBUTOS } from '@/lib/rotulos';
 
 export type Periodicidade = 'MENSAL' | 'TRIMESTRAL' | 'ANUAL';
 
@@ -23,11 +23,11 @@ export const METRICAS: Metrica[] = [
 export type LinhaMatriz = { chave: string; tributo: string; uf: string | null; esfera: string; rotulo: string };
 export type Celula = { linha: LinhaMatriz; competencia: string; rotuloCompetencia: string; itens: ItemConciliacao[] };
 
-const GRAVIDADE = Object.keys(STATUS_CONCILIACAO) as StatusConciliacao[];
+const GRAVIDADE = Object.keys(TOM_STATUS) as StatusConciliacao[];
 
-/** O pior status entre os itens (célula com vários meses, na visão trimestral ou anual). */
-export const piorStatus = (itens: ItemConciliacao[]) =>
-  itens.map((i) => i.status).sort((a, b) => GRAVIDADE.indexOf(a) - GRAVIDADE.indexOf(b))[0];
+/** O item de pior status (célula com vários meses, na visão trimestral ou anual): o status e o rótulo dele. */
+export const piorItem = (itens: ItemConciliacao[]) =>
+  [...itens].sort((a, b) => GRAVIDADE.indexOf(a.status) - GRAVIDADE.indexOf(b.status))[0];
 
 /** Competência pelo período de apuração (aaaa-mm): mensal 2025-01, trimestral 2025-T1, anual 2025. */
 function competencia(periodo: string, periodicidade: Periodicidade): { chave: string; rotulo: string } {

@@ -45,11 +45,6 @@ public class MontagemRelatorios {
     static final String VERSAO_TEMPLATE = "relatorio-2026.10";
     private static final Set<Status> DIVERGENCIAS = EnumSet.of(Status.DIVERGENCIA_APURADO_DECLARADO, Status.NAO_DECLARADO,
             Status.PAGO_A_MENOR, Status.PAGO_A_MAIOR, Status.NAO_PAGO, Status.PAGO_EM_ATRASO_SEM_ACRESCIMOS);
-    private static final Map<Status, String> STATUS = Map.of(Status.CONCILIADO, "Conciliado",
-            Status.DIVERGENCIA_APURADO_DECLARADO, "Apurado ≠ declarado", Status.NAO_DECLARADO, "Não declarado",
-            Status.PAGO_A_MENOR, "Pago a menor", Status.PAGO_A_MAIOR, "Pago a maior", Status.NAO_PAGO, "Não pago",
-            Status.PAGO_EM_ATRASO_SEM_ACRESCIMOS, "Atraso sem acréscimos", Status.COMPENSADO_OU_SUSPENSO, "Compensado/suspenso",
-            Status.PARCELADO, "Parcelado");
     private static final String ND = "não disponível";
     private static final int MAX_SERIES = GraficoSvg.PALETA.size();
 
@@ -112,7 +107,7 @@ public class MontagemRelatorios {
                 new Coluna("Pago", Formato.MOEDA), new Coluna("Diferença", Formato.MOEDA), new Coluna("Status", Formato.TEXTO));
         List<List<String>> linhas = itens.stream().map(i -> linha(esfera(i.esfera()), tributo(i), i.periodo().toString(),
                 cru(i.apurado() == null ? null : i.apurado().valor()), cru(i.declarado() == null ? null : i.declarado().valor()),
-                cru(i.pago() == null ? null : i.pago().valor()), cru(i.diferenca()), STATUS.get(i.status()))).toList();
+                cru(i.pago() == null ? null : i.pago().valor()), cru(i.diferenca()), i.statusRotulo())).toList();
         List<Secao> secoes = new ArrayList<>();
         String semDados = itens.isEmpty() ? "Nenhum tributo apurado, declarado ou pago no período." : null;
         secoes.add(new Secao("Apurado × pago por competência", semDados, false, null, itens.isEmpty() ? null : graficoApuradoPago(itens)));
@@ -129,7 +124,7 @@ public class MontagemRelatorios {
         BigDecimal acrescimos = divergentes.stream().map(ItemConciliacao::acrescimos).filter(Objects::nonNull)
                 .map(a -> a.total()).reduce(BigDecimal.ZERO, BigDecimal::add);
         if (p.incluirDivergencias()) {
-            List<List<String>> div = divergentes.stream().map(i -> linha(tributo(i), i.periodo().toString(), STATUS.get(i.status()),
+            List<List<String>> div = divergentes.stream().map(i -> linha(tributo(i), i.periodo().toString(), i.statusRotulo(),
                     cru(i.diferenca()), cru(i.acrescimos() == null ? null : i.acrescimos().multa()),
                     cru(i.acrescimos() == null ? null : i.acrescimos().juros()),
                     i.erroAcrescimos() != null ? "não calculado: " + i.erroAcrescimos() : cru(i.acrescimos() == null ? null : i.acrescimos().total()),
@@ -318,69 +313,87 @@ public class MontagemRelatorios {
         pendencias.forEach(x -> documentos.add(x.origem().documentoId()));
         capag.forEach(x -> documentos.add(x.origem().documentoId()));
 
-        List<Secao> secoes = new ArrayList<>();
-        var impedem = debitos.stream().filter(SituacaoFiscalService.DebitoConsolidado::impedeCertidao).toList();
-        Coluna[] colunasDebito = {new Coluna("Órgão", Formato.TEXTO), new Coluna("Tributo", Formato.TEXTO),
-                new Coluna("Competência", Formato.COMPETENCIA), new Coluna("Inscrição / processo", Formato.TEXTO),
-                new Coluna("Situação", Formato.TEXTO), new Coluna("Valor total", Formato.MOEDA), new Coluna("Origem", Formato.TEXTO)};
+        List<Coluna> colunasDebito = colunas("Órgão", "Tributo", "Competência:COMPETENCIA", "Inscrição / processo", "Situação",
+                "Valor total:MOEDA", "Origem");
         Function<SituacaoFiscalService.DebitoConsolidado, List<String>> linhaDebito = d -> linha(d.orgaoCredor().name(),
                 d.tributo() == null ? Objects.toString(d.codigoReceita(), "—") : d.tributo().name(),
                 d.competencia() == null ? Objects.toString(d.periodo(), "—") : d.competencia().toString(),
                 Stream.of(d.numeroInscricao(), d.numeroProcesso()).filter(Objects::nonNull).collect(Collectors.joining(" / ")),
                 d.situacao().name().replace('_', ' ').toLowerCase(), cru(d.valorTotal()),
                 d.origens().stream().map(o -> origem(o.origem())).distinct().collect(Collectors.joining(" + ")));
-        secoes.add(new Secao("Itens que impedem a certidão", impedem.isEmpty() ? "Nenhum débito marcado como impeditivo nos documentos importados."
-                : "Débitos que os documentos dos órgãos apontam como impeditivos da certidão negativa (ou positiva com efeitos de negativa).",
-                !impedem.isEmpty(), impedem.isEmpty() ? null : new Tabela(List.of(colunasDebito), impedem.stream().map(linhaDebito).toList(), null), null));
+        Function<SituacaoFiscalService.PendenciaFiscal, List<String>> linhaPendencia = x -> linha(x.tipo(), Objects.toString(x.descricao(), "—"),
+                x.periodo() == null ? "—" : x.periodo().toString(), Objects.toString(x.situacao(), "—"),
+                x.impedeCertidao() ? "Sim — " + x.fundamento() : "Não (fora do art. 4º, I, da PC RFB/PGFN 1.751/2014)", origem(x.origem()));
+        List<Coluna> colunasPendencia = colunas("Tipo", "Descrição", "Período:COMPETENCIA", "Situação", "Impede certidão", "Origem");
 
+        var impedem = debitos.stream().filter(SituacaoFiscalService.DebitoConsolidado::impedeCertidao).toList();
+        var pendenciasImpedem = pendencias.stream().filter(SituacaoFiscalService.PendenciaFiscal::impedeCertidao).toList();
+        List<Secao> secoes = new ArrayList<>();
+        secoes.add(secao("Itens que impedem a certidão", "Nenhum débito marcado como impeditivo nos documentos importados.", true,
+                impedem, colunasDebito, linhaDebito, null,
+                "Débitos que os documentos dos órgãos apontam como impeditivos da certidão negativa (ou positiva com efeitos de negativa)."));
+        if (!pendenciasImpedem.isEmpty()) {
+            secoes.add(secao("Pendências de declaração que impedem a certidão", null, true, pendenciasImpedem, colunasPendencia,
+                    linhaPendencia, null, "Fundamento: " + SituacaoFiscalService.FUNDAMENTO_CERTIDAO + "."));
+        }
         Map<String, List<SituacaoFiscalService.DebitoConsolidado>> porOrgao = debitos.stream().collect(Collectors.groupingBy(
                 d -> d.orgaoCredor().name() + "|" + d.situacao().name().replace('_', ' ').toLowerCase(), TreeMap::new, Collectors.toList()));
-        List<List<String>> agregados = porOrgao.entrySet().stream().map(e -> {
-            List<String> l = new ArrayList<>(List.of(e.getKey().split("\\|")));
-            l.add(String.valueOf(e.getValue().size()));
-            l.add(cru(e.getValue().stream().map(SituacaoFiscalService.DebitoConsolidado::valorTotal).filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)));
-            return l;
-        }).toList();
-        BigDecimal totalDebitos = debitos.stream().map(SituacaoFiscalService.DebitoConsolidado::valorTotal).filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        secoes.add(new Secao("Débitos por órgão e situação", debitos.isEmpty() ? "Nenhum débito nos documentos importados." : null, false,
-                debitos.isEmpty() ? null : new Tabela(List.of(new Coluna("Órgão", Formato.TEXTO), new Coluna("Situação", Formato.TEXTO),
-                        new Coluna("Débitos", Formato.INTEIRO), new Coluna("Valor total", Formato.MOEDA)), agregados,
-                        List.of("Total", "", String.valueOf(debitos.size()), cru(totalDebitos))), null));
+        BigDecimal totalDebitos = somaDebitos(debitos);
+        secoes.add(secao("Débitos por órgão e situação", "Nenhum débito nos documentos importados.", false, List.copyOf(porOrgao.entrySet()),
+                colunas("Órgão", "Situação", "Débitos:INTEIRO", "Valor total:MOEDA"), e -> {
+                    List<String> l = new ArrayList<>(List.of(e.getKey().split("\\|")));
+                    l.add(String.valueOf(e.getValue().size()));
+                    l.add(cru(somaDebitos(e.getValue())));
+                    return l;
+                }, List.of("Total", "", String.valueOf(debitos.size()), cru(totalDebitos)), null));
         if (!debitos.isEmpty()) {
-            secoes.add(new Secao("Débitos", null, false, new Tabela(List.of(colunasDebito), debitos.stream().map(linhaDebito).toList(), null), null));
+            secoes.add(secao("Débitos", null, false, debitos, colunasDebito, linhaDebito, null, null));
         }
-        secoes.add(new Secao("Parcelamentos e transações", parcelamentos.isEmpty() ? "Nenhum parcelamento nos documentos importados." : null, false,
-                parcelamentos.isEmpty() ? null : new Tabela(List.of(new Coluna("Órgão", Formato.TEXTO), new Coluna("Número", Formato.TEXTO),
-                        new Coluna("Modalidade", Formato.TEXTO), new Coluna("Parcelas pagas", Formato.TEXTO), new Coluna("Progresso", Formato.PERCENTUAL),
-                        new Coluna("Saldo", Formato.MOEDA), new Coluna("Situação", Formato.TEXTO), new Coluna("Origem", Formato.TEXTO)),
-                        parcelamentos.stream().map(x -> linha(x.orgao().name(), Objects.toString(x.numero(), "—"), Objects.toString(x.modalidade(), "—"),
-                                x.parcelasPagas() == null ? "—" : x.parcelasPagas() + (x.parcelasTotal() == null ? "" : " de " + x.parcelasTotal()),
-                                x.parcelasPagas() == null || x.parcelasTotal() == null || x.parcelasTotal() == 0 ? "—"
-                                        : BigDecimal.valueOf(x.parcelasPagas() * 100L).divide(BigDecimal.valueOf(x.parcelasTotal()), 2, java.math.RoundingMode.HALF_EVEN).toPlainString(),
-                                cru(x.saldo()), Objects.toString(x.situacao(), "—"), origem(x.origem()))).toList(), null), null));
-        secoes.add(new Secao("Pendências", pendencias.isEmpty() ? "Nenhuma pendência nos documentos importados." : null, false,
-                pendencias.isEmpty() ? null : new Tabela(List.of(new Coluna("Tipo", Formato.TEXTO), new Coluna("Descrição", Formato.TEXTO),
-                        new Coluna("Período", Formato.COMPETENCIA), new Coluna("Situação", Formato.TEXTO), new Coluna("Origem", Formato.TEXTO)),
-                        pendencias.stream().map(x -> linha(x.tipo(), Objects.toString(x.descricao(), "—"),
-                                x.periodo() == null ? "—" : x.periodo().toString(), Objects.toString(x.situacao(), "—"), origem(x.origem()))).toList(), null), null));
-        secoes.add(new Secao("Capacidade de pagamento oficial (CAPAG)", capag.isEmpty() ? "Nenhuma CAPAG nos documentos importados." : null, false,
-                capag.isEmpty() ? null : new Tabela(List.of(new Coluna("Fonte", Formato.TEXTO), new Coluna("Classe", Formato.TEXTO),
-                        new Coluna("Capacidade", Formato.MOEDA), new Coluna("Passivo", Formato.MOEDA), new Coluna("Data", Formato.DATA),
-                        new Coluna("Origem", Formato.TEXTO)),
-                        capag.stream().map(x -> linha(x.fonte(), Objects.toString(x.classe(), "—"), cru(x.capacidade()), cru(x.passivo()),
-                                x.dataReferencia() == null ? "—" : x.dataReferencia().toString(), origem(x.origem()))).toList(), null), null));
+        secoes.add(secao("Parcelamentos e transações", "Nenhum parcelamento nos documentos importados.", false, parcelamentos,
+                colunas("Órgão", "Número", "Modalidade", "Parcelas pagas", "Progresso:PERCENTUAL", "Saldo:MOEDA", "Situação", "Origem"),
+                x -> linha(x.orgao().name(), Objects.toString(x.numero(), "—"), Objects.toString(x.modalidade(), "—"),
+                        x.parcelasPagas() == null ? "—" : x.parcelasPagas() + (x.parcelasTotal() == null ? "" : " de " + x.parcelasTotal()),
+                        x.parcelasPagas() == null || x.parcelasTotal() == null || x.parcelasTotal() == 0 ? "—"
+                                : BigDecimal.valueOf(x.parcelasPagas() * 100L).divide(BigDecimal.valueOf(x.parcelasTotal()), 2, java.math.RoundingMode.HALF_EVEN).toPlainString(),
+                        cru(x.saldo()), Objects.toString(x.situacao(), "—"), origem(x.origem())), null, null));
+        secoes.add(secao("Pendências", "Nenhuma pendência nos documentos importados.", false, pendencias, colunasPendencia, linhaPendencia, null, null));
+        secoes.add(secao("Capacidade de pagamento oficial (CAPAG)", "Nenhuma CAPAG nos documentos importados.", false, capag,
+                colunas("Fonte", "Classe", "Capacidade:MOEDA", "Passivo:MOEDA", "Data:DATA", "Origem"),
+                x -> linha(x.fonte(), Objects.toString(x.classe(), "—"), cru(x.capacidade()), cru(x.passivo()),
+                        x.dataReferencia() == null ? "—" : x.dataReferencia().toString(), origem(x.origem())), null, null));
         BigDecimal saldoParcelado = parcelamentos.stream().map(SituacaoFiscalService.ParcelamentoFiscal::saldo).filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         List<Indicador> sumario = List.of(
                 new Indicador("Débitos", cru(totalDebitos), Formato.MOEDA, debitos.size() + " débito(s)"),
-                new Indicador("Impedem a certidão", String.valueOf(impedem.size()), Formato.INTEIRO, null),
+                new Indicador("Impedem a certidão", String.valueOf(impedem.size() + pendenciasImpedem.size()), Formato.INTEIRO,
+                        pendenciasImpedem.isEmpty() ? null : pendenciasImpedem.size() + " pendência(s) de declaração"),
                 new Indicador("Saldo parcelado", cru(saldoParcelado), Formato.MOEDA, parcelamentos.size() + " parcelamento(s) ou transação(ões)"),
                 new Indicador("Pendências", String.valueOf(pendencias.size()), Formato.INTEIRO, null),
                 new Indicador("CAPAG", capag.stream().map(SituacaoFiscalService.CapacidadeOficial::classe).filter(Objects::nonNull)
                         .findFirst().orElse(ND), Formato.TEXTO, null));
         return new Corpo(sumario, secoes, documentos);
+    }
+
+    /**
+     * Seção com tabela: sem itens, só o texto de vazio (e sem destaque). texto: a explicação quando há itens.
+     */
+    static <T> Secao secao(String titulo, String vazio, boolean destaque, List<T> itens, List<Coluna> colunas,
+                           Function<T, List<String>> linha, List<String> totais, String texto) {
+        return itens.isEmpty() ? new Secao(titulo, vazio, false, null, null)
+                : new Secao(titulo, texto, destaque, new Tabela(colunas, itens.stream().map(linha).toList(), totais), null);
+    }
+
+    /** "Nome" (texto) ou "Nome:FORMATO". */
+    static List<Coluna> colunas(String... especificacoes) {
+        return Stream.of(especificacoes).map(e -> {
+            int i = e.lastIndexOf(':');
+            return i < 0 ? new Coluna(e, Formato.TEXTO) : new Coluna(e.substring(0, i), Formato.valueOf(e.substring(i + 1)));
+        }).toList();
+    }
+
+    private static BigDecimal somaDebitos(List<SituacaoFiscalService.DebitoConsolidado> debitos) {
+        return debitos.stream().map(SituacaoFiscalService.DebitoConsolidado::valorTotal).filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     // ---------------------------------------------------------------- comum

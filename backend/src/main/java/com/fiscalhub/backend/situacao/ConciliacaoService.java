@@ -48,9 +48,17 @@ import java.util.TreeMap;
 @Transactional(readOnly = true)
 public class ConciliacaoService {
 
+    /** Rótulo: fonte única (relatório e tela; vai no item como statusRotulo). */
     public enum Status {
-        CONCILIADO, DIVERGENCIA_APURADO_DECLARADO, NAO_DECLARADO, PAGO_A_MENOR, PAGO_A_MAIOR, NAO_PAGO,
-        PAGO_EM_ATRASO_SEM_ACRESCIMOS, COMPENSADO_OU_SUSPENSO, PARCELADO
+        CONCILIADO("Conciliado"), DIVERGENCIA_APURADO_DECLARADO("Apurado ≠ declarado"), NAO_DECLARADO("Não declarado"),
+        PAGO_A_MENOR("Pago a menor"), PAGO_A_MAIOR("Pago a maior"), NAO_PAGO("Não pago"),
+        PAGO_EM_ATRASO_SEM_ACRESCIMOS("Atraso sem acréscimos"), COMPENSADO_OU_SUSPENSO("Compensado/suspenso"), PARCELADO("Parcelado");
+
+        public final String rotulo;
+
+        Status(String rotulo) {
+            this.rotulo = rotulo;
+        }
     }
 
     /** Status de diferença que deve ter débito na situação fiscal. */
@@ -73,7 +81,7 @@ public class ConciliacaoService {
      * codigosIlustrativos: os códigos de receita do item ainda não confirmados numa fonte oficial (CodigosReceita).
      */
     public record ItemConciliacao(String id, String esfera, TipoTributo tributo, String uf, YearMonth periodo, LocalDate vencimento,
-                       Status status, ValorConciliado apurado, ValorConciliado declarado, PagoConciliado pago, BigDecimal diferenca, Acrescimos acrescimos,
+                       Status status, String statusRotulo, ValorConciliado apurado, ValorConciliado declarado, PagoConciliado pago, BigDecimal diferenca, Acrescimos acrescimos,
                        String erroAcrescimos, List<String> codigosReceita, List<String> codigosIlustrativos,
                        List<DebitoRelacionado> debitos) {
     }
@@ -220,7 +228,7 @@ public class ConciliacaoService {
             }
         }
         List<String> codigos = m.codigos.stream().filter(Objects::nonNull).distinct().sorted().toList();
-        return new ItemConciliacao(m.id(), m.esfera, m.tributo, m.uf, m.periodo, m.vencimento, status,
+        return new ItemConciliacao(m.id(), m.esfera, m.tributo, m.uf, m.periodo, m.vencimento, status, status.rotulo,
                 m.apurado == null ? null : new ValorConciliado(m.apurado, m.origensApurado),
                 m.declarado == null ? null : new ValorConciliado(m.declarado, m.origensDeclarado),
                 m.pago == null ? null : new PagoConciliado(m.pago, m.multaPaga, m.jurosPagos, m.dataPagamento, m.origensPago),

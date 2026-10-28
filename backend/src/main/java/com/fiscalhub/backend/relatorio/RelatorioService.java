@@ -112,16 +112,17 @@ public class RelatorioService {
                 .stream().findFirst().orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado com a ID: " + id));
     }
 
-    /** O arquivo gravado na emissão (pdf ou xlsx), sem gerar de novo. */
+    /** O arquivo gravado na emissão (pdf ou xlsx), sem gerar de novo; uma consulta, já filtrada por cliente e escritório. */
     @Transactional(readOnly = true)
     public ArquivoDocumento arquivo(long clienteId, long id, String formato, UsuarioAutenticado ua) {
-        RelatorioEmitido r = consultar(clienteId, id, ua);
+        acesso.cliente(clienteId, ua);
         boolean pdf = "pdf".equals(formato);
-        var linha = jdbc.queryForMap("SELECT chave_pdf, tamanho_pdf, chave_xlsx, tamanho_xlsx FROM relatorio_emitido WHERE id = ?", id);
-        String nome = String.format("relatorio-%06d-%s.%s", r.numero(), r.tipo().name().toLowerCase().replace('_', '-'), formato);
-        return new ArquivoDocumento(nome, pdf ? "application/pdf" : XLSX,
-                ((Number) linha.get(pdf ? "tamanho_pdf" : "tamanho_xlsx")).longValue(),
-                armazenamento.abrir((String) linha.get(pdf ? "chave_pdf" : "chave_xlsx")));
+        return jdbc.query("SELECT numero, tipo, " + (pdf ? "chave_pdf, tamanho_pdf" : "chave_xlsx, tamanho_xlsx")
+                        + " FROM relatorio_emitido WHERE id = ? AND cliente_id = ? AND escritorio_id = ?",
+                (rs, i) -> new ArquivoDocumento(String.format("relatorio-%06d-%s.%s", rs.getLong(1),
+                        rs.getString(2).toLowerCase().replace('_', '-'), formato), pdf ? "application/pdf" : XLSX, rs.getLong(4),
+                        armazenamento.abrir(rs.getString(3))), id, clienteId, ua.escritorioId())
+                .stream().findFirst().orElseThrow(() -> new ResourceNotFoundException("Relatório não encontrado com a ID: " + id));
     }
 
     private static final String XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

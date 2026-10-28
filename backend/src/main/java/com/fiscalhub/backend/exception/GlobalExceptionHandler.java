@@ -35,6 +35,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return problema(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
+    @ExceptionHandler(com.fiscalhub.backend.security.LimiteFrequencia.Excedido.class)
+    org.springframework.http.ResponseEntity<ProblemDetail> limiteExcedido(com.fiscalhub.backend.security.LimiteFrequencia.Excedido ex) {
+        return org.springframework.http.ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(ex.segundos()))
+                .body(problema(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
+    }
+
     @ExceptionHandler(BusinessRuleException.class)
     ProblemDetail regraDeNegocio(BusinessRuleException ex) {
         return problema(HttpStatus.BAD_REQUEST, ex.getMessage());

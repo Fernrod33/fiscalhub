@@ -2,9 +2,9 @@ import { Fragment } from 'react';
 import { Selo } from '@/components/selo';
 import type { ItemConciliacao } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
-import { ESFERAS, STATUS_CONCILIACAO } from '@/lib/rotulos';
+import { ESFERAS, TOM_STATUS } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
-import { METRICAS, montarMatriz, ORDEM_ESFERAS, piorStatus, type Celula, type Metrica, type Periodicidade } from '../matriz';
+import { METRICAS, montarMatriz, ORDEM_ESFERAS, piorItem, type Celula, type Metrica, type Periodicidade } from '../matriz';
 
 /**
  * Matriz tributo × competência: tributos agrupados por esfera nas linhas, competências nas colunas e, em cada uma,
@@ -52,7 +52,7 @@ export function MatrizTributos({ itens, periodicidade, metricas = METRICAS, aoAb
                   <th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-background px-3 py-1.5 text-left font-medium">{l.rotulo}</th>
                   {colunas.map((c) => {
                     const itensDaCelula = celula(l.chave, c.chave);
-                    const status = itensDaCelula.length ? piorStatus(itensDaCelula) : undefined;
+                    const pior = itensDaCelula.length ? piorItem(itensDaCelula) : undefined;
                     return metricas.map((m, i) => {
                       const valor = itensDaCelula.length ? m.valor(itensDaCelula) : null;
                       const diferenca = m.chave === 'diferenca';
@@ -62,11 +62,11 @@ export function MatrizTributos({ itens, periodicidade, metricas = METRICAS, aoAb
                             ? <span className="num px-2 text-muted-foreground">—</span>
                             : (
                               <button type="button" onClick={() => aoAbrir({ linha: l, competencia: c.chave, rotuloCompetencia: c.rotulo, itens: itensDaCelula })}
-                                      aria-label={`${l.rotulo} em ${c.rotulo}, ${m.rotulo}: ${fmt.moeda(valor)}${status ? `, ${STATUS_CONCILIACAO[status].rotulo}` : ''}. Abrir detalhe`}
+                                      aria-label={`${l.rotulo} em ${c.rotulo}, ${m.rotulo}: ${fmt.moeda(valor)}${pior ? `, ${pior.statusRotulo}` : ''}. Abrir detalhe`}
                                       className={cn('num grid w-full justify-items-end gap-1 whitespace-nowrap rounded-sm px-2 py-1 text-right underline-offset-4 hover:bg-accent hover:underline focus-visible:outline-2',
                                         (valor == null || valor === 0) && 'text-muted-foreground')}>
                                 {fmt.moeda(valor)}
-                                {diferenca && status && <Selo tom={STATUS_CONCILIACAO[status].tom}>{STATUS_CONCILIACAO[status].rotulo}</Selo>}
+                                {diferenca && pior && <Selo tom={TOM_STATUS[pior.status]}>{pior.statusRotulo}</Selo>}
                               </button>
                             )}
                         </td>

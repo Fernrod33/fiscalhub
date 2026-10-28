@@ -112,17 +112,14 @@ export const SITUACAO_DEBITO: Record<Debito['situacao'], { rotulo: string; tom: 
   NEGOCIADO: { rotulo: 'Negociado', tom: 'info' },
 };
 
-/** Status da conciliação apurado × declarado × pago; ordem = gravidade (a célula agregada mostra o pior). */
-export const STATUS_CONCILIACAO: Record<StatusConciliacao, { rotulo: string; tom: Tom }> = {
-  NAO_PAGO: { rotulo: 'Não pago', tom: 'danger' },
-  PAGO_A_MENOR: { rotulo: 'Pago a menor', tom: 'danger' },
-  PAGO_EM_ATRASO_SEM_ACRESCIMOS: { rotulo: 'Atraso sem acréscimos', tom: 'danger' },
-  NAO_DECLARADO: { rotulo: 'Não declarado', tom: 'danger' },
-  DIVERGENCIA_APURADO_DECLARADO: { rotulo: 'Apurado ≠ declarado', tom: 'warning' },
-  PAGO_A_MAIOR: { rotulo: 'Pago a maior', tom: 'warning' },
-  PARCELADO: { rotulo: 'Parcelado', tom: 'info' },
-  COMPENSADO_OU_SUSPENSO: { rotulo: 'Compensado/suspenso', tom: 'info' },
-  CONCILIADO: { rotulo: 'Conciliado', tom: 'success' },
+/**
+ * Tom (cor de estado) de cada status da conciliação; ordem = gravidade (a célula agregada mostra o pior). O rótulo vem
+ * da API (statusRotulo, fonte única no backend), não daqui.
+ */
+export const TOM_STATUS: Record<StatusConciliacao, Tom> = {
+  NAO_PAGO: 'danger', PAGO_A_MENOR: 'danger', PAGO_EM_ATRASO_SEM_ACRESCIMOS: 'danger', NAO_DECLARADO: 'danger',
+  DIVERGENCIA_APURADO_DECLARADO: 'warning', PAGO_A_MAIOR: 'warning', PARCELADO: 'info', COMPENSADO_OU_SUSPENSO: 'info',
+  CONCILIADO: 'success',
 };
 
 export const SITUACAO_PARCELAMENTO: Record<string, { rotulo: string; tom: Tom }> = {

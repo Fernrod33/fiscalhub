@@ -66,8 +66,23 @@ public class SituacaoFiscalService {
                                List<String> debitos, LocalDate dataReferencia, OrigemValor origem) {
     }
 
+    /**
+     * impedeCertidao: a pendência impede a CND e a CPEND, com o fundamento. Na redação vigente da Portaria Conjunta
+     * RFB/PGFN 1.751/2014, art. 4º, I (dada pela PC RFB/PGFN 20/2023), só a irregularidade de declaração que trate de
+     * informações previdenciárias (DCTFWeb, GFIP, eSocial) impede; omissão de outras declarações (EFD-Contribuições,
+     * ECF, DCTF) não está no texto e fica como pendência sem esse efeito.
+     */
     public record PendenciaFiscal(long id, String tipo, String descricao, LocalDate periodo, String situacao,
-                            LocalDate dataReferencia, OrigemValor origem) {
+                                  LocalDate dataReferencia, OrigemValor origem, boolean impedeCertidao, String fundamento) {
+    }
+
+    public static final String FUNDAMENTO_CERTIDAO = "Portaria Conjunta RFB/PGFN 1.751/2014, art. 4º, I (redação da PC RFB/PGFN 20/2023)";
+    private static final java.util.regex.Pattern PREVIDENCIARIA =
+            java.util.regex.Pattern.compile("DCTF ?WEB|GFIP|E-?SOCIAL|PREVIDENCI", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** Omissão ou irregularidade de declaração previdenciária: impede a certidão (ver PendenciaFiscal). */
+    static boolean impedeCertidao(String tipo, String descricao) {
+        return tipo != null && tipo.startsWith("OMISSAO") && descricao != null && PREVIDENCIARIA.matcher(descricao).find();
     }
 
     /** classeConsistente: a classe bate com a regra do órgão (false gera alerta na importação). */
@@ -203,9 +218,12 @@ public class SituacaoFiscalService {
                 JOIN escrituracao_contabil e ON e.id = p.escrituracao_id
                 JOIN documento_fiscal doc ON doc.id = e.documento_id
                 WHERE p.cliente_id = ? AND p.escrituracao_id IN (""" + VIGENTES_RETRATO + ") ORDER BY p.periodo DESC NULLS LAST, p.id",
-                (rs, i) -> new PendenciaFiscal(rs.getLong("id"), rs.getString("tipo"), rs.getString("descricao"),
-                        data(rs.getDate("periodo")), rs.getString("situacao"), rs.getDate("data_referencia").toLocalDate(),
-                        origem(rs)), clienteId, clienteId);
+                (rs, i) -> {
+                    boolean impede = impedeCertidao(rs.getString("tipo"), rs.getString("descricao"));
+                    return new PendenciaFiscal(rs.getLong("id"), rs.getString("tipo"), rs.getString("descricao"),
+                            data(rs.getDate("periodo")), rs.getString("situacao"), rs.getDate("data_referencia").toLocalDate(),
+                            origem(rs), impede, impede ? FUNDAMENTO_CERTIDAO : null);
+                }, clienteId, clienteId);
     }
 
     public List<CapacidadeOficial> capacidades(long clienteId, UsuarioAutenticado ua) {

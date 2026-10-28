@@ -10,7 +10,7 @@ import { Selo } from '@/components/selo';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Apuracao, ItemConciliacao, StatusConciliacao } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
-import { REGIMES, STATUS_CONCILIACAO } from '@/lib/rotulos';
+import { REGIMES, TOM_STATUS } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
 import { useClienteId } from '@/features/clientes/rota';
 import { useConciliacao } from '@/features/situacao-fiscal/api';
@@ -44,7 +44,8 @@ export default function TributosPage() {
   if (apuracoes.isPending || conciliacao.isPending) return <Skeleton className="h-96" />;
   const lista = apuracoes.data ?? [];
   const itens = conciliacao.data?.itens ?? [];
-  const presentes = (Object.keys(STATUS_CONCILIACAO) as StatusConciliacao[]).filter((s) => itens.some((i) => i.status === s));
+  // rótulo de cada status presente vem do próprio item (fonte única no backend); a ordem é a de gravidade
+  const presentes = (Object.keys(TOM_STATUS) as StatusConciliacao[]).flatMap((s) => itens.filter((i) => i.status === s).slice(0, 1));
   const filtrados = status ? itens.filter((i) => i.status === status) : itens;
 
   return (
@@ -58,7 +59,7 @@ export default function TributosPage() {
               <select value={status} onChange={(e) => setStatus(e.target.value as StatusConciliacao | '')}
                       className="h-8 rounded-md border bg-background px-2 text-sm">
                 <option value="">Todos</option>
-                {presentes.map((s) => <option key={s} value={s}>{STATUS_CONCILIACAO[s].rotulo}</option>)}
+                {presentes.map((i) => <option key={i.status} value={i.status}>{i.statusRotulo}</option>)}
               </select>
             </label>
             <Alternador rotulo="Periodicidade" valor={periodicidade} aoMudar={setPeriodicidade}
