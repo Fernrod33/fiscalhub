@@ -72,6 +72,13 @@ class MassaFicticiaAceiteTest {
             "parana/Conta_Corrente_e_Divida_Ativa_ICMS_9012345663.pdf", "parana/RTI_9012345663.pdf",
             "parana/Pagamentos_ICMS_GR-PR_9012345663.pdf", "parana/GR-PR_ICMS-ST_072026.pdf",
             "parana/GR-PR_Parcelamento_parcela_12-36.pdf");
+    /** Exercício completo de 2025 (coerente com a ECD 2025) e EFD ICMS/IPI de 01 a 07/2026 (faturamento de 12 meses do PR). */
+    static final List<String> ARQUIVOS_FASE_4 = java.util.stream.Stream.concat(
+            java.util.stream.IntStream.rangeClosed(1, 12).boxed().flatMap(m -> java.util.stream.Stream.of(
+                    String.format("efd-icms-ipi/EFD_ICMS_IPI_%02d2025_11222333000181.txt", m),
+                    String.format("efd-contribuicoes/EFD_CONTRIBUICOES_%02d2025_11222333000181.txt", m))),
+            java.util.stream.IntStream.rangeClosed(1, 7).mapToObj(m -> String.format("efd-icms-ipi/EFD_ICMS_IPI_%02d2026_11222333000181.txt", m)))
+            .toList();
 
     @Autowired MockMvc mvc;
     @Autowired DadosTeste dados;
@@ -94,7 +101,7 @@ class MassaFicticiaAceiteTest {
         // SELIC mensal de jan/2025 (BCB, série 4390): o único mês somado nos juros do IPI 11/2024 pago em 10/02/2025
         dados.selic(YearMonth.of(2025, 1), YearMonth.of(2025, 1), "1.01");
         esperados = json.readTree(MASSA.resolve("_gerador/valores_esperados.json").toFile());
-        for (String arquivo : ARQUIVOS) {
+        for (String arquivo : java.util.stream.Stream.concat(ARQUIVOS.stream(), ARQUIVOS_FASE_4.stream()).toList()) {
             documentos.put(arquivo, importar(MASSA.resolve(arquivo)));
         }
     }
@@ -247,7 +254,7 @@ class MassaFicticiaAceiteTest {
 
     @Test
     void item7CapagClasseCConsistenteSemAlerta() throws Exception {
-        JsonNode c = conteudo("/api/clientes/{c}/capacidade-oficial").get(0);
+        JsonNode c = encontrar(conteudo("/api/clientes/{c}/capacidade-oficial"), x -> "PGFN".equals(x.get("fonte").asText()));
         assertThat(c.get("classe").asText()).isEqualTo("C");
         assertThat(new BigDecimal(c.get("razao").asText())).isEqualByComparingTo("0.78");
         assertThat(c.get("classeConsistente").asBoolean()).isTrue();
@@ -289,7 +296,12 @@ class MassaFicticiaAceiteTest {
         JsonNode c = conteudo("/api/clientes/{c}/conciliacao");
         List<String> diferencas = new ArrayList<>();
         c.get("itens").forEach(i -> {
-            if (!"CONCILIADO".equals(i.get("status").asText())) {
+            // 2025: a massa traz as EFD (apurado) e as GR-PR do ICMS, mas não a DCTFWeb nem os DARF do ano
+            boolean federal2025 = i.get("periodo").asText().startsWith("2025") && "FEDERAL".equals(i.get("esfera").asText());
+            if (federal2025) {
+                // IRPJ e CSLL de 2025 têm apurado zero (prejuízo): conciliados
+                assertThat(i.get("status").asText()).as(i.get("id").asText()).isIn("NAO_DECLARADO", "CONCILIADO");
+            } else if (!"CONCILIADO".equals(i.get("status").asText())) {
                 diferencas.add(i.get("id").asText() + " " + i.get("status").asText());
             }
         });
@@ -337,11 +349,14 @@ class MassaFicticiaAceiteTest {
             assertThat(new BigDecimal(pis.get(3).asText())).isEqualByComparingTo(esperados.at("/efd_contribuicoes/PIS/devido").asText());
             // totais = soma da conciliação do mesmo período (nada recalculado)
             BigDecimal apurado = BigDecimal.ZERO;
+            int divergentes = 0;
             for (JsonNode i : conteudo("/api/clientes/{c}/conciliacao?de=2024-11&ate=2026-08").get("itens")) {
                 apurado = apurado.add(i.hasNonNull("apurado") ? new BigDecimal(i.at("/apurado/valor").asText()) : BigDecimal.ZERO);
+                divergentes += java.util.Set.of("CONCILIADO", "PARCELADO", "COMPENSADO_OU_SUSPENSO").contains(i.get("status").asText()) ? 0 : 1;
             }
             assertThat(new BigDecimal(m.at("/sumario/0/valor").asText())).isEqualByComparingTo(apurado);
-            assertThat(m.at("/sumario/3/valor").asText()).isEqualTo("3"); // COFINS 08/2026, ICMS-ST 08/2026 e IPI 11/2024
+            // as três plantadas + os federais de 2025 sem DCTFWeb/DARF na massa (não declarados)
+            assertThat(m.at("/sumario/3/valor").asText()).isEqualTo(String.valueOf(divergentes));
             assertThat(m.get("fontes")).isNotEmpty();
             assertThat(m.get("notas").toString()).contains("Lei 9.430/96, art. 61");
         }
@@ -421,13 +436,16 @@ class MassaFicticiaAceiteTest {
         }
 
         @Test
-        void cargaTributariaSemInsumoFicaNaoDisponivelSemEstimar() throws Exception {
+        void carga2025BateComOGeradorEInsumoFaltanteFicaNaoDisponivel() throws Exception {
             JsonNode carga = conteudo("/api/clientes/{c}/carga-tributaria");
             JsonNode e2025 = encontrar(carga, e -> e.get("exercicio").asInt() == 2025);
-            assertThat(new BigDecimal(e2025.get("receitaBruta").asText())).isEqualByComparingTo(esperados.at("/ecf_lucro_real_2025/receita").asText());
-            assertThat(e2025.get("carga").isNull()).isTrue(); // faltam os meses de 2025 das EFD
+            assertThat(new BigDecimal(e2025.get("receitaBruta").asText())).isEqualByComparingTo(esperados.at("/carga_tributaria_2025/receita_bruta").asText());
+            assertThat(new BigDecimal(e2025.get("tributos").asText())).isEqualByComparingTo(esperados.at("/carga_tributaria_2025/tributos").asText());
+            assertThat(new BigDecimal(e2025.get("carga").asText())).isEqualByComparingTo(esperados.at("/carga_tributaria_2025/carga").asText());
             assertThat(e2025.get("irpjCsllNaoAplicavel").asBoolean()).isTrue(); // prejuízo antes do IR
-            assertThat(e2025.get("faltando").toString()).contains("EFD-Contribuições: importe o exercício de 2025");
+            JsonNode e2024 = encontrar(carga, e -> e.get("exercicio").asInt() == 2024);
+            assertThat(e2024.get("carga").isNull()).isTrue(); // sem as EFD de 2024: não estima
+            assertThat(e2024.get("faltando").toString()).contains("EFD-Contribuições: importe o exercício de 2024");
             JsonNode e2026 = encontrar(carga, e -> e.get("exercicio").asInt() == 2026);
             assertThat(e2026.get("receitaBruta").isNull()).isTrue();
             assertThat(e2026.get("carga").isNull()).isTrue();
@@ -469,6 +487,97 @@ class MassaFicticiaAceiteTest {
 
         private static String sha256(byte[] b) throws Exception {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(b));
+        }
+    }
+
+    // ---------------------------------------------------------------- capacidade de pagamento (Fase 4) com a massa
+
+    /** Valores calculados de forma independente pelo gerador (_gerador/valores_esperados.json). */
+    @Nested
+    class Capacidade {
+
+        @Test
+        void dfcDiretaDe2024E2025PorCategoriaBateComOGeradorEComOCaixa() throws Exception {
+            for (String ano : List.of("2024", "2025")) {
+                JsonNode dfc = conteudo("/api/clientes/{c}/dfc?exercicio=" + ano);
+                JsonNode esperado = esperados.at("/dfc_direta/" + ano);
+                esperado.get("categorias").fields().forEachRemaining(e -> {
+                    JsonNode linha = encontrar(dfc.get("linhas"), l -> e.getKey().equals(l.get("categoria").asText()));
+                    assertThat(new BigDecimal(linha.get("total").asText())).as(ano + " " + e.getKey()).isEqualByComparingTo(e.getValue().asText());
+                    assertThat(linha.get("origens")).isNotEmpty();
+                });
+                assertThat(dfc.get("linhas")).hasSize(esperado.get("categorias").size());
+                assertThat(new BigDecimal(dfc.get("variacaoDfc").asText())).isEqualByComparingTo(esperado.get("variacao_caixa").asText());
+                assertThat(new BigDecimal(dfc.get("diferenca").asText())).isZero(); // conferência com o I155
+                assertThat(dfc.get("alerta").isNull()).isTrue();
+            }
+        }
+
+        @Test
+        void classificacaoDoPrBateComOGeradorEComORti() throws Exception {
+            JsonNode pr = metodologia(conteudo("/api/clientes/{c}/capacidade"), "PR");
+            JsonNode esperado = esperados.at("/classificacao_pr");
+            assertThat(pr.get("classe").asText()).isEqualTo(esperado.get("classe").asText());
+            assertThat(new BigDecimal(pr.get("valor").asText())).isEqualByComparingTo(esperado.get("soma").asText());
+            List<String> nomes = List.of("Situação cadastral", "Tempo de inatividade", "Índice de endividamento", "Indicativo de pagamento",
+                    "Classificação das CDAs");
+            List<String> chaves = List.of("situacao", "inatividade", "endividamento", "pagamento", "cdas");
+            for (int i = 0; i < nomes.size(); i++) {
+                String nome = nomes.get(i);
+                assertThat(encontrar(pr.get("criterios"), c -> nome.equals(c.get("nome").asText())).get("pontos").asText())
+                        .as(nome).isEqualTo(esperado.at("/pontos/" + chaves.get(i)).asText());
+            }
+            esperado.get("cdas").fields().forEachRemaining(e -> {
+                JsonNode item = encontrar(pr.get("itens"), x -> e.getKey().equals(x.get("id").asText()));
+                assertThat(item.get("classe").asText()).as(e.getKey()).isEqualTo(e.getValue().get("classe").asText());
+                assertThat(item.get("indice").asText()).as(e.getKey()).isEqualTo(e.getValue().get("indice").asText());
+                assertThat(item.get("classeOficial").asText()).as("RTI " + e.getKey()).isEqualTo(e.getValue().get("classe").asText());
+            });
+            assertThat(pr.at("/parametros/oficial").asText()).isEqualTo(esperado.get("classe").asText());
+            assertThat(pr.get("alertas")).isEmpty();
+        }
+
+        @Test
+        void simularQuitarACdaAjuizadaMudaAClasseSemAlterarOImportado() throws Exception {
+            String antes = jdbc.queryForObject("SELECT count(*)::text FROM debito WHERE cliente_id = ?", String.class, metalurgica.getId());
+            JsonNode sim = json.readTree(mvc.perform(post("/api/clientes/{c}/capacidade/pr/simulacao", metalurgica.getId()).with(sessao)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"quitar\":[\"2023.0045678-2\"]}")).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString());
+            JsonNode esperado = esperados.at("/classificacao_pr/simulacao_quitar_2023_0045678_2");
+            assertThat(sim.get("classe").asText()).isEqualTo(esperado.get("classe").asText());
+            assertThat(new BigDecimal(sim.get("valor").asText())).isEqualByComparingTo(esperado.get("soma").asText());
+            assertThat(sim.get("rotuloTexto").asText()).startsWith("simulação");
+            assertThat(jdbc.queryForObject("SELECT count(*)::text FROM debito WHERE cliente_id = ?", String.class, metalurgica.getId())).isEqualTo(antes);
+            assertThat(metodologia(conteudo("/api/clientes/{c}/capacidade"), "PR").get("classe").asText()).isEqualTo("B");
+        }
+
+        @Test
+        void capagOficialCEstimadaComRotuloEIrrecuperaveisDoGerador() throws Exception {
+            JsonNode c = conteudo("/api/clientes/{c}/capacidade");
+            assertThat(c.at("/capagOficial/classe").asText()).isEqualTo(esperados.at("/capag_oficial/classe").asText());
+            assertThat(c.at("/capagOficial/rotulo").asText()).isEqualTo("OFICIAL");
+            JsonNode est = metodologia(c, "CAPAG_ESTIMADA");
+            assertThat(est.get("rotulo").asText()).isEqualTo("ESTIMATIVA");
+            assertThat(est.get("classe").asText()).isIn("A", "B", "C", "D");
+            assertThat(est.at("/parametros/faixaA").asText()).isEqualTo("2");
+            assertThat(est.get("criterios").toString()).contains("GRF", "PLR", "Fluxo de caixa (DFC direta)", "parâmetro do escritório");
+            List<String> irrecuperaveis = new ArrayList<>();
+            est.get("itens").forEach(i -> {
+                if ("IRRECUPERAVEL".equals(i.get("classe").asText())) {
+                    irrecuperaveis.add(i.get("id").asText());
+                }
+            });
+            assertThat(irrecuperaveis).hasSize(esperados.get("irrecuperaveis_pgfn").size());
+            assertThat(est.get("itens")).hasSize(4).allSatisfy(i -> assertThat(i.get("classe").asText()).isEqualTo("RECUPERAVEL"));
+            JsonNode ger = metodologia(c, "GERENCIAL");
+            assertThat(ger.get("rotuloTexto").asText()).isEqualTo("análise do consultor — não é critério oficial");
+            JsonNode resumo = conteudo("/api/clientes/{c}/capacidade/resumo");
+            assertThat(resumo.get("capagOficial").asText()).isEqualTo("C");
+            assertThat(resumo.get("classePr").asText()).isEqualTo("B");
+        }
+
+        private JsonNode metodologia(JsonNode capacidade, String chave) {
+            return encontrar(capacidade.get("metodologias"), m -> chave.equals(m.get("metodologia").asText()));
         }
     }
 
