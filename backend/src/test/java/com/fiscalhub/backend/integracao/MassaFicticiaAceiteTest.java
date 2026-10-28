@@ -6,18 +6,28 @@ import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.DocumentoStatus;
 import com.fiscalhub.backend.entity.enums.Papel;
+import com.fiscalhub.backend.pdf.DocumentoPdf;
+import com.fiscalhub.backend.pdf.LeitorPdf;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.YearMonth;
@@ -29,8 +39,11 @@ import java.util.UUID;
 
 import static com.fiscalhub.backend.integracao.Espera.aguardar;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -300,6 +313,163 @@ class MassaFicticiaAceiteTest {
                 documentos.get("dctf/DCTF_Mensal_112024_11222333000181.dec"))).contains("DECLARACAO_EM_DOIS_FORMATOS");
         JsonNode parcelas = conteudo("/api/clientes/{c}/conciliacao");
         assertThat(parcelas.at("/itens").findValuesAsText("id")).doesNotContain("PARCELAMENTO");
+    }
+
+    // ---------------------------------------------------------------- relatórios (Fase 3) com a massa
+
+    /** Os três relatórios montados com a massa: valores contra valores_esperados.json e a conciliação; PDF, Excel e emissão. */
+    @Nested
+    class Relatorios {
+
+        @Test
+        void tributosTrazADivergenciaDaCofinsComOrigemEOsMesmosValoresDaConciliacao() throws Exception {
+            JsonNode r = emitir("{\"tipo\":\"TRIBUTOS\",\"de\":\"2024-11\",\"ate\":\"2026-08\"}");
+            JsonNode m = snapshot(r);
+            JsonNode div = linha(secao(m, "Divergências"), "COFINS", "2026-08");
+            assertThat(new BigDecimal(div.get(3).asText())).isEqualByComparingTo("5079.00");
+            assertThat(div.get(7).asText()).contains("EFD_CONTRIBUICOES_082026_11222333000181.txt").contains("DARF_DCTFWeb_082026_PIS_COFINS_IPI.pdf, p. 1");
+            JsonNode ipi = linha(secao(m, "Divergências"), "IPI", "2024-11");
+            assertThat(new BigDecimal(ipi.get(4).asText())).isEqualByComparingTo(esperados.at("/situacao_fiscal/multa_ipi").asText());
+            assertThat(new BigDecimal(ipi.get(5).asText())).isEqualByComparingTo(esperados.at("/situacao_fiscal/juros_ipi").asText());
+            JsonNode cofins = linha(secao(m, "Tributos por competência"), "Federal", "COFINS", "2026-08");
+            assertThat(new BigDecimal(cofins.get(3).asText())).isEqualByComparingTo(esperados.at("/efd_contribuicoes/COFINS/devido").asText());
+            JsonNode pis = linha(secao(m, "Tributos por competência"), "Federal", "PIS", "2026-08");
+            assertThat(new BigDecimal(pis.get(3).asText())).isEqualByComparingTo(esperados.at("/efd_contribuicoes/PIS/devido").asText());
+            // totais = soma da conciliação do mesmo período (nada recalculado)
+            BigDecimal apurado = BigDecimal.ZERO;
+            for (JsonNode i : conteudo("/api/clientes/{c}/conciliacao?de=2024-11&ate=2026-08").get("itens")) {
+                apurado = apurado.add(i.hasNonNull("apurado") ? new BigDecimal(i.at("/apurado/valor").asText()) : BigDecimal.ZERO);
+            }
+            assertThat(new BigDecimal(m.at("/sumario/0/valor").asText())).isEqualByComparingTo(apurado);
+            assertThat(m.at("/sumario/3/valor").asText()).isEqualTo("3"); // COFINS 08/2026, ICMS-ST 08/2026 e IPI 11/2024
+            assertThat(m.get("fontes")).isNotEmpty();
+            assertThat(m.get("notas").toString()).contains("Lei 9.430/96, art. 61");
+        }
+
+        @Test
+        void pdfAbreComOsNumerosChaveEDoisDownloadsSaoOMesmoArquivo() throws Exception {
+            JsonNode r = emitir("{\"tipo\":\"TRIBUTOS\",\"de\":\"2024-11\",\"ate\":\"2026-08\"}");
+            String url = "/api/clientes/{c}/relatorios/" + r.get("id").asLong() + "/pdf";
+            byte[] pdf = baixar(url);
+            assertThat(sha256(baixar(url))).isEqualTo(sha256(pdf)).isEqualTo(r.get("sha256Pdf").asText());
+            DocumentoPdf lido = LeitorPdf.ler(pdf);
+            String texto = String.join("\n", lido.linhas().stream().map(DocumentoPdf.Linha::texto).toList());
+            int paginas = lido.paginas().size();
+            assertThat(paginas).isGreaterThanOrEqualTo(3); // capa, corpo e anexo de fontes
+            assertThat(texto).contains("Página 2 de " + paginas, "Página " + paginas + " de " + paginas)
+                    .contains("Relatório nº " + r.get("numero").asLong()).contains("11.222.333/0001-81").contains("5.079,00")
+                    .contains("6.526,08").contains("828,12").contains("Notas metodológicas").contains("Anexo");
+        }
+
+        @Test
+        void excelTemNumerosComoNumeroCabecalhoCongeladoEAbaFontes() throws Exception {
+            JsonNode r = emitir("{\"tipo\":\"TRIBUTOS\",\"de\":\"2026-08\",\"ate\":\"2026-08\"}");
+            byte[] xlsx = baixar("/api/clientes/{c}/relatorios/" + r.get("id").asLong() + "/xlsx");
+            assertThat(sha256(xlsx)).isEqualTo(r.get("sha256Xlsx").asText());
+            try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(xlsx))) {
+                Sheet tabela = wb.getSheet("Tributos por competência");
+                assertThat(tabela.getPaneInformation().isFreezePane()).isTrue();
+                assertThat(tabela.getRow(0).getCell(3).getStringCellValue()).isEqualTo("Apurado");
+                boolean achou = false;
+                for (int i = 1; i <= tabela.getLastRowNum(); i++) {
+                    var row = tabela.getRow(i);
+                    if ("COFINS".equals(row.getCell(1).getStringCellValue())) {
+                        assertThat(row.getCell(6).getCellType()).isEqualTo(CellType.NUMERIC);
+                        assertThat(row.getCell(6).getNumericCellValue()).isEqualTo(5079.00);
+                        assertThat(row.getCell(6).getCellStyle().getDataFormatString()).contains("R$");
+                        achou = true;
+                    }
+                }
+                assertThat(achou).isTrue();
+                Sheet fontes = wb.getSheet("Fontes");
+                assertThat(fontes.getLastRowNum()).isPositive();
+                assertThat(fontes.getRow(1).getCell(4).getStringCellValue()).hasSize(64);
+            }
+        }
+
+        @Test
+        void reemitirGeraOutroNumeroEORegistroEhImutavel() throws Exception {
+            String pedido = "{\"tipo\":\"SITUACAO_FISCAL\"}";
+            JsonNode a = emitir(pedido);
+            JsonNode b = emitir(pedido);
+            assertThat(b.get("numero").asLong()).isEqualTo(a.get("numero").asLong() + 1);
+            assertThat(b.get("id").asLong()).isNotEqualTo(a.get("id").asLong());
+            assertThat(sha256(baixar("/api/clientes/{c}/relatorios/" + a.get("id").asLong() + "/pdf"))).isEqualTo(a.get("sha256Pdf").asText());
+            assertThatThrownBy(() -> jdbc.update("UPDATE relatorio_emitido SET tipo = 'TRIBUTOS' WHERE id = ?", a.get("id").asLong()))
+                    .hasMessageContaining("imutável");
+            JsonNode lista = conteudo("/api/clientes/{c}/relatorios");
+            assertThat(lista.findValuesAsText("numero")).contains(a.get("numero").asText(), b.get("numero").asText());
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM auditoria_evento WHERE acao = 'RELATORIO_BAIXAR' AND recurso_id = ?",
+                    Long.class, a.get("id").asLong())).isPositive();
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM auditoria_evento WHERE acao = 'RELATORIO_EMITIR' AND recurso_id = ?",
+                    Long.class, b.get("id").asLong())).isEqualTo(1);
+        }
+
+        @Test
+        void situacaoFiscalDestacaOQueImpedeCertidaoEBateComOsDebitos() throws Exception {
+            JsonNode m = snapshot(emitir("{\"tipo\":\"SITUACAO_FISCAL\"}"));
+            BigDecimal total = BigDecimal.ZERO;
+            for (JsonNode d : conteudo("/api/clientes/{c}/debitos")) {
+                total = d.hasNonNull("valorTotal") ? total.add(new BigDecimal(d.get("valorTotal").asText())) : total;
+            }
+            assertThat(new BigDecimal(m.at("/sumario/0/valor").asText())).isEqualByComparingTo(total);
+            JsonNode impede = secao(m, "Itens que impedem a certidão");
+            assertThat(impede.get("destaque").asBoolean()).isTrue();
+            assertThat(impede.at("/tabela/linhas")).isNotEmpty();
+            assertThat(secao(m, "Parcelamentos e transações").at("/tabela/linhas").toString()).contains("2021.009871-4", "57 de 64");
+            assertThat(m.at("/sumario/4/valor").asText()).isNotEqualTo("não disponível"); // CAPAG da massa
+        }
+
+        @Test
+        void cargaTributariaSemInsumoFicaNaoDisponivelSemEstimar() throws Exception {
+            JsonNode carga = conteudo("/api/clientes/{c}/carga-tributaria");
+            JsonNode e2025 = encontrar(carga, e -> e.get("exercicio").asInt() == 2025);
+            assertThat(new BigDecimal(e2025.get("receitaBruta").asText())).isEqualByComparingTo(esperados.at("/ecf_lucro_real_2025/receita").asText());
+            assertThat(e2025.get("carga").isNull()).isTrue(); // faltam os meses de 2025 das EFD
+            assertThat(e2025.get("irpjCsllNaoAplicavel").asBoolean()).isTrue(); // prejuízo antes do IR
+            assertThat(e2025.get("faltando").toString()).contains("EFD-Contribuições: importe o exercício de 2025");
+            JsonNode e2026 = encontrar(carga, e -> e.get("exercicio").asInt() == 2026);
+            assertThat(e2026.get("receitaBruta").isNull()).isTrue();
+            assertThat(e2026.get("carga").isNull()).isTrue();
+            assertThat(e2026.get("faltando").toString()).contains("receita bruta de 2026: importe a ECD");
+            JsonNode m = snapshot(emitir("{\"tipo\":\"CARGA_TRIBUTARIA\"}"));
+            assertThat(secao(m, "Insumos que faltam").at("/tabela/linhas").toString()).contains("não disponível — receita bruta de 2026");
+            assertThat(linha(secao(m, "Carga efetiva por exercício"), "2026").get(3).asText()).isEqualTo("não disponível");
+        }
+
+        private JsonNode emitir(String corpo) throws Exception {
+            return json.readTree(mvc.perform(post("/api/clientes/{c}/relatorios", metalurgica.getId()).with(sessao)
+                    .contentType(MediaType.APPLICATION_JSON).content(corpo)).andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        }
+
+        private JsonNode snapshot(JsonNode emitido) throws Exception {
+            return json.readTree(jdbc.queryForObject("SELECT snapshot FROM relatorio_emitido WHERE id = ?", String.class, emitido.get("id").asLong()));
+        }
+
+        private byte[] baixar(String url) throws Exception {
+            var inicio = mvc.perform(get(url, metalurgica.getId()).with(sessao)).andExpect(status().isOk()).andReturn();
+            return mvc.perform(asyncDispatch(inicio)).andReturn().getResponse().getContentAsByteArray(); // StreamingResponseBody
+        }
+
+        private static JsonNode secao(JsonNode m, String titulo) {
+            return encontrar(m.get("secoes"), s -> titulo.equals(s.get("titulo").asText()));
+        }
+
+        /** Linha da tabela da seção cujas primeiras células são as dadas. */
+        private static JsonNode linha(JsonNode secao, String... inicio) {
+            return encontrar(secao.at("/tabela/linhas"), l -> {
+                for (int i = 0; i < inicio.length; i++) {
+                    if (!inicio[i].equals(l.get(i).asText())) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        private static String sha256(byte[] b) throws Exception {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(b));
+        }
     }
 
     // ---------------------------------------------------------------- apoio

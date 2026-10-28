@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--/* Template único dos relatórios: a prévia (HTML no iframe com sandbox) e o PDF (openhtmltopdf) saem daqui.
+       XHTML bem formado (o openhtmltopdf lê XML). Todo dado entra por th:text (escapado); th:utext só para o SVG
+       gerado pelo GraficoSvg (que escapa os textos) e para o CSS fixo das fontes da prévia. */-->
+<html xmlns:th="http://www.thymeleaf.org" lang="pt-BR" th:classappend="${previa} ? 'previa'">
+<head>
+  <meta charset="UTF-8" />
+  <title th:text="${m.titulo}">Relatório</title>
+  <style th:if="${previa}" th:utext="${fontesPrevia}"></style>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm 16mm;
+      @bottom-left { content: element(rodape); }
+    }
+    @page capa { @bottom-left { content: none; } }
+    * { box-sizing: border-box; }
+    html { color: #0f1c2e; font-family: 'Inter', sans-serif; font-size: 9pt; line-height: 1.45; background: #ffffff; }
+    body { margin: 0; }
+    .previa body { max-width: 210mm; margin: 0 auto; padding: 12mm 14mm; background: #ffffff; }
+    h1, h2, h3 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 600; margin: 0; }
+    h2 { font-size: 13pt; margin: 14pt 0 6pt; page-break-after: avoid; }
+    h3 { font-size: 10.5pt; margin: 10pt 0 4pt; page-break-after: avoid; }
+    p { margin: 0 0 6pt; }
+    .muted { color: #556378; }
+    .num { text-align: right; white-space: nowrap; }
+
+    .capa { page: capa; page-break-after: always; min-height: 240mm; position: relative; }
+    .previa .capa { min-height: 0; border-bottom: 1px solid #d7dee7; padding-bottom: 12mm; margin-bottom: 8mm; }
+    .faixa { height: 6mm; margin-bottom: 18mm; }
+    .logo { max-height: 22mm; max-width: 70mm; margin-bottom: 8mm; }
+    .capa h1 { font-size: 24pt; line-height: 1.2; margin-bottom: 10mm; }
+    .capa dl { margin: 0; }
+    .capa dt { color: #556378; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 5mm; }
+    .capa dd { margin: 1mm 0 0; font-size: 11pt; }
+    .marca-previa { display: inline-block; border: 1px solid #8a5300; color: #8a5300; padding: 1mm 3mm; margin-bottom: 6mm; font-weight: 600; }
+
+    .sumario { width: 100%; border-collapse: separate; border-spacing: 3mm 0; margin: 0 -3mm 4mm; }
+    .sumario td { border: 1px solid #d7dee7; padding: 3mm; vertical-align: top; width: 20%; }
+    .sumario .rotulo { color: #556378; font-size: 8pt; }
+    .sumario .valor { font-size: 13pt; font-weight: 600; margin-top: 1mm; }
+    .sumario .nota { color: #556378; font-size: 7.5pt; margin-top: 1mm; }
+
+    table.dados { width: 100%; border-collapse: collapse; margin: 2pt 0 8pt; -fs-table-paginate: paginate; }
+    table.dados thead { display: table-header-group; }
+    table.dados tr { page-break-inside: avoid; }
+    table.dados th { text-align: left; font-weight: 600; font-size: 8pt; color: #556378; border-bottom: 1.5px solid #0f1c2e; padding: 3pt 4pt; }
+    table.dados td { border-bottom: 1px solid #d7dee7; padding: 3pt 4pt; vertical-align: top; }
+    table.dados tfoot td { font-weight: 600; border-top: 1.5px solid #0f1c2e; border-bottom: none; }
+    td.texto { word-wrap: break-word; }
+    .secao { margin-bottom: 6pt; }
+    .destaque { border-left: 3pt solid #a1262b; padding-left: 8pt; }
+    .destaque h2::before { content: "Atenção · "; color: #a1262b; }
+    .grafico { page-break-inside: avoid; margin: 4pt 0 10pt; }
+    .grafico svg { width: 100%; height: auto; }
+    ol.notas { padding-left: 14pt; margin: 0; }
+    ol.notas li { margin-bottom: 4pt; }
+    .hash { font-family: monospace; font-size: 7pt; word-break: break-all; }
+
+    .rodape { position: running(rodape); font-size: 7pt; color: #556378; width: 100%; }
+    .rodape .pagina::after { content: "Página " counter(page) " de " counter(pages); }
+    .previa .rodape { display: none; }
+    .rodape-previa { margin-top: 10mm; border-top: 1px solid #d7dee7; padding-top: 3mm; font-size: 7.5pt; color: #556378; }
+  </style>
+</head>
+<body>
+  <div class="rodape">
+    <table style="width: 100%; border-collapse: collapse;"><tr>
+      <td style="width: 55%;">
+        <span th:text="${m.cabecalho.escritorio}">Escritório</span><span th:if="${m.cabecalho.rodape}" th:text="${' · ' + m.cabecalho.rodape}"></span>
+      </td>
+      <td style="text-align: right;">
+        <span th:text="${numero}">Relatório nº 1</span> · <span class="pagina"></span><br />
+        <span class="hash" th:text="${'SHA-256 do snapshot ' + hash}">hash</span>
+      </td>
+    </tr></table>
+  </div>
+
+  <section class="capa">
+    <div class="faixa" th:style="${'background: ' + m.cabecalho.cor}"></div>
+    <img class="logo" th:if="${logo}" th:src="${logo}" alt="Logotipo do escritório" />
+    <p class="muted" th:unless="${logo}" th:text="${m.cabecalho.escritorio}">Escritório</p>
+    <div th:if="${previa}" class="marca-previa">PRÉVIA — sem número, não emitida</div>
+    <h1 th:text="${m.titulo}" th:style="${'color: ' + m.cabecalho.cor}">Título</h1>
+    <dl>
+      <dt>Cliente</dt>
+      <dd><span th:text="${m.cabecalho.clienteRazaoSocial}">Razão social</span><br />
+        <span class="muted" th:text="${'CNPJ ' + f.cnpj(m.cabecalho.clienteCnpj)}">CNPJ</span></dd>
+      <dt>Período</dt>
+      <dd th:text="${m.cabecalho.periodo}">Período</dd>
+      <dt>Emissão</dt>
+      <dd th:text="${f.dataHora(m.cabecalho.emissao) + ' · ' + numero}">Data</dd>
+      <th:block th:if="${m.cabecalho.responsavel}">
+        <dt>Responsável técnico</dt>
+        <dd th:text="${m.cabecalho.responsavel}">Responsável</dd>
+      </th:block>
+      <dt>Elaborado por</dt>
+      <dd th:text="${m.cabecalho.escritorio}">Escritório</dd>
+    </dl>
+  </section>
+
+  <h2>Sumário executivo</h2>
+  <table class="sumario"><tr>
+    <td th:each="i : ${m.sumario}">
+      <div class="rotulo" th:text="${i.rotulo}">Rótulo</div>
+      <div class="valor" th:text="${f.celula(i.valor, i.formato)}">0</div>
+      <div class="nota" th:if="${i.nota}" th:text="${i.nota}">nota</div>
+    </td>
+  </tr></table>
+
+  <div th:each="s : ${m.secoes}" class="secao" th:classappend="${s.destaque} ? 'destaque'">
+    <h2 th:text="${s.titulo}">Seção</h2>
+    <p class="muted" th:if="${s.texto}" th:text="${s.texto}">texto</p>
+    <div class="grafico" th:if="${s.grafico}" th:utext="${f.svg(s.grafico)}"></div>
+    <table class="dados" th:if="${s.tabela}">
+      <thead><tr><th th:each="c : ${s.tabela.colunas}" th:text="${c.nome}" th:classappend="${f.numerico(c.formato)} ? 'num'">Coluna</th></tr></thead>
+      <tbody>
+        <tr th:each="l : ${s.tabela.linhas}">
+          <td th:each="c, st : ${s.tabela.colunas}" th:text="${f.celula(l[st.index], c.formato)}"
+              th:class="${f.numerico(c.formato)} ? 'num' : 'texto'">valor</td>
+        </tr>
+      </tbody>
+      <tfoot th:if="${s.tabela.totais}"><tr>
+        <td th:each="c, st : ${s.tabela.colunas}" th:text="${f.celula(s.tabela.totais[st.index], c.formato)}"
+            th:class="${f.numerico(c.formato)} ? 'num' : 'texto'">total</td>
+      </tr></tfoot>
+    </table>
+  </div>
+
+  <h2>Notas metodológicas</h2>
+  <ol class="notas"><li th:each="n : ${m.notas}" th:text="${n}">nota</li></ol>
+  <p class="muted" th:text="${'Versão do template: ' + m.versoes.template + ' · tabelas e normas: ' + m.versoes.normas}">versões</p>
+
+  <th:block th:unless="${#lists.isEmpty(m.fontes)}">
+    <h2>Anexo — fontes</h2>
+    <p class="muted">Documentos importados usados neste relatório. O SHA-256 identifica o arquivo exatamente como foi importado.</p>
+    <table class="dados">
+      <thead><tr><th>Tipo</th><th>Arquivo</th><th>Período</th><th>Importado em</th><th>SHA-256</th></tr></thead>
+      <tbody>
+        <tr th:each="d : ${m.fontes}">
+          <td th:text="${d.tipo}">tipo</td>
+          <td class="texto" th:text="${d.arquivo}">arquivo</td>
+          <td th:text="${d.periodo}">período</td>
+          <td th:text="${f.dataHora(d.importadoEm)}">data</td>
+          <td class="hash" th:text="${d.sha256}">sha</td>
+        </tr>
+      </tbody>
+    </table>
+  </th:block>
+
+  <div class="rodape-previa" th:if="${previa}">
+    <span th:text="${m.cabecalho.escritorio}">Escritório</span><span th:if="${m.cabecalho.rodape}" th:text="${' · ' + m.cabecalho.rodape}"></span>
+    · Prévia: o número, a paginação e o hash entram na emissão.
+  </div>
+</body>
+</html>

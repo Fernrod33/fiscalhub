@@ -20,6 +20,7 @@
 
     <properties>
         <java.version>25</java.version>
+        <openhtmltopdf.version>1.1.94</openhtmltopdf.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lombok.version>1.18.42</lombok.version>
         <awssdk.version>2.46.7</awssdk.version>
@@ -66,6 +67,22 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.8</version>
+        </dependency>
+        <!-- Relatórios: um template Thymeleaf por relatório (prévia em HTML e PDF) e HTML -> PDF pelo openhtmltopdf
+             (fork mantido, sobre o mesmo PDFBox 3), com SVG dos gráficos gerados no backend. Sem acesso externo. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-svg-support</artifactId>
+            <version>${openhtmltopdf.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
