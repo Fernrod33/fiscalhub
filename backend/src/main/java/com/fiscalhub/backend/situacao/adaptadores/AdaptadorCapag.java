@@ -12,7 +12,8 @@ import java.math.RoundingMode;
 
 /**
  * Tela da CAPAG (Regularize/PGFN), versão ficticio-2026-10: classe, capacidade de pagamento estimada e passivo na PGFN.
- * A classe é conferida com a razão capacidade ÷ passivo da Portaria PGFN 6.757/2022 (A ≥ 2; B ≥ 1; C ≥ 0,5; D < 0,5).
+ * A classe é conferida com a razão capacidade ÷ passivo pelas faixas padrão dos parâmetros de capacidade (A ≥ 2; B ≥ 1;
+ * C ≥ 0,5; D < 0,5): o texto da Portaria PGFN 6.757/2022 não fixa os múltiplos (conferido em 28/10/2026).
  */
 @Component
 class AdaptadorCapag extends AdaptadorFicticio {
@@ -40,18 +41,17 @@ class AdaptadorCapag extends AdaptadorFicticio {
         if (Boolean.FALSE.equals(consistente)) {
             e.alerta(Severidade.ALERTA, "CAPAG_INCONSISTENTE", "A CAPAG informa a classe " + classe.get(1)
                     + ", mas capacidade ÷ passivo = " + capacidade.divide(passivo, 2, RoundingMode.HALF_UP).toPlainString()
-                    + "x dá a classe " + esperada + " pela Portaria PGFN 6.757/2022 (A ≥ 2x; B ≥ 1x; C ≥ 0,5x; D < 0,5x).",
+                    + "x dá a classe " + esperada + " pelas faixas padrão (A ≥ 2x; B ≥ 1x; C ≥ 0,5x; D < 0,5x; não fixadas no texto da Portaria).",
                     origem(classe));
         }
     }
 
-    /** Portaria PGFN 6.757/2022: A ≥ 2x; B ≥ 1x; C ≥ 0,5x; D < 0,5x. Sem capacidade ou passivo positivo: null. */
+    /** Pelas faixas padrão dos parâmetros de capacidade (as mesmas da CAPAG estimada). Sem capacidade ou passivo: null. */
     static String classePelaPortaria(BigDecimal capacidade, BigDecimal passivo) {
         if (capacidade == null || passivo == null || passivo.signum() <= 0) {
             return null;
         }
-        BigDecimal razao = capacidade.divide(passivo, 6, RoundingMode.HALF_UP);
-        return razao.compareTo(BigDecimal.valueOf(2)) >= 0 ? "A" : razao.compareTo(BigDecimal.ONE) >= 0 ? "B"
-                : razao.compareTo(new BigDecimal("0.5")) >= 0 ? "C" : "D";
+        return com.fiscalhub.backend.capacidade.CapagEstimada.classe(capacidade.divide(passivo, 6, RoundingMode.HALF_UP),
+                com.fiscalhub.backend.capacidade.ParametrosCapacidade.PADRAO.capag());
     }
 }

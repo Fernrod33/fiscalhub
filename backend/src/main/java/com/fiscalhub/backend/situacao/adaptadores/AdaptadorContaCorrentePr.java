@@ -27,7 +27,9 @@ class AdaptadorContaCorrentePr extends AdaptadorFicticio {
 
     private static final String DIVIDA_ATIVA = "Dívida ativa";
     private static final String PARCELAMENTOS = "Parcelamentos";
-    private static final Set<String> SECOES = Set.of(DIVIDA_ATIVA, PARCELAMENTOS);
+    private static final String DETALHAMENTO = "Detalhamento da dívida ativa";
+    private static final String CADASTRO = "Cadastro";
+    private static final Set<String> SECOES = Set.of(DIVIDA_ATIVA, PARCELAMENTOS, DETALHAMENTO, CADASTRO);
     static final Pattern CAD_ICMS = Pattern.compile("CAD/ICMS (\\d+)");
     private static final Pattern CAD_ICMS_LINHA = Pattern.compile("CAD/ICMS .*");
     private static final Pattern PARCELAS = Pattern.compile("(\\d+) \\((\\d+) pagas\\)");
@@ -72,6 +74,12 @@ class AdaptadorContaCorrentePr extends AdaptadorFicticio {
                     situacao.startsWith("PARCELADA") ? SituacaoDebito.PARCELADO : SituacaoDebito.INSCRITO_DIVIDA_ATIVA,
                     situacao, r.get(0), r.get(1), null, null, origem(r)));
         }
+        // CDA | Data de inscrição | Origem da dívida | Ajuizamento | Parcelamentos (seção opcional: insumo da Fase 4)
+        for (Registro r : DocumentoPdf.tabela(pdf.secao(DETALHAMENTO, SECOES), Pattern.compile("\\d{4}\\.\\d+-\\d"))) {
+            e.detalhesDivida.add(new Extracao.DetalheDivida(OrgaoCredor.PGE_PR, r.get(0), data(r.get(1)), r.get(2), r.get(3),
+                    Integer.valueOf(r.get(4).strip()), null, null, null, origem(r)));
+        }
+        situacaoCadastral(pdf, OrgaoCredor.SEFA_PR, e);
         // Nº parcelamento | Débitos | Parcelas | Valor da parcela | Saldo | Situação
         for (Registro r : DocumentoPdf.tabela(pdf.secao(PARCELAMENTOS, SECOES), Pattern.compile("PR-\\d{4}-\\d+"))) {
             Matcher parcelas = PARCELAS.matcher(r.get(2));

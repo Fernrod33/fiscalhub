@@ -136,6 +136,16 @@ INSCR = [  # número, receita, natureza, PA, principal, multa, juros, encargo, s
 ]
 
 
+# datas de inscrição, garantia e suspensão: nenhuma inscrição é irrecuperável pelo art. 25 da Portaria PGFN 6.757/2022
+# (inscritas há menos de 15 anos, sem suspensão judicial há mais de 10, CNPJ ativo, sem falência ou recuperação)
+DADOS_INSCR = [
+    ("90 2 23 004512-38", dt.date(2023, 3, 15), "Sem garantia", "-"),
+    ("90 6 23 004513-19", dt.date(2023, 8, 22), "Sem garantia", "-"),
+    ("90 3 24 002201-55", dt.date(2024, 2, 5), "Sem garantia", "-"),
+    ("15.678.912-3 (DEBCAD)", dt.date(2022, 11, 10), "Sem garantia", "-"),
+]
+
+
 # --------------------------------------------------------------------------- relatórios federais
 def situacao_fiscal(base, c):
     a = EMP_A
@@ -208,6 +218,11 @@ def pgfn(base, c):
     s.append(tbl([["Inscrição", "Execução fiscal", "Vara", "Garantia"],
                   ["90 2 23 004512-38", "5012345-67.2023.4.04.7005", "Vara Federal de Execução Fiscal (fictícia)",
                    "Sem garantia - exigibilidade suspensa pela negociação"]], [32, 45, 55, 50]))
+    s.append(Paragraph("Dados das inscrições", ST_H))
+    s.append(tbl([["Inscrição", "Data de inscrição", "Garantia", "Suspensão judicial desde"]]
+                 + [[i, dbr(d), g, susp] for i, d, g, susp in DADOS_INSCR], [40, 30, 60, 50]))
+    s.append(Paragraph("Cadastro", ST_H))
+    s.append(Paragraph("Situação cadastral no CNPJ: ATIVA", ST_P))
     build(f"{base}/pgfn/Extrato_Inscricoes_Regularize_{a['cnpj']}.pdf", s)
     # CAPAG
     passivo = tot[4]
@@ -355,21 +370,54 @@ def pagamentos(base, c):
 
 
 # --------------------------------------------------------------------------- Paraná
-def parana(base, efd):
+ST_2026 = {(2026, 3): D("38412.20"), (2026, 4): D("41870.55"), (2026, 5): D("43105.90"),
+           (2026, 6): D("40288.10"), (2026, 7): D("45930.75")}
+SLD_2026 = {(2026, 1): D("185000.00"), (2026, 2): D("371880.20"), (2026, 3): D("402115.40"), (2026, 4): D("431980.12"),
+            (2026, 5): D("455320.77"), (2026, 6): D("462011.30"), (2026, 7): D("480000.00")}
+
+
+def rti_2026():
+    """ICMS de 01 a 07/2026 (débitos, créditos, saldo credor, ST): base do RTI e das EFD ICMS/IPI desses meses."""
+    out, prev = {}, ZERO  # dez/2025 sem saldo credor (as EFD de 2025 têm ICMS a recolher em todos os meses)
+    for m in range(1, 8):
+        deb = D("298000.00") + D(m) * D("1500") if m >= 3 else D("296000.00") + D(m) * D("1500")
+        out[(2026, m)] = dict(deb=deb, cred=deb + SLD_2026[(2026, m)] - prev, saldo=SLD_2026[(2026, m)], prev=prev,
+                              st=ST_2026.get((2026, m), ZERO))
+        prev = SLD_2026[(2026, m)]
+    return out
+
+
+# Dívida ativa estadual: CDA, inscrição, origem, ajuizamento, parcelamentos (com o atual), tributo/período, valores, situação
+CDAS_PR = [
+    ("2024.0012345-8", dt.date(2024, 6, 20), "Lançamento de ofício", "Não ajuizada", 1, "Auto de infração 6.789.012-3",
+     "ICMS próprio - 07/2022 a 12/2022", D("96400.00"), D("141872.66"), "PARCELADA - parcela 12 de 36 em dia"),
+    ("2025.0087654-1", dt.date(2025, 3, 15), "Imposto declarado", "Não ajuizada", 0, "EFD declarada e não paga",
+     "ICMS próprio - 01/2024 a 03/2024", D("150000.00"), D("182400.00"), "INSCRITA - EM COBRANÇA"),
+    ("2023.0045678-2", dt.date(2023, 5, 10), "Lançamento de ofício", "Ajuizada", 1, "Auto de infração 5.432.109-8",
+     "ICMS próprio - 2021", D("240000.00"), D("315000.00"), "INSCRITA - AJUIZADA"),
+]
+DATA_CALCULO_PR = EMISSAO.date()  # posição da conta corrente e do RTI
+
+
+def parana(base, efd, efd_2025, efd_2026):
     a = EMP_A
     p = f"{base}/parana"
     meses = [(2026, m) for m in range(3, 9)]
-    st_vals = {(2026, 3): D("38412.20"), (2026, 4): D("41870.55"), (2026, 5): D("43105.90"),
-               (2026, 6): D("40288.10"), (2026, 7): D("45930.75"), (2026, 8): efd["icms"]["st"]}
-    sld = {(2026, 3): D("402115.40"), (2026, 4): D("431980.12"), (2026, 5): D("455320.77"),
-           (2026, 6): D("462011.30"), (2026, 7): D("480000.00"), (2026, 8): efd["icms"]["transp"]}
+    st_vals = dict(ST_2026)
+    st_vals[(2026, 8)] = efd["icms"]["st"]
+    sld = dict(SLD_2026)
+    sld[(2026, 8)] = efd["icms"]["transp"]
     venc = {k: util_antes(dt.date(k[0], k[1] + 1, 10)) for k in meses}
+    icms_2025 = [(x["mes"], x["icms"]["a_recolher"], util_antes(dt.date(2025 + (x["mes"] == 12), x["mes"] % 12 + 1, 12)))
+                 for x in efd_2025]
     # conta corrente / dívida ativa
     s = head("SECRETARIA DA FAZENDA DO PARANÁ — RECEITA ESTADUAL (simulação)",
              "CONTA CORRENTE FISCAL E DÍVIDA ATIVA - ICMS",
              f"CAD/ICMS {a['ie']} — CNPJ {fmt_cnpj(a['cnpj'])} — {a['nome']}")
     rows = [["Referência", "Origem", "Tributo", "Vencimento", "Valor declarado", "Valor recolhido", "Saldo",
              "Situação"]]
+    for m, val, vc in icms_2025:
+        rows.append([f"{m:02d}/2025", "EFD", "ICMS próprio", dbr(vc), brl(val), brl(val), brl(0), "QUITADO"])
     for k in meses:
         pago = st_vals[k] if k != (2026, 8) else ZERO
         rows.append([f"{k[1]:02d}/{k[0]}", "EFD", "ICMS-ST (substituto)", dbr(venc[k]), brl(st_vals[k]), brl(pago),
@@ -378,10 +426,13 @@ def parana(base, efd):
                      f"SALDO CREDOR {brl(sld[k])}"])
     s.append(tbl(rows, [17, 12, 32, 18, 24, 24, 20, 35]))
     s.append(Paragraph("Dívida ativa", ST_H))
-    s.append(tbl([["CDA", "Origem", "Tributo / período", "Valor original", "Valor atualizado", "Situação"],
-                  ["2024.0012345-8", "Auto de infração 6.789.012-3", "ICMS próprio - 07/2022 a 12/2022",
-                   brl(D("96400.00")), brl(D("141872.66")), "PARCELADA - parcela 12 de 36 em dia"]],
-                 [24, 34, 42, 24, 24, 34]))
+    s.append(tbl([["CDA", "Origem", "Tributo / período", "Valor original", "Valor atualizado", "Situação"]]
+                 + [[c[0], c[5], c[6], brl(c[7]), brl(c[8]), c[9]] for c in CDAS_PR], [24, 34, 42, 24, 24, 34]))
+    s.append(Paragraph("Detalhamento da dívida ativa", ST_H))
+    s.append(tbl([["CDA", "Data de inscrição", "Origem da dívida", "Ajuizamento", "Parcelamentos"]]
+                 + [[c[0], dbr(c[1]), c[2], c[3], str(c[4])] for c in CDAS_PR], [30, 28, 40, 30, 26]))
+    s.append(Paragraph("Cadastro", ST_H))
+    s.append(Paragraph("Situação cadastral: ATIVA (desde 12/03/2009)", ST_P))
     s.append(Paragraph("Parcelamentos", ST_H))
     s.append(tbl([["Nº parcelamento", "Débitos", "Parcelas", "Valor da parcela", "Saldo", "Situação"],
                   ["PR-2025-0045871", "CDA 2024.0012345-8", "36 (12 pagas)", brl(D("4120.35")),
@@ -405,10 +456,18 @@ def parana(base, efd):
                      brl(pago)])
         prev = sld[k]
     s.append(tbl(rows, [16, 22, 22, 25, 20, 27, 22, 26]))
+    pr = classificacao_pr(efd_2025, efd_2026, efd)
+    s.append(Paragraph("Classificação para transação (Resolução Conjunta PGE/SEFA 01/2025)", ST_H))
+    s.append(Paragraph(f"Capacidade de pagamento do devedor: classe {pr['classe']} (soma dos índices {pr['soma']})", ST_P))
+    s.append(tbl([["CDA", "Classe"]] + [[k, v["classe"]] for k, v in pr["cdas"].items()], [40, 20]))
     build(f"{p}/RTI_{a['ie']}.pdf", s)
     # pagamentos GR-PR
     rows = [["Data pagto.", "Guia", "Código receita", "Referência", "Descrição", "Valor"]]
     tot = ZERO
+    for m, val, vc in icms_2025:
+        rows.append([dbr(vc), f"GR-PR 40{m:02d}2025{int(val) % 10000000:07d}", "1015", f"{m:02d}/2025",
+                     "ICMS - regime mensal de apuração", brl(val)])
+        tot += val
     for k in meses[:-1]:
         rows.append([dbr(venc[k]), f"GR-PR 41{k[1]:02d}2026{int(st_vals[k]):07d}", "1023", f"{k[1]:02d}/{k[0]}",
                      "ICMS-ST - substituição tributária", brl(st_vals[k])])
@@ -420,7 +479,7 @@ def parana(base, efd):
         tot += D("4120.35")
     rows.append(["", "", "", "", "TOTAL", brl(tot)])
     s = head("SECRETARIA DA FAZENDA DO PARANÁ — RECEITA ESTADUAL (simulação)", "PAGAMENTOS DE ICMS - GR-PR",
-             f"CAD/ICMS {a['ie']} — Período: 01/03/2026 a 14/10/2026")
+             f"CAD/ICMS {a['ie']} — Período: 01/01/2025 a 14/10/2026")
     s.append(tbl(rows, [20, 38, 20, 18, 60, 26], bold_last=True))
     s.append(Paragraph("Não consta recolhimento do ICMS-ST de 08/2026.", ST_P))
     build(f"{p}/Pagamentos_ICMS_GR-PR_{a['ie']}.pdf", s)
@@ -437,10 +496,73 @@ def parana(base, efd):
         s.append(Spacer(1, 6))
         s.append(Paragraph("Código de barras (fictício): 8160000" + f"{int(val * 100):011d}" + " 0041 2026 0000", ST_P))
         build(f"{p}/{nome}", s)
-    return dict(st_aberto=efd["icms"]["st"], venc_st=venc[(2026, 8)])
+    return dict(st_aberto=efd["icms"]["st"], venc_st=venc[(2026, 8)], classificacao=pr)
 
 
-def gerar(base, efd, contabil):
+# ---------------------------------------------------------------- classificação PR (cálculo independente do backend)
+def _faixa(valor, faixas):
+    """faixas: [(limite superior inclusivo ou None, índice)]."""
+    for lim, ind in faixas:
+        if lim is None or valor <= lim:
+            return ind
+
+
+def indice_cda(cda, situacao_cadastral="ATIVA", data=None):
+    """Arts. 3º a 5º da Resolução Conjunta PGE/SEFA 01/2025: média geométrica dos 6 índices; parcelamento ativo ajusta."""
+    data = data or DATA_CALCULO_PR
+    num, inscr, origem, ajuiz, parc, _, _, _, atual, situacao = cda
+    anos = (data - inscr).days / D("365.25")
+    idx = [
+        D("1.000") if parc == 0 else D("1.646") if parc <= 2 else D("1.519"),
+        _faixa(anos, [(1, D("9.337")), (2, D("2.748")), (4, D("1.608")), (None, D("1.000"))]),
+        D("2.075") if origem == "Imposto declarado" else D("1.000"),
+        _faixa(atual, [(D("499.99"), D("3.850")), (D("2499.99"), D("2.820")), (D("7499.99"), D("1.967")),
+                       (D("24999.99"), D("1.459")), (D("249999.99"), D("1.195")), (None, D("1.000"))]),
+        {"Não ajuizada": D("3.766"), "Ajuizada": D("1.000"), "Desistência": D("0.500")}[ajuiz],
+        {"ATIVA": D("7.861")}[situacao_cadastral],
+    ]
+    prod = D(1)
+    for x in idx:
+        prod *= x
+    media = D(math.exp(sum(math.log(float(x)) for x in idx) / 6)).quantize(D("0.000001"))
+    classe = "A" if media > D("2.865548") else "B" if media > D("2.212273") else "C" if media > D("1.558998") else "D"
+    if situacao.startswith("PARCELADA"):
+        pagas, total = 12, 36
+        pct = D(pagas) / D(total)
+        classe = "A" if pct >= D("0.70") else "B" if pct >= D("0.30") else classe
+    return dict(indice=str(media), classe=classe)
+
+
+def classificacao_pr(efd_2025, efd_2026, efd_08):
+    """Arts. 7º e 8º (redação desde 24/08/2026): soma dos índices do devedor; faturamento de 09/2025 a 08/2026."""
+    fat = sum(x["faturamento"] for x in efd_2025 if x["mes"] >= 9) + sum(x["faturamento"] for x in efd_2026) \
+        + sum(d["total"] for d in efd_08["docs"] if d["es"] == "S")
+    exigivel = sum(c[8] for c in CDAS_PR if not c[9].startswith("PARCELADA"))
+    endiv = exigivel / fat
+    ultimo_pagto = util_antes(dt.date(2026, 8, 15))  # parcela 12/36 do parcelamento PR (GR-PR mais recente)
+    dias = (DATA_CALCULO_PR - ultimo_pagto).days
+    cdas = {c[0]: indice_cda(c) for c in CDAS_PR}
+
+    def soma_para(cdas_cls, exig):
+        e = exig / fat
+        pontos = {"situacao": 4, "inatividade": 4,
+                  "endividamento": 4 if e <= D("0.10") else 3 if e <= D("0.30") else 2 if e <= D("0.50") else 1,
+                  "pagamento": 3 if dias <= 30 else 2 if dias <= 90 else 1}
+        ab = sum(1 for v in cdas_cls.values() if v["classe"] in "AB")
+        pct = D(ab) / D(len(cdas_cls)) if cdas_cls else None
+        pontos["cdas"] = 5 if pct is None else 4 if pct > D("0.80") else 3 if pct > D("0.50") else 2 if pct > D("0.20") else 1
+        soma = sum(pontos.values())
+        return pontos, soma, "A" if soma > 17 else "B" if soma >= 15 else "C" if soma >= 12 else "D"
+
+    pontos, soma, classe = soma_para(cdas, exigivel)
+    sem3 = {k: v for k, v in cdas.items() if k != "2023.0045678-2"}
+    _, soma_sim, classe_sim = soma_para(sem3, exigivel - CDAS_PR[2][8])
+    return dict(faturamento_12m=str(q(fat)), divida_exigivel=str(exigivel), endividamento=str(q(endiv * 100)),
+                dias_ultimo_pagamento=dias, pontos=pontos, soma=soma, classe=classe, cdas=cdas,
+                simulacao_quitar_2023_0045678_2=dict(soma=soma_sim, classe=classe_sim))
+
+
+def gerar(base, efd, contabil, efd_2025, efd_2026):
     c = cenario(efd, contabil)
     out = dict(cen=c)
     out["sit"] = situacao_fiscal(base, c)
@@ -448,5 +570,5 @@ def gerar(base, efd, contabil):
     dctf(base, c)
     out["dctfweb_total"] = dctfweb(base, c)
     out["pag"] = pagamentos(base, c)
-    out["pr"] = parana(base, efd)
+    out["pr"] = parana(base, efd, efd_2025, efd_2026)
     return out

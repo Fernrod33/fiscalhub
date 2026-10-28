@@ -99,6 +99,19 @@ public class RepositorioSituacao {
                         c.passivo(), Date.valueOf(c.referencia()), c.classeConsistente(), c.origem().pagina(),
                         c.origem().linha(), trecho(c.origem())}).toList());
         jdbc.batchUpdate("""
+                INSERT INTO divida_detalhe (escrituracao_id, cliente_id, orgao, numero, data_inscricao, origem_divida, ajuizamento,
+                    parcelamentos, garantia, suspensao_desde, classe_oficial, data_referencia, pagina, linha, trecho)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                e.detalhesDivida.stream().map(d -> new Object[]{escrituracao, clienteId, d.orgao().name(), d.numero(),
+                        data(d.dataInscricao()), d.origemDivida(), d.ajuizamento(), d.parcelamentos(), d.garantia(),
+                        data(d.suspensaoDesde()), d.classeOficial(), Date.valueOf(e.fim), d.origem().pagina(), d.origem().linha(),
+                        trecho(d.origem())}).toList());
+        jdbc.batchUpdate("""
+                INSERT INTO situacao_cadastral (escrituracao_id, cliente_id, orgao, situacao, desde, data_referencia, pagina,
+                    linha, trecho) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                e.situacoesCadastrais.stream().map(c -> new Object[]{escrituracao, clienteId, c.orgao().name(), c.situacao(),
+                        data(c.desde()), Date.valueOf(e.fim), c.origem().pagina(), c.origem().linha(), trecho(c.origem())}).toList());
+        jdbc.batchUpdate("""
                 INSERT INTO debito_declarado (escrituracao_id, cliente_id, codigo_receita, tributo, periodo, vencimento, valor,
                     valor_pago, valor_compensado, valor_suspenso, valor_parcelado, pagina, linha, trecho)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",

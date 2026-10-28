@@ -47,5 +47,80 @@
     "multa_ipi": "6526.08",
     "juros_ipi": "828.12"
   },
-  "pgfn_passivo_total": "512791.83"
+  "pgfn_passivo_total": "512791.83",
+  "carga_tributaria_2025": {
+    "tributos": "969210.71",
+    "receita_bruta": "12485017.79",
+    "carga": "7.76"
+  },
+  "dfc_direta": {
+    "2024": {
+      "categorias": {
+        "OUTROS_OPERACIONAIS": "-956914.25",
+        "PAGAMENTO_FORNECEDORES": "-10328535.65",
+        "PARCELAMENTOS_TRIBUTARIOS": "-96000.00",
+        "RECEBIMENTO_CLIENTES": "14416708.85",
+        "SALARIOS_ENCARGOS": "-1958815.68",
+        "TRIBUTOS": "-1197291.66"
+      },
+      "atividades": {
+        "FINANCIAMENTO": "-96000.00",
+        "OPERACIONAL": "-24848.39"
+      },
+      "variacao_caixa": "-120848.39"
+    },
+    "2025": {
+      "categorias": {
+        "OUTROS_OPERACIONAIS": "-968624.90",
+        "PAGAMENTO_FORNECEDORES": "-9159812.97",
+        "PARCELAMENTOS_TRIBUTARIOS": "-96000.00",
+        "RECEBIMENTO_CLIENTES": "13206037.82",
+        "SALARIOS_ENCARGOS": "-2028022.13",
+        "TRIBUTOS": "-968781.84"
+      },
+      "atividades": {
+        "FINANCIAMENTO": "-96000.00",
+        "OPERACIONAL": "80795.98"
+      },
+      "variacao_caixa": "-15204.02"
+    }
+  },
+  "classificacao_pr": {
+    "faturamento_12m": "24495471.11",
+    "divida_exigivel": "497400.00",
+    "endividamento": "2.03",
+    "dias_ultimo_pagamento": 61,
+    "pontos": {
+      "situacao": 4,
+      "inatividade": 4,
+      "endividamento": 4,
+      "pagamento": 2,
+      "cdas": 3
+    },
+    "soma": 17,
+    "classe": "B",
+    "cdas": {
+      "2024.0012345-8": {
+        "indice": "2.130952",
+        "classe": "B"
+      },
+      "2025.0087654-1": {
+        "indice": "2.421736",
+        "classe": "B"
+      },
+      "2023.0045678-2": {
+        "indice": "1.658437",
+        "classe": "C"
+      }
+    },
+    "simulacao_quitar_2023_0045678_2": {
+      "soma": 18,
+      "classe": "A"
+    }
+  },
+  "capag_oficial": {
+    "classe": "C",
+    "capacidade": "400000.00"
+  },
+  "irrecuperaveis_pgfn": []
 }

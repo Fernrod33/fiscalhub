@@ -88,6 +88,18 @@ abstract class AdaptadorFicticio implements AdaptadorDocumentoPdf {
         return texto.matches("\\d{2}/\\d{4}") ? LeitorPdf.competencia(texto) : null;
     }
 
+    /** "Situação cadastral[ no CNPJ]: ATIVA[ (desde 12/03/2009)]", quando o documento traz (seção Cadastro). */
+    static void situacaoCadastral(DocumentoPdf pdf, com.fiscalhub.backend.entity.enums.OrgaoCredor orgao, Extracao e) {
+        Pattern p = Pattern.compile("Situação cadastral(?: no CNPJ)?: (.+?)(?: \\(desde (\\d{2}/\\d{2}/\\d{4})\\))?");
+        pdf.linha(p).ifPresent(l -> {
+            Matcher m = p.matcher(l.texto());
+            if (m.matches()) {
+                e.situacoesCadastrais.add(new Extracao.SituacaoCadastral(orgao, m.group(1).strip(),
+                        m.group(2) == null ? null : data(m.group(2)), Origem.de(l.origem())));
+            }
+        });
+    }
+
     static Pattern padraoInscricao() {
         return INSCRICAO;
     }

@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
 @Component
 class AdaptadorRti extends AdaptadorFicticio {
 
+    private static final String CLASSIFICACAO = "Classificação para transação (Resolução Conjunta PGE/SEFA 01/2025)";
+
     @Override
     public DocumentoTipo tipo() {
         return DocumentoTipo.RTI;
@@ -36,12 +38,26 @@ class AdaptadorRti extends AdaptadorFicticio {
         empresa(pdf, e);
         e.inicio = e.fim = emissao(pdf);
         // Período | Débitos | Créditos | Saldo credor anterior | ICMS a recolher | Saldo credor a transportar | ICMS-ST retido | recolhido
-        for (Registro r : DocumentoPdf.tabela(pdf.secao(Pattern.compile("Endereço .*"), Set.of()),
+        for (Registro r : DocumentoPdf.tabela(pdf.secao(Pattern.compile("Endereço .*"), Set.of(CLASSIFICACAO)),
                 Pattern.compile("\\d{2}/\\d{4}"))) {
             YearMonth mes = mes(r.get(0));
             e.saldos.add(new SaldoFiscal("SALDO_CREDOR_ICMS", "PR", null, "Saldo credor de ICMS a transportar (RTI)",
                     mes.atDay(1), mes.atEndOfMonth(), valor(r.get(3)), valor(r.get(5)), "PDF p." + r.origem().pagina(),
                     r.origem().linha()));
+        }
+        // "Capacidade de pagamento do devedor: classe B (soma dos índices 17)" e CDA | Classe (seção opcional)
+        Pattern devedor = Pattern.compile("Capacidade de pagamento do devedor: classe ([A-D]).*");
+        java.util.Optional<DocumentoPdf.Linha> classe = pdf.linha(devedor);
+        if (classe.isPresent()) {
+            java.util.regex.Matcher m = devedor.matcher(classe.get().texto());
+            m.matches();
+            e.capacidades.add(new Extracao.Capacidade("SEFA_PR", m.group(1), null, null, e.fim, null,
+                    Extracao.Origem.de(classe.get().origem())));
+            for (Registro r : DocumentoPdf.tabela(pdf.secao(devedor, Set.of()), Pattern.compile("\\d{4}\\.\\d+-\\d"))) {
+                e.detalhesDivida.add(new Extracao.DetalheDivida(com.fiscalhub.backend.entity.enums.OrgaoCredor.PGE_PR, r.get(0),
+                        null, null, null, null, null, null, r.get(1), origem(r)));
+            }
+            return;
         }
         e.alerta(Severidade.INFO, "RTI_SEM_CAPACIDADE", "Este RTI (layout " + VERSAO + ", conteúdo presumido) não traz "
                 + "classificação nem capacidade de pagamento: nada foi gravado como capacidade oficial do PR. Foram lidos "

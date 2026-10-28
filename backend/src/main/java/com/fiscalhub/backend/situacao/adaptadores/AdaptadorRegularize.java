@@ -26,7 +26,9 @@ class AdaptadorRegularize extends AdaptadorFicticio {
 
     private static final String NEGOCIACOES = "Negociações";
     private static final String AJUIZAMENTOS = "Ajuizamentos";
-    private static final Set<String> SECOES = Set.of(NEGOCIACOES, AJUIZAMENTOS);
+    private static final String DADOS = "Dados das inscrições";
+    private static final String CADASTRO = "Cadastro";
+    private static final Set<String> SECOES = Set.of(NEGOCIACOES, AJUIZAMENTOS, DADOS, CADASTRO);
     private static final Pattern PARCELAS = Pattern.compile("Pagas (\\d+) de (\\d+)");
 
     @Override
@@ -60,6 +62,12 @@ class AdaptadorRegularize extends AdaptadorFicticio {
         for (Registro r : DocumentoPdf.tabela(pdf.secao(AJUIZAMENTOS, SECOES), padraoInscricao())) {
             execucao.put(r.get(0), r.get(1));
         }
+        // Inscrição | Data de inscrição | Garantia | Suspensão judicial desde (seção opcional: irrecuperáveis, art. 25)
+        for (Registro r : DocumentoPdf.tabela(pdf.secao(DADOS, SECOES), padraoInscricao())) {
+            e.detalhesDivida.add(new Extracao.DetalheDivida(OrgaoCredor.PGFN, r.get(0), data(r.get(1)), null, null, null,
+                    r.get(2), data(r.get(3)), null, origem(r)));
+        }
+        situacaoCadastral(pdf, OrgaoCredor.RFB, e);
         // Inscrição | Receita / Natureza | PA | Principal | Multa | Juros | Encargo legal | Total consolidado | Situação
         List<DocumentoPdf.Linha> inscricoes = pdf.secao(Pattern.compile("Devedor: .*"), SECOES);
         for (Registro r : DocumentoPdf.tabela(inscricoes, padraoInscricao())) {

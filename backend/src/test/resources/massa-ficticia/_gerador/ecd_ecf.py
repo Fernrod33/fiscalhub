@@ -169,6 +169,7 @@ class Ledger:
         self.ini = defaultdict(lambda: ZERO, saldo_ini)
         self.bal = defaultdict(lambda: ZERO, saldo_ini)
         self.entries = []  # (num, data, partes[(conta, valor, D/C, hist)], ind)
+        self.meses = []    # valores lançados por mês (base das EFD de 2025, coerentes com a ECD)
 
     def lanc(self, data, partes, hist, ind="N"):
         partes = [(c, q(val), s) for c, val, s in partes if q(val) != 0]
@@ -231,6 +232,8 @@ def simula_ano(ano, saldo_ini, substituta=False):
         cof_c = q((G - icms_c) * D("0.076"))
         ipi_c = q(G * D("0.05"))
         mp = G - icms_c - pis_c - cof_c
+        L.meses.append(dict(mes=m, R=R, ipi=ipi, icms=icms, pis=pis, cof=cof, G=G, icms_c=icms_c, pis_c=pis_c,
+                            cof_c=cof_c, ipi_c=ipi_c))
         L.lanc(d(12), [("1.1.03.001", mp, "D"), ("1.1.04.001", icms_c, "D"), ("1.1.04.003", pis_c, "D"),
                        ("1.1.04.004", cof_c, "D"), ("1.1.04.002", ipi_c, "D"), ("2.1.01.001", G + ipi_c, "C")],
                "COMPRA DE MATERIAS-PRIMAS CONF. NOTAS FISCAIS DO MES")

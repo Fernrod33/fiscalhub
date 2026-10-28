@@ -75,6 +75,18 @@ public final class Extracao {
                             BigDecimal juros, BigDecimal total, String parcelamento, Origem origem) {
     }
 
+    /**
+     * Dados de uma dívida ativa usados pelas metodologias de capacidade (Fase 4); junta-se ao débito pelo número. Campos
+     * ausentes no documento ficam nulos. classeOficial: classe da CDA no RTI do PR.
+     */
+    public record DetalheDivida(OrgaoCredor orgao, String numero, LocalDate dataInscricao, String origemDivida, String ajuizamento,
+                                Integer parcelamentos, String garantia, LocalDate suspensaoDesde, String classeOficial, Origem origem) {
+    }
+
+    /** Situação cadastral como no documento (CAD/ICMS no PR, CNPJ na RFB); desde: início da situação, se informado. */
+    public record SituacaoCadastral(OrgaoCredor orgao, String situacao, LocalDate desde, Origem origem) {
+    }
+
     public record Alerta(Severidade severidade, String regra, String mensagem, Origem origem) {
     }
 
@@ -95,6 +107,8 @@ public final class Extracao {
     public final List<Pagamento> pagamentos = new ArrayList<>();
     /** Saldos credores mensais (RTI), no modelo da apuração. */
     public final List<SaldoFiscal> saldos = new ArrayList<>();
+    public final List<DetalheDivida> detalhesDivida = new ArrayList<>();
+    public final List<SituacaoCadastral> situacoesCadastrais = new ArrayList<>();
     public final List<Alerta> alertas = new ArrayList<>();
 
     public void alerta(Severidade severidade, String regra, String mensagem, Origem origem) {

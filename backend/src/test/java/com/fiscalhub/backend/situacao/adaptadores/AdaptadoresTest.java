@@ -88,10 +88,12 @@ class AdaptadoresTest {
     void contaCorrenteDividaAtivaEParcelamentoDoPr() throws IOException {
         Extracao e = extrair("parana/Conta_Corrente_e_Divida_Ativa_ICMS_9012345663.pdf", AdaptadorContaCorrentePr.class);
         assertThat(e.inscricaoEstadual).isEqualTo("9012345663");
-        assertThat(e.declarados).hasSize(12);
+        assertThat(e.declarados).hasSize(24); // 12 meses de 2025 (ICMS próprio) + 03 a 08/2026 (próprio e ST)
         assertThat(e.debitos).extracting(Extracao.Debito::orgao, Extracao.Debito::tributo, Extracao.Debito::situacao)
                 .containsExactly(org.assertj.core.groups.Tuple.tuple(OrgaoCredor.SEFA_PR, TipoTributo.ICMS_ST, SituacaoDebito.EM_ABERTO),
-                        org.assertj.core.groups.Tuple.tuple(OrgaoCredor.PGE_PR, TipoTributo.ICMS, SituacaoDebito.PARCELADO));
+                        org.assertj.core.groups.Tuple.tuple(OrgaoCredor.PGE_PR, TipoTributo.ICMS, SituacaoDebito.PARCELADO),
+                        org.assertj.core.groups.Tuple.tuple(OrgaoCredor.PGE_PR, TipoTributo.ICMS, SituacaoDebito.INSCRITO_DIVIDA_ATIVA),
+                        org.assertj.core.groups.Tuple.tuple(OrgaoCredor.PGE_PR, TipoTributo.ICMS, SituacaoDebito.INSCRITO_DIVIDA_ATIVA));
         assertThat(e.parcelamentos).singleElement().satisfies(p -> {
             assertThat(p.parcelasPagas()).isEqualTo(12);
             assertThat(p.parcelasTotal()).isEqualTo(36);
@@ -100,12 +102,34 @@ class AdaptadoresTest {
     }
 
     @Test
-    void rtiDaSaldosCredoresMensaisESemCapacidade() throws IOException {
+    void rtiDaSaldosCredoresMensaisEAClassificacaoDoPr() throws IOException {
         Extracao e = extrair("parana/RTI_9012345663.pdf", AdaptadorRti.class);
         assertThat(e.saldos).hasSize(6);
         assertThat(e.saldos.getLast().saldoFinal()).isEqualByComparingTo("365250.00");
-        assertThat(e.capacidades).isEmpty();
-        assertThat(e.alertas).extracting(Extracao.Alerta::regra).containsExactly("RTI_SEM_CAPACIDADE");
+        assertThat(e.capacidades).singleElement().satisfies(c -> {
+            assertThat(c.fonte()).isEqualTo("SEFA_PR");
+            assertThat(c.classe()).isEqualTo("B");
+        });
+        assertThat(e.detalhesDivida).extracting(Extracao.DetalheDivida::numero, Extracao.DetalheDivida::classeOficial)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("2024.0012345-8", "B"),
+                        org.assertj.core.groups.Tuple.tuple("2025.0087654-1", "B"), org.assertj.core.groups.Tuple.tuple("2023.0045678-2", "C"));
+        assertThat(e.alertas).isEmpty();
+    }
+
+    @Test
+    void contaCorrenteDoPrDetalhaAsCdasEASituacaoCadastral() throws IOException {
+        Extracao e = extrair("parana/Conta_Corrente_e_Divida_Ativa_ICMS_9012345663.pdf", AdaptadorContaCorrentePr.class);
+        assertThat(e.detalhesDivida).hasSize(3).anySatisfy(d -> {
+            assertThat(d.numero()).isEqualTo("2023.0045678-2");
+            assertThat(d.dataInscricao()).isEqualTo(java.time.LocalDate.of(2023, 5, 10));
+            assertThat(d.origemDivida()).isEqualTo("Lançamento de ofício");
+            assertThat(d.ajuizamento()).isEqualTo("Ajuizada");
+            assertThat(d.parcelamentos()).isEqualTo(1);
+        });
+        assertThat(e.situacoesCadastrais).singleElement().satisfies(s -> {
+            assertThat(s.situacao()).isEqualTo("ATIVA");
+            assertThat(s.desde()).isEqualTo(java.time.LocalDate.of(2009, 3, 12));
+        });
     }
 
     @Test
@@ -118,7 +142,7 @@ class AdaptadoresTest {
         Extracao relacao = extrair("parana/Pagamentos_ICMS_GR-PR_9012345663.pdf", AdaptadorRelacaoGrPr.class);
         assertThat(relacao.cnpj).isNull();
         assertThat(relacao.inscricaoEstadual).isEqualTo("9012345663");
-        assertThat(relacao.pagamentos).hasSize(11);
+        assertThat(relacao.pagamentos).hasSize(23); // + 12 GR-PR do ICMS de 2025
         assertThat(relacao.pagamentos).filteredOn(p -> p.parcelamento() != null).hasSize(6);
     }
 

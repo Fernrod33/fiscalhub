@@ -127,10 +127,10 @@ def bloco0_comum(s, docs, contrib):
 
 
 # --------------------------------------------------------------------------- EFD ICMS/IPI
-def gera_icms_ipi(docs):
+def gera_icms_ipi(docs, ini=INI, fim=FIM, saldo_ant=SALDO_CREDOR_ANT, cod_icms="1015"):
     e = EMP_A
     s = Sped()
-    s.add("0000", "020", "0", dts(INI), dts(FIM), e["nome"], e["cnpj"], "", e["uf"], e["ie"], e["cod_mun"],
+    s.add("0000", "020", "0", dts(ini), dts(fim), e["nome"], e["cnpj"], "", e["uf"], e["ie"], e["cod_mun"],
           e["im"], "", "A", "0")
     bloco0_comum(s, docs, contrib=False)
     s.close("0")
@@ -146,22 +146,27 @@ def gera_icms_ipi(docs):
     s.add("D001", "1"); s.close("D")
     deb = sum(d["icms"] for d in docs if d["es"] == "S")
     cred = sum(d["icms"] for d in docs if d["es"] == "E")
-    sld = deb - cred - SALDO_CREDOR_ANT
+    sld = deb - cred - saldo_ant
     a_rec = max(sld, ZERO)
     transp = max(-sld, ZERO)
     st = sum(d["icms_st"] for d in docs)
     ipi_deb = sum(d["ipi"] for d in docs if d["es"] == "S")
     ipi_cred = sum(d["ipi"] for d in docs if d["es"] == "E")
-    venc_st = util_antes(dt.date(ANO, MES + 1, 10))
+    prox = dt.date(fim.year + (fim.month == 12), fim.month % 12 + 1, 1)
+    venc_st = util_antes(prox.replace(day=10))
     s.add("E001", "0")
-    s.add("E100", dts(INI), dts(FIM))
-    s.add("E110", v(deb), v(0), v(0), v(0), v(cred), v(0), v(0), v(0), v(SALDO_CREDOR_ANT),
+    s.add("E100", dts(ini), dts(fim))
+    s.add("E110", v(deb), v(0), v(0), v(0), v(cred), v(0), v(0), v(0), v(saldo_ant),
           v(a_rec), v(0), v(a_rec), v(transp), v(0))
-    s.add("E200", "PR", dts(INI), dts(FIM))
-    s.add("E210", "1", v(0), v(0), v(0), v(0), v(0), v(st), v(0), v(0), v(st), v(0), v(st), v(0), v(0))
-    s.add("E250", "002", v(st), dts(venc_st), "1023", "", "", "", "ICMS-ST retido nas saidas internas - CFOP 5401",
-          f"{MES:02d}{ANO}")
-    s.add("E500", "0", dts(INI), dts(FIM))
+    if a_rec > 0:  # ICMS próprio a recolher: obrigação com o código da GR-PR (101-5) e vencimento
+        s.add("E116", "000", v(a_rec), dts(util_antes(prox.replace(day=12))), cod_icms, "", "", "",
+              "ICMS proprio - regime mensal de apuracao", f"{fim.month:02d}{fim.year}")
+    if st > 0:
+        s.add("E200", "PR", dts(ini), dts(fim))
+        s.add("E210", "1", v(0), v(0), v(0), v(0), v(0), v(st), v(0), v(0), v(st), v(0), v(st), v(0), v(0))
+        s.add("E250", "002", v(st), dts(venc_st), "1023", "", "", "", "ICMS-ST retido nas saidas internas - CFOP 5401",
+              f"{fim.month:02d}{fim.year}")
+    s.add("E500", "0", dts(ini), dts(fim))
     e510 = defaultdict(lambda: [ZERO, ZERO, ZERO])
     for d in docs:
         if d["ipi"]:
@@ -180,15 +185,15 @@ def gera_icms_ipi(docs):
     s.add("1010", *(["N"] * 13))
     s.close("1")
     s.finish()
-    return s, dict(deb=deb, cred=cred, saldo_ant=SALDO_CREDOR_ANT, transp=transp, a_recolher=a_rec, st=st,
+    return s, dict(deb=deb, cred=cred, saldo_ant=saldo_ant, transp=transp, a_recolher=a_rec, st=st,
                    venc_st=venc_st, ipi_deb=ipi_deb, ipi_cred=ipi_cred, ipi_rec=ipi_deb - ipi_cred)
 
 
 # --------------------------------------------------------------------------- EFD-Contribuições
-def gera_contrib(docs):
+def gera_contrib(docs, ini=INI, fim=FIM):
     e = EMP_A
     s = Sped()
-    s.add("0000", "006", "0", "", "", dts(INI), dts(FIM), e["nome"], e["cnpj"], e["uf"], e["cod_mun"], "", "00", "0")
+    s.add("0000", "006", "0", "", "", dts(ini), dts(fim), e["nome"], e["cnpj"], e["uf"], e["cod_mun"], "", "00", "0")
     bloco0_comum(s, docs, contrib=True)
     s.close("0")
     s.add("A001", "1"); s.close("A")
@@ -250,3 +255,65 @@ def gerar(base):
     s2, pc = gera_contrib(docs)
     s2.save(f"{base}/efd-contribuicoes/EFD_CONTRIBUICOES_{MES:02d}{ANO}_{EMP_A['cnpj']}.txt")
     return dict(icms=icms, pc=pc, docs=docs)
+
+
+# --------------------------------------------------------------------------- 2025 completo e 01-07/2026
+def _doc(es, part, item, data, num, merc, icms, ipi, pis, cof, cfop, icms_st=ZERO, i=0):
+    """Documento com os valores já calculados (os da ECD ou do RTI), para a EFD reproduzir exatamente os lançamentos."""
+    emit_cnpj = EMP_A["cnpj"] if es == "S" else PART[part][1]
+    uf = "PR" if es == "S" else PART[part][4]
+    st = icms_st > 0
+    return dict(es=es, part=part, item=item, qtd=D(1000), merc=merc, cfop=cfop, cst="010" if st else "000",
+                aliq=D("12.00"), st=st, ipi=ipi, bc=merc, icms=icms, bc_st=q(icms_st / ALQ_INT * 100) if st else ZERO,
+                icms_st=icms_st, bc_pc=merc - icms if (pis or cof) else ZERO, pis=pis, cof=cof, cred=es == "E",
+                data=data, num=num, chave=chave_nfe(UF_COD[uf], data, emit_cnpj, 1, num, 20000000 + i * 7919),
+                total=merc + ipi + icms_st)
+
+
+def docs_2025(ano, mm):
+    """Um mês de 2025 da ECD: a compra (dia 12) e a venda (dia 28) com as mesmas bases e tributos dos lançamentos."""
+    m = mm["mes"]
+    ent = _doc("E", "F001", "M001", util_antes(dt.date(ano, m, 12)), 70000 + m, mm["G"], mm["icms_c"], mm["ipi_c"],
+               mm["pis_c"], mm["cof_c"], "2101", i=m)
+    sai = _doc("S", "C003", "P001", util_antes(dt.date(ano, m, 28)), 50000 + m, mm["R"], mm["icms"], mm["ipi"],
+               mm["pis"], mm["cof"], "6101", i=100 + m)
+    return [ent, sai]
+
+
+def gerar_2025(base, ledger):
+    """EFD ICMS/IPI e EFD-Contribuições dos 12 meses de 2025, coerentes com a ECD 2025 (mesmos débitos e créditos)."""
+    out = []
+    saldo = ZERO  # saldo credor de ICMS no início de 2025 (créditos compensados pela contabilidade)
+    for mm in ledger.meses:
+        m = mm["mes"]
+        ini, fim = dt.date(2025, m, 1), dt.date(2025, m, 1).replace(day=28)
+        fim = (fim + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
+        docs = docs_2025(2025, mm)
+        s1, icms = gera_icms_ipi(docs, ini, fim, saldo)
+        s1.save(f"{base}/efd-icms-ipi/EFD_ICMS_IPI_{m:02d}2025_{EMP_A['cnpj']}.txt")
+        s2, pc = gera_contrib(docs, ini, fim)
+        s2.save(f"{base}/efd-contribuicoes/EFD_CONTRIBUICOES_{m:02d}2025_{EMP_A['cnpj']}.txt")
+        saldo = icms["transp"]
+        out.append(dict(mes=m, icms=icms, pc=pc, faturamento=sum(d["total"] for d in docs if d["es"] == "S")))
+    return out
+
+
+def gerar_2026_icms(base, rti, saldo_dez_2025):
+    """EFD ICMS/IPI de 01 a 07/2026 (só ICMS próprio e ST): débitos, créditos e saldos credores do RTI da massa.
+    Sem IPI nem PIS/COFINS nos documentos (2026 só tem a EFD-Contribuições de 08)."""
+    out = []
+    saldo = saldo_dez_2025
+    for m in range(1, 8):
+        r = rti[(2026, m)]
+        ini = dt.date(2026, m, 1)
+        fim = (ini.replace(day=28) + dt.timedelta(days=4)).replace(day=1) - dt.timedelta(days=1)
+        ent = _doc("E", "F001", "M001", util_antes(dt.date(2026, m, 12)), 80000 + m, q(r["cred"] / D("0.12")), r["cred"],
+                   ZERO, ZERO, ZERO, "2101", i=200 + m)
+        sai = _doc("S", "C003", "P001", util_antes(dt.date(2026, m, 26)), 60000 + m, q(r["deb"] / D("0.12")), r["deb"],
+                   ZERO, ZERO, ZERO, "6101", r["st"], i=300 + m)
+        s1, icms = gera_icms_ipi([ent, sai], ini, fim, saldo)
+        assert icms["transp"] == r["saldo"], (m, icms["transp"], r["saldo"])
+        s1.save(f"{base}/efd-icms-ipi/EFD_ICMS_IPI_{m:02d}2026_{EMP_A['cnpj']}.txt")
+        saldo = icms["transp"]
+        out.append(dict(mes=m, icms=icms, faturamento=sai["total"]))
+    return out
