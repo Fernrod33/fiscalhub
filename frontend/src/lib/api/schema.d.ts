@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/escritorio/identidade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consultar"];
+        put: operations["alterar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documentos/{documentoId}/planilha/depara": {
         parameters: {
             query?: never;
@@ -116,6 +132,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/escritorio/identidade/logo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["baixarLogo"];
+        put?: never;
+        post: operations["logo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documentos": {
         parameters: {
             query?: never;
@@ -190,6 +222,38 @@ export interface paths {
         get: operations["listarClientes"];
         put?: never;
         post: operations["createCliente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/relatorios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_2"];
+        put?: never;
+        post: operations["emitir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/relatorios/previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["previa"];
         delete?: never;
         options?: never;
         head?: never;
@@ -363,7 +427,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["consultar"];
+        get: operations["consultar_1"];
         put?: never;
         post?: never;
         delete: operations["excluir"];
@@ -395,7 +459,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["previa"];
+        get: operations["previa_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -460,6 +524,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["saldos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/relatorios/{relatorioId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["consultar_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/relatorios/{relatorioId}/xlsx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["xlsx"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/relatorios/{relatorioId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["pdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -628,6 +740,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clientes/{clienteId}/carga-tributaria": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["carga"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/capacidade-oficial": {
         parameters: {
             query?: never;
@@ -715,7 +843,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_2"];
+        get: operations["listar_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -752,6 +880,24 @@ export interface components {
         TrocaSenhaDTO: {
             senhaAtual: string;
             novaSenha: string;
+        };
+        IdentidadeRequest: {
+            nomeExibicao: string;
+            corPrincipal: string;
+            rodape: string;
+            responsavelNome: string;
+            responsavelRegistro: string;
+        };
+        Identidade: {
+            /** Format: int64 */
+            escritorioId: number;
+            nome: string;
+            nomeExibicao: string;
+            temLogo: boolean;
+            corPrincipal: string;
+            rodape: string;
+            responsavelNome: string;
+            responsavelRegistro: string;
         };
         Associacao: {
             codigoConta: string;
@@ -939,6 +1085,43 @@ export interface components {
         ConfirmacaoCliente: {
             /** Format: int64 */
             clienteId: number;
+        };
+        PedidoRelatorio: {
+            /** @enum {string} */
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL";
+            de?: string;
+            ate?: string;
+            incluirDivergencias?: boolean;
+            incluirFontes?: boolean;
+        };
+        Parametros: {
+            /** @enum {string} */
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL";
+            de: string;
+            ate: string;
+            incluirDivergencias: boolean;
+            incluirFontes: boolean;
+        };
+        RelatorioEmitido: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            clienteId: number;
+            /** Format: int64 */
+            numero: number;
+            /** @enum {string} */
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL";
+            titulo: string;
+            periodo: string;
+            parametros: components["schemas"]["Parametros"];
+            emitidoPor: string;
+            /** Format: date-time */
+            emitidoEm: string;
+            sha256Snapshot: string;
+            sha256Pdf: string;
+            sha256Xlsx: string;
+            versaoTemplate: string;
+            versaoNormas: string;
         };
         SignupRequest: {
             nome: string;
@@ -1417,6 +1600,27 @@ export interface components {
             valor: number;
             origens: components["schemas"]["OrigemValor"][];
         };
+        ExercicioCarga: {
+            /** Format: int32 */
+            exercicio: number;
+            receitaBruta: number;
+            origemReceita: components["schemas"]["OrigemValor"];
+            lair: number;
+            origemLair: components["schemas"]["OrigemValor"];
+            tributos: number;
+            carga: number;
+            irpjCsll: number;
+            cargaIrpjCsll: number;
+            irpjCsllNaoAplicavel: boolean;
+            faltando: string[];
+            porTributo: components["schemas"]["TributoCarga"][];
+            documentos: number[];
+        };
+        TributoCarga: {
+            tributo: string;
+            valor: number;
+            carga: number;
+        };
         CapacidadeOficial: {
             /** Format: int64 */
             id: number;
@@ -1503,7 +1707,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR";
+            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -1611,6 +1815,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UsuarioResponseDTO"];
+                };
+            };
+        };
+    };
+    consultar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Identidade"];
+                };
+            };
+        };
+    };
+    alterar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentidadeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Identidade"];
                 };
             };
         };
@@ -1825,6 +2073,53 @@ export interface operations {
             };
         };
     };
+    baixarLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+        };
+    };
+    logo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    arquivo: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Identidade"];
+                };
+            };
+        };
+    };
     listar_1: {
         parameters: {
             query: {
@@ -1990,6 +2285,80 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ClienteResponseDTO"];
+                };
+            };
+        };
+    };
+    listar_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RelatorioEmitido"][];
+                };
+            };
+        };
+    };
+    emitir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoRelatorio"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RelatorioEmitido"];
+                };
+            };
+        };
+    };
+    previa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoRelatorio"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
                 };
             };
         };
@@ -2270,7 +2639,7 @@ export interface operations {
             };
         };
     };
-    consultar: {
+    consultar_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2334,7 +2703,7 @@ export interface operations {
             };
         };
     };
-    previa: {
+    previa_1: {
         parameters: {
             query?: {
                 aba?: string;
@@ -2442,6 +2811,75 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["SaldoFiscal"][];
+                };
+            };
+        };
+    };
+    consultar_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                relatorioId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RelatorioEmitido"];
+                };
+            };
+        };
+    };
+    xlsx: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                relatorioId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StreamingResponseBody"];
+                };
+            };
+        };
+    };
+    pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                relatorioId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StreamingResponseBody"];
                 };
             };
         };
@@ -2679,6 +3117,28 @@ export interface operations {
             };
         };
     };
+    carga: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ExercicioCarga"][];
+                };
+            };
+        };
+    };
     capacidade: {
         parameters: {
             query?: never;
@@ -2792,7 +3252,7 @@ export interface operations {
             };
         };
     };
-    listar_2: {
+    listar_3: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];

@@ -1,24 +1,5 @@
-import AxeBuilder from '@axe-core/playwright';
-import path from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
-import { criarCliente, criarEscritorioEEntrar } from './apoio';
-
-/** Massa fictícia versionada no backend (a mesma do MassaFicticiaAceiteTest). */
-const massa = (arquivo: string) => path.resolve(process.cwd(), '..', 'backend', 'src', 'test', 'resources', 'massa-ficticia', arquivo);
-const ARQUIVOS = [
-  'efd-contribuicoes/EFD_CONTRIBUICOES_082026_11222333000181.txt', 'efd-icms-ipi/EFD_ICMS_IPI_082026_11222333000181.txt',
-  'situacao-fiscal/Relatorio_Situacao_Fiscal_11222333000181_20261014.pdf', 'pgfn/Extrato_Inscricoes_Regularize_11222333000181.pdf',
-  'pgfn/CAPAG_11222333000181.pdf', 'dctfweb/DCTFWeb_082026_Declaracao_Completa_11222333000181.pdf',
-  'pagamentos/DARF_DCTFWeb_082026_PIS_COFINS_IPI.pdf', 'pagamentos/Relatorio_Consolidado_Pagamentos_11222333000181.pdf',
-  'parana/Conta_Corrente_e_Divida_Ativa_ICMS_9012345663.pdf', 'parana/Pagamentos_ICMS_GR-PR_9012345663.pdf',
-];
-
-async function semViolacoesGraves(page: Page, tela: string) {
-  await page.waitForTimeout(600); // fim das animações de entrada
-  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
-    .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), tela).toEqual([]);
-}
+import { expect, test } from '@playwright/test';
+import { ARQUIVOS_MASSA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
 
 test('massa fictícia → Tributos: COFINS 08/2026 paga a menor com a origem → Situação fiscal: inscrição impeditiva', async ({ page }) => {
   test.setTimeout(180_000);

@@ -1,6 +1,6 @@
 /** Rótulos dos enums da API. Tipados contra os tipos gerados: um valor novo no backend quebra o build aqui. */
 import type { Tom } from '@/components/selo';
-import type { Debito, Documento, DocumentoStatus, EtapaProcessamento, EventoAuditoria, Inconsistencia, Papel, StatusConciliacao } from './api/tipos';
+import type { Debito, Documento, DocumentoStatus, EtapaProcessamento, EventoAuditoria, Inconsistencia, Papel, StatusConciliacao, TipoRelatorio } from './api/tipos';
 
 export const PAPEIS: Record<Papel, string> = { ADMIN: 'Administrador', CONSULTOR: 'Consultor', ASSISTENTE: 'Assistente' };
 
@@ -83,6 +83,10 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   USUARIO_CRIAR: 'Criou usuário',
   USUARIO_ALTERAR_PAPEL: 'Alterou papel',
   USUARIO_DESATIVAR: 'Desativou usuário',
+  IDENTIDADE_ALTERAR: 'Alterou a identidade do escritório',
+  IDENTIDADE_LOGO: 'Trocou o logotipo do escritório',
+  RELATORIO_EMITIR: 'Emitiu relatório',
+  RELATORIO_BAIXAR: 'Baixou relatório',
 };
 
 export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado']>, { rotulo: string; tom: Tom }> = {
@@ -92,7 +96,14 @@ export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado
 
 /** Tipo de recurso gravado na trilha (AcaoAuditoria.recurso no backend). */
 export const RECURSOS_AUDITORIA: Record<string, string> = {
-  USUARIO: 'Usuário', CLIENTE: 'Cliente', DOCUMENTO: 'Documento', SIMULACAO: 'Simulação',
+  USUARIO: 'Usuário', CLIENTE: 'Cliente', DOCUMENTO: 'Documento', SIMULACAO: 'Simulação', ESCRITORIO: 'Escritório',
+  RELATORIO: 'Relatório',
+};
+
+export const TIPOS_RELATORIO: Record<TipoRelatorio, { rotulo: string; descricao: string }> = {
+  TRIBUTOS: { rotulo: 'Tributos apurados, declarados e pagos', descricao: 'Conciliação por tributo e competência, totais, divergências com acréscimos e origem.' },
+  CARGA_TRIBUTARIA: { rotulo: 'Carga tributária efetiva', descricao: 'Tributos ÷ receita bruta e IRPJ + CSLL ÷ lucro antes do IR, por exercício.' },
+  SITUACAO_FISCAL: { rotulo: 'Situação fiscal resumida', descricao: 'Débitos, parcelamentos, pendências, CAPAG e o que impede a certidão.' },
 };
 
 export const SITUACAO_DEBITO: Record<Debito['situacao'], { rotulo: string; tom: Tom }> = {

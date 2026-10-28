@@ -1,4 +1,4 @@
-import { AlertTriangle, FileBarChart, Gauge } from 'lucide-react';
+import { AlertTriangle, Gauge } from 'lucide-react';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
 
@@ -17,15 +17,6 @@ export function PontosAtencaoPage() {
     <Reveal>
       <EstadoVazio icone={AlertTriangle} titulo="Nenhum ponto de atenção"
                    descricao="Alertas sobre débitos, prazos e inconsistências dos arquivos aparecerão aqui." />
-    </Reveal>
-  );
-}
-
-export function RelatoriosPage() {
-  return (
-    <Reveal>
-      <EstadoVazio icone={FileBarChart} titulo="Relatórios"
-                   descricao="Relatórios de tributos pagos e de débitos ficam disponíveis depois das importações." />
     </Reveal>
   );
 }

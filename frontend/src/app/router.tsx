@@ -27,7 +27,7 @@ const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType
   capacidade: () => futuras().then((m) => m.CapacidadePage),
   simulacoes: () => padrao(import('@/features/simulacoes/pages/simulacoes-page')),
   'pontos-de-atencao': () => futuras().then((m) => m.PontosAtencaoPage),
-  relatorios: () => futuras().then((m) => m.RelatoriosPage),
+  relatorios: () => padrao(import('@/features/relatorios/pages/relatorios-page')),
 };
 
 export const router = createBrowserRouter([
@@ -71,6 +71,7 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="usuarios" replace /> },
               { path: 'usuarios', ...pagina(() => padrao(import('@/features/usuarios/pages/usuarios-page')), 'Usuários') },
               { path: 'auditoria', ...pagina(() => padrao(import('@/features/auditoria/pages/auditoria-page')), 'Auditoria') },
+              { path: 'escritorio', ...pagina(() => padrao(import('@/features/escritorio/pages/identidade-page')), 'Escritório') },
             ],
           },
           { path: '*', element: <NaoEncontrado /> },

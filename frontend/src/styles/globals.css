@@ -28,6 +28,8 @@
   --sidebar-foreground: #d4e1ec;
   --sidebar-accent: #1d4a66;
   --sidebar-border: #1a3a52;
+  /* gráficos: paleta categórica (ordem fixa), validada p/ daltonismo e >= 3:1 na superfície; a mesma do GraficoSvg (PDF) */
+  --chart-1: #2a78d6; --chart-2: #d95926; --chart-3: #1b9e77; --chart-4: #c98500; --chart-5: #6250d6; --chart-6: #d55181;
   color-scheme: light;
 }
 
@@ -51,6 +53,7 @@
   --sidebar-foreground: #b6c6d8;
   --sidebar-accent: #16304a;
   --sidebar-border: #142236;
+  --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500; --chart-5: #9085e9; --chart-6: #d55181;
   color-scheme: dark;
 }
 

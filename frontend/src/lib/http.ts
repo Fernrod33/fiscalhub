@@ -57,8 +57,8 @@ async function tokenCsrf(): Promise<string | undefined> {
   return valor && decodeURIComponent(valor);
 }
 
-async function requisitar(metodo: string, caminho: string, corpo?: unknown): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json, application/problem+json' };
+async function requisitar(metodo: string, caminho: string, corpo?: unknown, aceita = 'application/json'): Promise<Response> {
+  const headers: Record<string, string> = { Accept: `${aceita}, application/problem+json` };
   if (metodo !== 'GET') {
     const csrf = await tokenCsrf();
     if (csrf) headers['X-XSRF-TOKEN'] = csrf;
@@ -119,6 +119,8 @@ export const http = {
   patch: <T>(caminho: string, corpo?: unknown) => json<T>('PATCH', caminho, corpo),
   delete: (caminho: string) => json<void>('DELETE', caminho),
   enviarComProgresso,
+  /** POST que devolve texto (HTML da prévia do relatório). */
+  texto: async (caminho: string, corpo?: unknown) => (await requisitar('POST', caminho, corpo, 'text/html')).text(),
   /** Baixa um arquivo e devolve o conteúdo com o nome sugerido pelo servidor. */
   async baixar(caminho: string): Promise<{ blob: Blob; nome: string }> {
     const resposta = await requisitar('GET', caminho);

@@ -40,3 +40,14 @@ describe('cnpjValido', () => {
     expect(cnpjValido('123')).toBe(false);
   });
 });
+
+// Os mesmos casos conferidos pelo backend (RenderizadorRelatorioTest): a formatação do PDF é a da tela
+import casos from './formatacao.casos.json';
+
+describe('formatação igual à do backend (relatórios)', () => {
+  const porFormato: Record<string, (v: string) => string> = {
+    moeda: (v) => fmt.moeda(Number(v)), percentual: (v) => fmt.percentual(Number(v)), inteiro: (v) => fmt.inteiro(Number(v)),
+    competencia: fmt.competencia, data: fmt.data, cnpj: fmt.cnpj,
+  };
+  it.each(casos)('$formato $valor', ({ formato, valor, esperado }) => expect(porFormato[formato](valor)).toBe(esperado));
+});

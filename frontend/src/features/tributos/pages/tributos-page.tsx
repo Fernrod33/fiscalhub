@@ -2,12 +2,13 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Calculator, Landmark, PiggyBank } from 'lucide-react';
 import { Alternador } from '@/components/alternador';
+import { Grafico } from '@/components/grafico';
 import { Cartao, CartaoTitulo } from '@/components/cartao';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
 import { Selo } from '@/components/selo';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Apuracao, StatusConciliacao } from '@/lib/api/tipos';
+import type { Apuracao, ItemConciliacao, StatusConciliacao } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
 import { REGIMES, STATUS_CONCILIACAO } from '@/lib/rotulos';
 import { cn } from '@/lib/utils';
@@ -68,7 +69,13 @@ export default function TributosPage() {
           ? <EstadoVazio icone={Landmark} titulo="Nada para conciliar"
                          descricao={<ImporteOs clienteId={clienteId}>O apurado vem da ECF e das EFD; o declarado, da DCTF, da DCTFWeb e
                            da conta corrente do PR; o pago, dos DARF, do relatório de pagamentos e das GR-PR.</ImporteOs>} />
-          : <MatrizTributos itens={filtrados} periodicidade={periodicidade} aoAbrir={setCelula} />}
+          : (
+            <>
+              <Grafico titulo="Apurado × pago por competência" tipo="barras" formato="moeda" categoria="competencia"
+                       series={[{ chave: 'apurado', nome: 'Apurado' }, { chave: 'pago', nome: 'Pago' }]} dados={apuradoPago(itens)} />
+              <MatrizTributos itens={filtrados} periodicidade={periodicidade} aoAbrir={setCelula} />
+            </>
+          )}
         {(conciliacao.data?.alertas ?? []).length > 0 && (
           <ul className="grid gap-1 text-sm" aria-label="Alertas da conciliação">
             {conciliacao.data?.alertas.map((a, i) => (
@@ -101,6 +108,18 @@ export default function TributosPage() {
       <DetalheCelula clienteId={clienteId} celula={celula} apuracoes={lista} aoFechar={() => setCelula(null)} />
     </Reveal>
   );
+}
+
+/** Soma por competência (todas as esferas) para o gráfico; os valores são os da conciliação, sem recálculo. */
+function apuradoPago(itens: ItemConciliacao[]) {
+  const porMes = new Map<string, { competencia: string; apurado: number; pago: number }>();
+  for (const i of [...itens].sort((a, b) => a.periodo.localeCompare(b.periodo))) {
+    const m = porMes.get(i.periodo) ?? { competencia: fmt.competencia(i.periodo), apurado: 0, pago: 0 };
+    m.apurado += i.apurado?.valor ?? 0;
+    m.pago += i.pago?.valor ?? 0;
+    porMes.set(i.periodo, m);
+  }
+  return [...porMes.values()];
 }
 
 /** IRPJ/CSLL por período de apuração (ajuste anual ou trimestre): regime e demonstração do lucro em cascata. */
