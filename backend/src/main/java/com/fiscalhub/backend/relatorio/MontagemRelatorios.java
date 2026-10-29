@@ -39,7 +39,8 @@ import java.util.stream.Stream;
 public class MontagemRelatorios {
 
     /** Parâmetros da emissão (também gravados no relatório emitido). de/ate: competências; na carga, os exercícios. */
-    public record Parametros(TipoRelatorio tipo, YearMonth de, YearMonth ate, boolean incluirDivergencias, boolean incluirFontes) {
+    public record Parametros(TipoRelatorio tipo, YearMonth de, YearMonth ate, boolean incluirDivergencias, boolean incluirFontes,
+                             Long simulacaoId) {
     }
 
     static final String VERSAO_TEMPLATE = "relatorio-2026.10";
@@ -55,12 +56,14 @@ public class MontagemRelatorios {
     private final IdentidadeEscritorioService identidade;
     private final NamedParameterJdbcTemplate jdbc;
     private final RelatoriosCapacidade capacidade;
+    private final RelatorioProposta proposta;
     private final String versaoNormas;
 
     public MontagemRelatorios(AcessoRecursoService acesso, ConciliacaoService conciliacao, SituacaoFiscalService situacao,
                               CargaTributariaService carga, IdentidadeEscritorioService identidade, NamedParameterJdbcTemplate jdbc,
-                              RelatoriosCapacidade capacidade) {
+                              RelatoriosCapacidade capacidade, RelatorioProposta proposta) {
         this.capacidade = capacidade;
+        this.proposta = proposta;
         this.acesso = acesso;
         this.conciliacao = conciliacao;
         this.situacao = situacao;
@@ -82,6 +85,7 @@ public class MontagemRelatorios {
             case SITUACAO_FISCAL -> situacao(clienteId, ua);
             case CAPACIDADE -> capacidade.capacidade(clienteId, ua);
             case DOSSIE_CAPAG -> capacidade.dossie(clienteId, ua);
+            case PROPOSTA_REGULARIZACAO -> proposta.proposta(clienteId, p.simulacaoId(), ua);
         };
         var id = identidade.consultar(ua);
         String responsavel = id.responsavelNome() == null ? null
@@ -436,6 +440,7 @@ public class MontagemRelatorios {
 
     private static String periodo(Parametros p) {
         if (EnumSet.of(TipoRelatorio.SITUACAO_FISCAL, TipoRelatorio.CAPACIDADE, TipoRelatorio.DOSSIE_CAPAG).contains(p.tipo())) return "posição dos documentos importados";
+        if (p.tipo() == TipoRelatorio.PROPOSTA_REGULARIZACAO) return "data-base da simulação";
         if (p.tipo() == TipoRelatorio.CARGA_TRIBUTARIA) {
             return p.de() == null && p.ate() == null ? "todos os exercícios importados"
                     : "exercícios " + (p.de() == null ? "…" : p.de().getYear()) + " a " + (p.ate() == null ? "…" : p.ate().getYear());
@@ -479,6 +484,16 @@ public class MontagemRelatorios {
                     "Fontes normativas: Portaria PGFN 6.757/2022 (arts. 21, 24, 25 e 30, com as Portarias 1.241/2023 e "
                             + "1.457/2024) e Resolução Conjunta PGE/SEFA 01/2025 (com a RC 15/2026), textos baixados em 28/10/2026 "
                             + "com URL e SHA-256 na tabela de regras.");
+            case PROPOSTA_REGULARIZACAO -> List.of(
+                    "Exato × projeção: principal, multa, juros e encargo vêm dos documentos importados e da SELIC publicada pelo "
+                            + "Banco Central; as parcelas que vencem depois do último mês com SELIC usam a taxa projetada indicada "
+                            + "(parâmetro do escritório ou média das últimas 12) e aparecem como projetadas no cronograma.",
+                    "Regras de cada modalidade (prazos, parcela mínima, entrada, descontos, vedações, garantia, rescisão) como dado "
+                            + "versionado, com o artigo e a fonte de cada uma; a versão usada está no anexo. Fonte secundária: o texto "
+                            + "oficial não pôde ser baixado e a cópia usada está identificada.",
+                    "Desconto da transação: o máximo do edital pela classe da CAPAG oficial importada; o desconto efetivo é "
+                            + "definido pela PGFN conforme a capacidade de pagamento. A CAPAG estimada aparece só como cenário "
+                            + "rotulado e nunca é a recomendação.");
             case SITUACAO_FISCAL -> List.of(
                     "Débitos, parcelamentos, pendências e CAPAG dos relatórios dos órgãos importados (Relatório de Situação Fiscal "
                             + "da RFB, extrato do Regularize/PGFN, conta corrente e RTI da SEFA-PR), o mais recente de cada tipo. "

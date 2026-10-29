@@ -56,7 +56,7 @@ class RelatoriosCapacidade {
                 i -> linha(i.id(), i.valor(), Objects.toString(i.indice(), ND), Objects.toString(i.classe(), ND),
                         Objects.toString(i.classeOficial(), "—"), Objects.toString(i.observacao(), "")), null, null));
         secoes.add(criterios(ger, documentos));
-        secoes.add(secao("IndicadoresGerenciais gerenciais por exercício", "Sem demonstrações importadas.", false, c.indicadores(),
+        secoes.add(secao("Indicadores gerenciais por exercício", "Sem demonstrações importadas.", false, c.indicadores(),
                 colunas("Exercício", "EBITDA:MOEDA", "Caixa operacional:MOEDA", "Liquidez corrente", "Liquidez seca", "Liquidez geral",
                         "Endividamento", "Cobertura de juros", "Ciclo financeiro (dias)"),
                 i -> linha(String.valueOf(i.exercicio()), cru(i.ebitda()), cru(i.fco()), nd(i.liquidezCorrente()),

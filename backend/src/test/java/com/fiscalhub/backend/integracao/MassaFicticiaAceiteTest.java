@@ -672,6 +672,17 @@ class MassaFicticiaAceiteTest {
             JsonNode melhor = conteudo("/api/clientes/{c}/simulacoes/melhor");
             assertThat(melhor.get("id").asLong()).isEqualTo(salva.get("id").asLong());
             assertThat(melhor.get("recomendacao").asText()).contains("Transação por adesão");
+
+            // a proposta de regularização sai da simulação salva, sem recalcular
+            JsonNode emitido = json.readTree(mvc.perform(post("/api/clientes/{c}/relatorios", metalurgica.getId()).with(sessao)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"tipo\":\"PROPOSTA_REGULARIZACAO\",\"simulacaoId\":" + salva.get("id") + "}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+            var inicio = mvc.perform(get("/api/clientes/{c}/relatorios/" + emitido.get("id").asLong() + "/pdf", metalurgica.getId()).with(sessao))
+                    .andExpect(status().isOk()).andReturn();
+            byte[] pdf = mvc.perform(asyncDispatch(inicio)).andReturn().getResponse().getContentAsByteArray();
+            String texto = String.join(" ", LeitorPdf.ler(pdf).linhas().stream().map(DocumentoPdf.Linha::texto).toList());
+            assertThat(texto).contains("Proposta de regularização", "Recomendação", "Comparação das modalidades", "Notas de risco",
+                    "Fontes normativas", "Edital PGDAU 6", "secundária", "29/01/2027", "002201-55");
         }
 
         private void conferir(JsonNode m, String caso) {
