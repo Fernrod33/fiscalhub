@@ -80,6 +80,18 @@ Regras que valem para todo o código:
 - **Parâmetros** das estimativas editáveis (ADMIN e CONSULTOR). Visão geral: cartão com CAPAG oficial, classe do PR e parcela sustentável. Demonstrações: opção "DFC — método direto", mês a mês, com os lançamentos de cada linha.
 - Nada é calculado na tela: tudo vem pronto do backend (`ResultadoCapacidade`).
 
+## Aba Simulações
+
+- **1. Débitos e data-base:** os débitos importados por órgão, a data-base (padrão hoje), o prazo (vazio = o máximo de
+  cada modalidade) e o reparcelamento; nenhum valor é digitado.
+- **2. Comparar:** as modalidades de cada órgão lado a lado (custo projetado, desconto, entrada, prestações, parcela,
+  × à vista), a recomendada em destaque, o cenário "se a revisão da CAPAG for deferida" rotulado, o selo da parcela
+  sustentável e os programas encerrados com o motivo. Entrada com `Stagger` (sem animação com movimento reduzido).
+- **3. Detalhar:** débitos com a origem (popover), gráfico saldo nominal × projetado, cronograma com as parcelas
+  projetadas marcadas, memória, elegibilidade e regra/fontes (fonte secundária em destaque), tudo em `Collapse`.
+- **Histórico:** versões, "motor antigo", recalcular e excluir (ADMIN e CONSULTOR). Visão geral: cartão "Melhor
+  proposta salva". Relatórios: "Proposta de regularização" escolhendo a simulação salva.
+
 ## Design system
 
 Referência visual: `npm run dev` e abra `/laboratorio-design` (a rota não existe no build de produção).

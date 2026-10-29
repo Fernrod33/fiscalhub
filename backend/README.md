@@ -101,6 +101,7 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V20__situacao_fiscal.sql` | `debito` ampliado (escrituração, chave, fontes, encargo, total, origem por página e linha; vencimento e principal passam a aceitar nulo), `parcelamento`, `pendencia_fiscal`, `capacidade_pagamento_oficial`; `escrituracao_contabil.origem` e `versao_leiaute` mais largos |
 | `V21__declarado_e_pago.sql` | `debito_declarado` e `pagamento` |
 | `V22__identidade_do_escritorio.sql` | identidade nos relatórios no `escritorio` (nome de exibição, chave do logotipo, cor, rodapé, responsável técnico); tudo nulo nos existentes |
+| `V25__simulacao_motor_unico.sql` | simulação versionada (resultado em JSON, versão das regras e dos índices, versão anterior); simulações antigas = motor antigo; `fonte_secundaria` nas regras da capacidade |
 | `V24__capacidade_de_pagamento.sql` | `divida_detalhe`, `situacao_cadastral`, `regra_capacidade_pagamento` (com as regras dos textos oficiais), `parametro_capacidade` e `dfc_depara_escritorio` |
 | `V23__relatorio_emitido.sql` | `relatorio_emitido` (parâmetros, snapshot, versões, PDF e Excel com SHA-256, número por escritório), com trigger que impede `UPDATE` |
 
@@ -408,6 +409,51 @@ longo, por nível): padrão versionado em `resources/capacidade/dfc-depara.txt`,
 (`/api/escritorio/dfc-depara`, auditado). Conferência: a soma da DFC tem que bater com a variação dos saldos de caixa
 no I155; diferença vira alerta. Cada linha traz os lançamentos que a compõem (número, data e linha do arquivo).
 
+## Parcelamento e transação (Fase 5)
+
+**Regras como dado** (`resources/parcelamento/regras.json`, versionado no git; a simulação grava a `versao` do arquivo e
+a versão de cada modalidade, `chave@início da vigência`):
+
+| Modalidade | Base | Pontos principais |
+|---|---|---|
+| `RFB_ORDINARIO` / `RFB_SIMPLIFICADO` | Lei 10.522/2002, arts. 10 a 14-F; IN RFB 2.063/2022 | até 60; mínimo R$ 500 PJ / R$ 200 PF; SELIC acumulada + 1% por prestação; reparcelamento 10% / 20%; vedações do art. 20 (só no ordinário) |
+| `PGFN_ORDINARIO` | Portaria PGFN 448/2019 | até 60; encargo legal de 20% na consolidação; garantia acima de R$ 1 milhão; 1ª no mês do pedido |
+| `PGFN_TRANSACAO_EDITAL_6_2026` | Edital PGDAU 6/2026 e 10/2026; Lei 13.988/2020; Portaria PGFN 6.757/2022 | duas versões (adesão 01/06–30/09/2026, corte 03/03/2026; reaberta 01/10/2026–29/01/2027, corte 03/07/2026); classes C e D: até 100% de juros, multas e encargos, limitado a 65% de cada inscrição, nunca o principal; entrada 6% em até 6 + 114; sem desconto, 60 meses; mínimo R$ 100 |
+| `SEFA_PR_ORDINARIO` | Lei PR 11.580/1996, art. 41; RICMS/PR, arts. 80 a 84 | até 60 (EFD: 24); 30 UPF/PR a parcelar, 6 UPF/PR por parcela; garantia acima de 5.000 UPF/PR e 36 parcelas; juros vincendos da 2ª em diante; vedado GIA-ST/DeSTDA; reparcelamento com 6 parcelas se 37–60 |
+| `PERT_RFB`, `REFIS`, `REGULARIZA_PARANA` | programas encerrados | aparecem como não elegíveis, com o motivo |
+
+Acréscimos (`acrescimos` no mesmo arquivo) por órgão, lidos pelo `AcrescimosMoratorios` (o único cálculo de multa e
+juros do sistema): RFB e PGFN pelo art. 61 da Lei 9.430 (PGFN com o encargo de 20%); PR pela Lei 11.580, art. 38
+(SELIC + 1%) e a multa reduzida do RICMS art. 80 (0,33%/dia até o 30º dia, 10% até a inscrição, 20% inscrito), sem
+atualização monetária. **UPF/PR** (`parcelamento/upf-pr.csv`): só o valor lido na resolução da SEFA-PR baixada (URL e
+SHA-256); mês sem UPF = parcela mínima, valor mínimo e garantia do PR **bloqueados com aviso**.
+
+**Fontes:** cada fonte tem URL, data, SHA-256 e `secundaria` (o texto oficial não pôde ser baixado; a cópia usada fica
+registrada). Conferência completa em `docs/normativas/normativas-parcelamento.md`.
+
+**Adicionar ou mudar uma regra/edital:** acrescente uma entrada em `modalidades` com a mesma `chave` e a vigência nova
+(a anterior ganha `vigenciaFim`), registre a fonte em `fontes` e mude `versao`. Edital novo = chave nova. Campo que a
+norma não fixa fica `null`. Simulações salvas guardam o resultado e a versão: não mudam; "Recalcular" cria a versão nova.
+
+**Motor** (`parcelamento/MotorParcelamento`, um só para todos os órgãos): consolida cada débito com o próprio vencimento
+(inscrição: principal, multa e juros do documento na posição dele + encargo; CDA do PR: o total da CDA), checa a
+elegibilidade débito × modalidade (com o motivo), aplica desconto, entrada, prazo máximo, parcela mínima e garantia e
+monta o cronograma com a correção da regra.
+
+**Exato × projeção:** acréscimos até a data-base e SELIC dos meses já publicados são exatos. Mês sem SELIC antes da
+data-base é erro ("Índice SELIC ausente para …"); do mês da data-base em diante, a parcela usa a SELIC projetada
+(parâmetro do escritório `gerencial.selicProjetada`, ou a média das 12 últimas carregadas) e sai marcada "projeção —
+SELIC futura desconhecida", com as colunas nominal e projetada.
+
+**CAPAG:** o desconto usa a classe da CAPAG oficial importada; a estimada da Fase 4 entra só como cenário rotulado "se
+a revisão da CAPAG for deferida" e nunca é recomendada. Recomendação por órgão: a de menor custo projetado entre as
+elegíveis que cabem na parcela sustentável (selo e % comprometido).
+
+**Versões:** `simulacao_parcelamento` (V25) guarda débitos (pela chave, estável entre reimportações), data-base, versão
+das regras e dos índices, parâmetros da projeção e o resultado inteiro (JSON). Simulações anteriores à Fase 5 ficam como
+"motor antigo" e se recalculam com um clique. Relatório `PROPOSTA_REGULARIZACAO` (com `simulacaoId`) sai da simulação
+salva, sem recalcular.
+
 ## Modelo de apuração
 
 Um modelo só para todos os tributos e fontes (`fiscal/RepositorioApuracao`):
@@ -652,14 +698,15 @@ Relatórios novos (`POST /api/clientes/{id}/relatorios`): `CAPACIDADE` e `DOSSIE
 
 | Método | Rota | Papel | Descrição |
 |---|---|---|---|
-| POST | `/api/simulacoes/calcular` | todos | calcula sem salvar (`clienteId`, `debitoIds`, `orgao`, `modalidade`, `numeroParcelas`, ...) |
-| POST | `/api/simulacoes/calcular/salvar` | ADMIN, CONSULTOR | calcula e salva com a tabela de parcelas |
-| GET | `/api/simulacoes/{id}` | todos | uma simulação |
-| GET | `/api/simulacoes/cliente/{clienteId}` | todos | simulações do cliente |
-| PATCH | `/api/simulacoes/{id}/aprovar` | ADMIN, CONSULTOR | marca como aprovada |
-| DELETE | `/api/simulacoes/{id}` | ADMIN, CONSULTOR | exclui |
+| POST | `/api/clientes/{id}/simulacoes/calcular` | todos | `{debitoIds, dataBase?, parcelas?, reparcelamento}`: todas as modalidades e cenários, sem gravar |
+| POST | `/api/clientes/{id}/simulacoes` | ADMIN, CONSULTOR | simula e grava (auditado) |
+| GET | `/api/clientes/{id}/simulacoes` | todos | histórico (versões, motor antigo) |
+| GET | `/api/clientes/{id}/simulacoes/{sid}` | todos | simulação salva completa |
+| GET | `/api/clientes/{id}/simulacoes/melhor` | todos | a mais recente com recomendação (204 sem nenhuma) |
+| POST | `/api/clientes/{id}/simulacoes/{sid}/recalcular` | ADMIN, CONSULTOR | nova versão com as regras e os índices de hoje (auditado) |
+| DELETE | `/api/clientes/{id}/simulacoes/{sid}` | ADMIN, CONSULTOR | exclui (auditado) |
 
-A simulação consolida vários débitos do mesmo cliente: soma o principal e usa o vencimento mais antigo. O cálculo por débito e as correções normativas entram na Fase 5.
+Calcular, salvar e recalcular têm o limite por usuário das consultas de capacidade (`fiscalhub.capacidade.consultas-por-minuto`).
 
 ### Auditoria
 

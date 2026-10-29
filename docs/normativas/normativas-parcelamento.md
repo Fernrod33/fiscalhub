@@ -1,6 +1,6 @@
 # FiscalHub — Normativas para a simulação de parcelamento (Federal e Paraná)
 
-*04/10/2026 · levantamento inicial para orientar o motor de simulação. Os pontos marcados **[confirmar]** precisam de leitura do texto vigente antes de virar regra no sistema. Programas e editais mudam com frequência; todas as regras devem ser cadastradas com vigência.*
+*04/10/2026 · levantamento inicial (conferido com os textos vigentes em 29/10/2026: seção 7) para orientar o motor de simulação. Os pontos marcados **[confirmar]** precisam de leitura do texto vigente antes de virar regra no sistema. Programas e editais mudam com frequência; todas as regras devem ser cadastradas com vigência.*
 
 ## 1. Princípios de modelagem
 
@@ -92,6 +92,70 @@
 - Fase 0: os testes do motor atual devem registrar o comportamento **e** os casos esperados pela norma. As divergências acima viram os primeiros testes vermelhos.
 - Fase 5: implantar `RegraParcelamento` e `RegraAcrescimo` versionadas, a importação automática de SELIC (BCB) e UPF/PR, a checagem de elegibilidade, a correção das parcelas pela SELIC e o encargo legal da PGFN.
 - Processo contínuo: alguém do produto acompanha o DOU, o DOE-PR, os editais da PGFN e o Portal Refis da SEFA-PR, e cadastra novas versões de regra.
+
+## 7. Conferência com os textos vigentes (29/10/2026, Fase 5)
+
+Regras implantadas em `backend/src/main/resources/parcelamento/regras.json` (URL, data e SHA-256 de cada texto). Na
+lista abaixo, **confirmado** quer dizer que o valor do levantamento acima bate com o texto; **corrigido**, que o texto
+diz outra coisa; **fonte secundária**, que o oficial não pôde ser baixado e foi usada a cópia indicada.
+
+**Federal — RFB (IN RFB 2.063/2022, cópia do DOU de 31/01/2022, fonte secundária: o portal de normas da RFB não devolveu o ato)**
+- Confirmado: até 60 prestações (art. 2º); mínimo de R$ 200 (PF) e R$ 500 (PJ) (art. 10); prestação + SELIC acumulada
+  do mês seguinte à consolidação até o anterior ao pagamento + 1% (art. 11); reparcelamento com 10% (histórico de
+  parcelamento) ou 20% (histórico de reparcelamento) (art. 17); rescisão por 3 prestações ou até 2 com as demais pagas
+  ou a última vencida (art. 18).
+- Corrigido: a lista de vedações está no art. 20 da IN (e no art. 14 da lei), com 10 incisos (retidos na fonte, IOF
+  retido, valores recebidos por agentes arrecadadores, tributos na importação, FINOR/FINAM/FUNRES, estimativas de
+  IRPJ/CSLL, carnê-leão obrigatório, débito com parcelamento anterior não quitado salvo reparcelamento, falência ou
+  insolvência, RET); o simplificado (art. 21) dispensa essas vedações e a IN não fixa limite de valor. O FiscalHub
+  detecta hoje IRRF (retenção) e débito já negociado; as demais vedações dependem de dado que os documentos não trazem.
+- Não conferido: alterações da IN RFB 2.284/2025.
+- **Decisão pendente:** a IN (arts. 4º e 13) condiciona o pedido ao pagamento da 1ª prestação no mês do pedido; o teste
+  normativo do motor (valores mantidos) coloca a 1ª no mês seguinte à consolidação. A regra `RFB_*` está com
+  `primeiraParcela: MES_SEGUINTE` até a decisão (mudar é só trocar o campo).
+
+**Federal — PGFN ordinário (Portaria PGFN 448/2019 compilada, fonte secundária: normaslegais.com.br)**
+- Confirmado: até 60 (art. 2º); 1ª até o último dia útil do mês do requerimento (art. 4º); consolidação com principal,
+  multas, juros e encargo (art. 6º); mínimo de R$ 200 PF e R$ 500 PJ (art. 8º); SELIC + 1% (art. 9º); reparcelamento
+  com 10% ou 20% (art. 17); rescisão (art. 18).
+- Corrigido o **[confirmar]** do teto de garantia: sem garantia até R$ 1.000.000,00 consolidados; acima, garantia real
+  ou fidejussória (arts. 20 e 22).
+- Encargo legal de 20% (DL 1.025/1969): na massa, bate com o encargo do extrato do Regularize.
+
+**Federal — transação por adesão (Edital PGDAU 6/2026, impressão do DOU, fonte secundária; Edital PGDAU 10/2026, reprodução em contadores.cnt.br, fonte secundária; Lei 13.988/2020 lida no Planalto, sem hash: download recusado)**
+- Confirmado: prorrogação pelo Edital 10/2026 — adesão de 01/10/2026 a 29/01/2027, inscrições até 03/07/2026 (pequeno
+  valor: 01/10/2025); os Editais 8/2026 (até 20/12/2026) e 9/2026 (Desenrola MEI, até 29/01/2027) também foram
+  prorrogados. Nenhum edital novo encontrado para empresas em 29/10/2026.
+- Confirmado: até R$ 45 milhões por sujeito passivo (art. 2º); regra geral (art. 4º): desconto de até 100% de juros,
+  multas e encargos limitado a 65% do total de cada inscrição; entrada de 6% em até 6 prestações e saldo em até 114;
+  sem desconto, prazo total de 60 meses; 60 parcelas para as contribuições do art. 195, I, a, e II da CF. Prestação
+  mínima de R$ 100 e SELIC + 1% (art. 18); rescisão por 3 prestações (art. 20); impedimento de 2 anos (art. 21, III;
+  Lei 13.988, art. 4º, §4º); adesão abrange todas as inscrições elegíveis, salvo as já negociadas (art. 13).
+- Corrigido: a entrada de 5% em 12 + 108 é dos créditos **irrecuperáveis** pelo art. 25 da Portaria 6.757 (art. 7º do
+  edital), não da classe D da CAPAG; PF/ME/EPP: 6% em 12 + 133 com limite de 70% (art. 5º) — não modelado.
+- Corrigido o **[confirmar]** da tabela de descontos por CAPAG: o edital **não tem tabela por classe**. Ele fixa o
+  máximo; a Portaria 6.757 (arts. 21 e 24) dá desconto só a quem tem capacidade insuficiente (tipos C e D) e a PGFN
+  gradua o desconto efetivo. O FiscalHub mostra o máximo do edital para C e D, rotulado.
+
+**Paraná (RICMS/PR, PDF oficial da SEFA-PR atualizado até o Decreto 15.266/2026, SHA-256 dc917a25…)**
+- Confirmado: até 60 parcelas (art. 81, Lei 11.580, art. 41); garantia acima de 5.000 UPF/PR com mais de 36 parcelas
+  (art. 82, §§6º e 7º); confissão irretratável (art. 81, §4º).
+- Corrigido / completado os **[confirmar]**: valor mínimo de 30 UPF/PR a parcelar e 6 UPF/PR por parcela (art. 83, §1º);
+  parcela inicial na concessão (art. 83, §2º); juros vincendos da 2ª parcela em diante pela soma da SELIC sobre imposto
+  e multa (art. 81, §3º, I) — não é SELIC + 1%; imposto declarado na EFD só depois do prazo da multa reduzida ou com a
+  multa de 10% (art. 81, §§1º, I, e 7º), **limitado a 24 parcelas e 4 meses de referência** (art. 81, §8º); vedado o ICMS
+  declarado em GIA-ST ou DeSTDA (§10) — o ICMS-ST da EFD é parcelável; dívida ativa: 1 parcelamento em até 12, 1 em até
+  24, 1 em até 36 e 2 em até 60 por contribuinte (§12); rescisão por 3 parcelas ou pelas 2 últimas há mais de 60 dias
+  (art. 84, com a revogação do inciso I pelo Decreto 14.766/2026); reparcelamento só depois de rescisão e inscrição,
+  com 6 parcelas na assinatura entre 37 e 60 (art. 84, §3º).
+- Confirmado: multa de 20% reduzida a 0,33% ao dia até o 30º dia e a 50% (10%) do 31º dia até a inscrição (art. 80).
+- **UPF/PR:** a SEFA-PR publica o valor mês a mês por resolução; foram baixadas as de fevereiro a abril de 2025 (R$ 141,62,
+  141,85 e 143,71). Os valores de 2026 não foram encontrados em fonte oficial: as regras do PR que dependem da UPF ficam
+  bloqueadas com aviso até a resolução do mês entrar em `upf-pr.csv`.
+- Regulariza Paraná (Decreto 12.099/2025): encerrado em 31/03/2026, registrado como histórico.
+
+**Portaria PGFN 6.757/2022 e Portaria Conjunta 1.751/2014:** nova tentativa no DOU em 29/10/2026 respondeu 404; mantida a
+fonte secundária da Fase 4 (marcada em `regra_capacidade_pagamento.fonte_secundaria`, V25).
 
 ## Fontes
 - [Receita Federal — parcelamento (gov.br)](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/formularios/impostos/parcelamento/parcelamento)
