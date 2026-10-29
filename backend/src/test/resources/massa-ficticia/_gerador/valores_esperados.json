@@ -177,5 +177,133 @@
       "ultima": "2546.93",
       "entrada": "9888.42"
     }
-  }
+  },
+  "pontos_atencao": [
+    {
+      "item": 1,
+      "regra": "R01",
+      "severidade": "ALTA",
+      "titulo": "Pago a menor: COFINS 08/2026",
+      "motivo": "COFINS declarada 33.079,00 e paga 28.000,00"
+    },
+    {
+      "item": 1,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: RFB COFINS 08/2026",
+      "motivo": "a diferença está em aberto no relatório de situação fiscal"
+    },
+    {
+      "item": 2,
+      "regra": "R02",
+      "severidade": "ALTA",
+      "titulo": "Pago em atraso sem acréscimos: IPI 11/2024",
+      "motivo": "pago 48 dias depois só com o principal"
+    },
+    {
+      "item": 2,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: RFB IPI 11/2024",
+      "motivo": "multa e juros em aberto no SIEF"
+    },
+    {
+      "item": 3,
+      "regra": "R04",
+      "severidade": "ALTA",
+      "titulo": "ICMS-ST não recolhido com saldo credor de ICMS próprio: ICMS_ST · PR 08/2026",
+      "motivo": "o saldo credor não quita o ST"
+    },
+    {
+      "item": 3,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: SEFA_PR ICMS_ST 08/2026",
+      "motivo": "ICMS-ST em aberto na conta corrente do PR"
+    },
+    {
+      "item": 4,
+      "regra": "R05",
+      "severidade": "MEDIA",
+      "titulo": "Saldo credor de ICMS acumulado (PR)",
+      "motivo": "saldo credor de 03/2026 a 08/2026"
+    },
+    {
+      "item": 5,
+      "regra": "R06",
+      "severidade": "ALTA",
+      "titulo": "Omissão de declaração: Omissão de EFD-Contribuições de 06/2026",
+      "motivo": "não é previdenciária: não impede a certidão"
+    },
+    {
+      "item": 6,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: PGFN IPI 90 3 24 002201-55",
+      "motivo": "inscrição não negociada"
+    },
+    {
+      "item": 6,
+      "regra": "R09",
+      "severidade": "ALTA",
+      "titulo": "Transação com desconto disponível: Transação por adesão — Edital PGDAU 6/2026, reaberto pelo Edital 10/2026 (capacidade de pagamento)",
+      "motivo": "a mesma inscrição cabe na transação com desconto (CAPAG oficial C)"
+    },
+    {
+      "item": 7,
+      "regra": "R08",
+      "severidade": "ALTA",
+      "titulo": "Revisão da CAPAG potencialmente vantajosa",
+      "motivo": "CAPAG oficial C × estimada D"
+    },
+    {
+      "item": 8,
+      "regra": "R16",
+      "severidade": "INFO",
+      "titulo": "Escrituração substituta: ECD 2024",
+      "motivo": "a substituta prevalece"
+    },
+    {
+      "item": 9,
+      "regra": "R11",
+      "severidade": "MEDIA",
+      "titulo": "Adição indedutível no e-Lalur: Multas por infracoes fiscais nao dedutiveis",
+      "motivo": "multa de ofício de 18.450,00 adicionada (IRPJ e CSLL)"
+    },
+    {
+      "item": 10,
+      "regra": "R10",
+      "severidade": "ALTA",
+      "titulo": "Parcelas acima da parcela sustentável",
+      "motivo": "parcelamento do PR (12/36) e transação da PGFN somam mais que a parcela sustentável"
+    },
+    {
+      "item": null,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: PGE_PR ICMS 2023.0045678-2",
+      "motivo": "CDA ajuizada sem parcelamento"
+    },
+    {
+      "item": null,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: PGE_PR ICMS 2025.0087654-1",
+      "motivo": "CDA em cobrança sem parcelamento"
+    },
+    {
+      "item": null,
+      "regra": "R12",
+      "severidade": "INFO",
+      "titulo": "Prejuízo fiscal (IRPJ) acumulado",
+      "motivo": "saldo da Parte B do e-Lalur (ECF 2025)"
+    },
+    {
+      "item": null,
+      "regra": "R12",
+      "severidade": "INFO",
+      "titulo": "Base negativa da CSLL acumulado",
+      "motivo": "saldo da Parte B do e-Lacs (ECF 2025)"
+    }
+  ]
 }

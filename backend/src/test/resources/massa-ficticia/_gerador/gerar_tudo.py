@@ -118,6 +118,31 @@ def simulacoes(pdf_c):
     return out
 
 
+# Pontos de atenção esperados (Fase 6): os 10 problemas plantados e os achados que as regras novas devem gerar, cada um
+# com o motivo. Qualquer outro achado aberto na massa é falso positivo.
+PONTOS = [
+    (1, "R01", "ALTA", "Pago a menor: COFINS 08/2026", "COFINS declarada 33.079,00 e paga 28.000,00"),
+    (1, "R07", "CRITICA", "Débito que impede a certidão: RFB COFINS 08/2026", "a diferença está em aberto no relatório de situação fiscal"),
+    (2, "R02", "ALTA", "Pago em atraso sem acréscimos: IPI 11/2024", "pago 48 dias depois só com o principal"),
+    (2, "R07", "CRITICA", "Débito que impede a certidão: RFB IPI 11/2024", "multa e juros em aberto no SIEF"),
+    (3, "R04", "ALTA", "ICMS-ST não recolhido com saldo credor de ICMS próprio: ICMS_ST · PR 08/2026", "o saldo credor não quita o ST"),
+    (3, "R07", "CRITICA", "Débito que impede a certidão: SEFA_PR ICMS_ST 08/2026", "ICMS-ST em aberto na conta corrente do PR"),
+    (4, "R05", "MEDIA", "Saldo credor de ICMS acumulado (PR)", "saldo credor de 03/2026 a 08/2026"),
+    (5, "R06", "ALTA", "Omissão de declaração: Omissão de EFD-Contribuições de 06/2026", "não é previdenciária: não impede a certidão"),
+    (6, "R07", "CRITICA", "Débito que impede a certidão: PGFN IPI 90 3 24 002201-55", "inscrição não negociada"),
+    (6, "R09", "ALTA", "Transação com desconto disponível: Transação por adesão — Edital PGDAU 6/2026, reaberto pelo Edital 10/2026 (capacidade de pagamento)",
+     "a mesma inscrição cabe na transação com desconto (CAPAG oficial C)"),
+    (7, "R08", "ALTA", "Revisão da CAPAG potencialmente vantajosa", "CAPAG oficial C × estimada D"),
+    (8, "R16", "INFO", "Escrituração substituta: ECD 2024", "a substituta prevalece"),
+    (9, "R11", "MEDIA", "Adição indedutível no e-Lalur: Multas por infracoes fiscais nao dedutiveis", "multa de ofício de 18.450,00 adicionada (IRPJ e CSLL)"),
+    (10, "R10", "ALTA", "Parcelas acima da parcela sustentável", "parcelamento do PR (12/36) e transação da PGFN somam mais que a parcela sustentável"),
+    (None, "R07", "CRITICA", "Débito que impede a certidão: PGE_PR ICMS 2023.0045678-2", "CDA ajuizada sem parcelamento"),
+    (None, "R07", "CRITICA", "Débito que impede a certidão: PGE_PR ICMS 2025.0087654-1", "CDA em cobrança sem parcelamento"),
+    (None, "R12", "INFO", "Prejuízo fiscal (IRPJ) acumulado", "saldo da Parte B do e-Lalur (ECF 2025)"),
+    (None, "R12", "INFO", "Base negativa da CSLL acumulado", "saldo da Parte B do e-Lacs (ECF 2025)"),
+]
+
+
 def main(base):
     contabil = ecd_ecf.gerar(base)
     fisc = efd.gerar(base)
@@ -146,6 +171,7 @@ def main(base):
         "capag_oficial": {"classe": "C", "capacidade": str(pdfs.CAPAG_VALOR)},
         "irrecuperaveis_pgfn": [],
         "simulacoes": simulacoes(pdf["cen"]),
+        "pontos_atencao": [dict(item=i, regra=r, severidade=sv, titulo=t, motivo=m) for i, r, sv, t, m in PONTOS],
     }
     with open(os.path.join(base, "_gerador", "valores_esperados.json"), "w", encoding="utf-8") as fh:
         json.dump(resumo, fh, ensure_ascii=False, indent=2, default=str)

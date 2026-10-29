@@ -723,6 +723,35 @@ class MassaFicticiaAceiteTest {
         }
     }
 
+    // ---------------------------------------------------------------- pontos de atenção (Fase 6) com a massa
+
+    /** O gabarito (_gerador/valores_esperados.json, "pontos_atencao"): os 10 problemas plantados e os achados declarados das regras novas. */
+    @Nested
+    class PontosAtencao {
+
+        @Test
+        void gabaritoCompletoSemFalsoPositivo() throws Exception {
+            mvc.perform(post("/api/clientes/{c}/pontos-atencao/reavaliar", metalurgica.getId()).with(sessao)).andExpect(status().isOk());
+            JsonNode pontos = conteudo("/api/clientes/{c}/pontos-atencao?estado=NOVO");
+            List<String> achados = new ArrayList<>();
+            for (JsonNode p : pontos) {
+                achados.add(p.get("regra").asText() + " " + p.get("severidade").asText() + " " + p.get("titulo").asText());
+            }
+            List<String> esperado = new ArrayList<>();
+            esperados.at("/pontos_atencao").forEach(x -> esperado.add(x.get("regra").asText() + " " + x.get("severidade").asText() + " " + x.get("titulo").asText()));
+            assertThat(achados).containsExactlyInAnyOrderElementsOf(esperado);
+            assertThat(conteudo("/api/clientes/{c}/pontos-atencao/nao-avaliadas")).isEmpty();
+
+            // R04: a evidência leva à célula da aba Tributos e traz o saldo credor do ICMS próprio, com a origem
+            JsonNode r04 = encontrar(pontos, p -> "R04".equals(p.get("regra").asText()));
+            assertThat(r04.findValuesAsText("link")).contains("tributos?item=ICMS_ST-PR-2026-08");
+            JsonNode saldo = encontrar(r04.get("evidencias"), e -> "SALDO".equals(e.get("tipo").asText()));
+            assertThat(new BigDecimal(saldo.get("valor").asText())).isPositive();
+            assertThat(saldo.at("/origem/arquivo").asText()).isNotBlank();
+            assertThat(new BigDecimal(r04.get("valor").asText())).isEqualByComparingTo("44850.00");
+        }
+    }
+
     // ---------------------------------------------------------------- apoio
 
     private long importar(Path arquivo) throws Exception {

@@ -23,7 +23,12 @@ public class ConferenciaEcdEcf {
     private static final Map<String, String> ITENS = Map.of("3.01.01.01.01", "Receita bruta",
             "3.01", "Resultado antes do IRPJ e da CSLL");
 
-    private record Valor(BigDecimal valor, String arquivo, String origem) {
+    private record Valor(BigDecimal valor, long documentoId, String arquivo, String origem) {
+    }
+
+    /** Um item comparado (receita bruta, LAIR ou resultado líquido): ECD × ECF do exercício, com a origem de cada lado. */
+    public record Comparacao(int exercicio, String item, BigDecimal ecd, long documentoEcd, String arquivoEcd, String origemEcd,
+                             BigDecimal ecf, long documentoEcf, String arquivoEcf, String origemEcf, BigDecimal diferenca) {
     }
 
     private final JdbcTemplate jdbc;
@@ -33,21 +38,38 @@ public class ConferenciaEcdEcf {
     }
 
     public void conferir(long clienteId, int exercicio, ContextoProcessamento contexto) {
+        comparacoes(clienteId, exercicio).stream().filter(c -> c.diferenca().abs().compareTo(TOLERANCIA) > 0).forEach(c ->
+                contexto.registrar(Severidade.ALERTA, null, null, "CONFERENCIA_ECD_ECF", c.item() + " de " + exercicio + ": ECD "
+                        + c.ecd().toPlainString() + " (" + c.arquivoEcd() + ", " + c.origemEcd() + ") × ECF "
+                        + c.ecf().toPlainString() + " (" + c.arquivoEcf() + ", " + c.origemEcf() + "); diferença "
+                        + c.diferenca().toPlainString() + " (devedor +, credor −)."));
+    }
+
+    /** Todos os exercícios com ECD e ECF vigentes do cliente, comparados (sem tolerância: quem usa aplica o limiar). */
+    public List<Comparacao> comparacoes(long clienteId) {
+        return jdbc.queryForList("""
+                SELECT DISTINCT extract(YEAR FROM data_fim)::int FROM escrituracao_contabil
+                WHERE cliente_id = ? AND origem = 'ECF' AND situacao = 'VIGENTE' ORDER BY 1""", Integer.class, clienteId)
+                .stream().flatMap(ano -> comparacoes(clienteId, ano).stream()).toList();
+    }
+
+    private List<Comparacao> comparacoes(long clienteId, int exercicio) {
         Long ecd = vigente(clienteId, "ECD", exercicio);
         Long ecf = vigente(clienteId, "ECF", exercicio);
+        List<Comparacao> out = new java.util.ArrayList<>();
         if (ecd == null || ecf == null) {
-            return;
+            return out;
         }
         boolean referencial = false;
         for (Map.Entry<String, String> item : ITENS.entrySet()) {
             Valor daEcd = linhaEcd(ecd, item.getKey());
-            Valor daEcf = linhaEcf(ecf, item.getKey());
             referencial |= daEcd != null;
-            comparar(item.getValue(), exercicio, daEcd, daEcf, contexto);
+            comparar(out, item.getValue(), exercicio, daEcd, linhaEcf(ecf, item.getKey()));
         }
         if (!referencial) {
-            comparar("Resultado líquido do período", exercicio, resultadoI355(ecd), linhaEcf(ecf, "3"), contexto);
+            comparar(out, "Resultado líquido do período", exercicio, resultadoI355(ecd), linhaEcf(ecf, "3"));
         }
+        return out;
     }
 
     private Long vigente(long clienteId, String origem, int exercicio) {
@@ -59,12 +81,12 @@ public class ConferenciaEcdEcf {
 
     private Valor linhaEcd(long escrituracaoId, String codigo) {
         return jdbc.query("""
-                SELECT l.valor_final, doc.nome_original_arquivo, l.id FROM linha_demonstracao l
+                SELECT l.valor_final, doc.nome_original_arquivo, l.id, doc.id FROM linha_demonstracao l
                 JOIN demonstracao d ON d.id = l.demonstracao_id
                 JOIN escrituracao_contabil e ON e.id = d.escrituracao_id
                 JOIN documento_fiscal doc ON doc.id = e.documento_id
                 WHERE d.escrituracao_id = ? AND d.tipo = 'DRE' AND d.origem = 'REFERENCIAL' AND l.codigo = ?""",
-                (rs, i) -> new Valor(rs.getBigDecimal(1), rs.getString(2),
+                (rs, i) -> new Valor(rs.getBigDecimal(1), rs.getLong(4), rs.getString(2),
                         "DRE referencial montada dos saldos I355, conta " + codigo), escrituracaoId, codigo)
                 .stream().findFirst().orElse(null);
     }
@@ -72,7 +94,7 @@ public class ConferenciaEcdEcf {
     /** Soma dos períodos de apuração da ECF (trimestres ou o anual), com as linhas do L300/P150. */
     private Valor linhaEcf(long escrituracaoId, String codigo) {
         List<Map<String, Object>> linhas = jdbc.queryForList("""
-                SELECT l.valor_final, l.registro, l.linha, doc.nome_original_arquivo FROM linha_demonstracao l
+                SELECT l.valor_final, l.registro, l.linha, doc.nome_original_arquivo, doc.id FROM linha_demonstracao l
                 JOIN demonstracao d ON d.id = l.demonstracao_id
                 JOIN escrituracao_contabil e ON e.id = d.escrituracao_id
                 JOIN documento_fiscal doc ON doc.id = e.documento_id
@@ -83,29 +105,23 @@ public class ConferenciaEcdEcf {
         BigDecimal soma = linhas.stream().map(l -> (BigDecimal) l.get("valor_final")).reduce(BigDecimal.ZERO, BigDecimal::add);
         String origem = linhas.get(0).get("registro") + " linha(s) " + String.join(", ",
                 linhas.stream().map(l -> String.valueOf(l.get("linha"))).toList());
-        return new Valor(soma, (String) linhas.get(0).get("nome_original_arquivo"), origem);
+        return new Valor(soma, ((Number) linhas.get(0).get("id")).longValue(), (String) linhas.get(0).get("nome_original_arquivo"), origem);
     }
 
     private Valor resultadoI355(long escrituracaoId) {
         return jdbc.query("""
-                SELECT sum(s.saldo_final), doc.nome_original_arquivo, min(s.linha), max(s.linha) FROM saldo_conta s
+                SELECT sum(s.saldo_final), doc.nome_original_arquivo, min(s.linha), max(s.linha), doc.id FROM saldo_conta s
                 JOIN escrituracao_contabil e ON e.id = s.escrituracao_id
                 JOIN documento_fiscal doc ON doc.id = e.documento_id
-                WHERE s.escrituracao_id = ? AND s.origem = 'I355' GROUP BY doc.nome_original_arquivo""",
-                (rs, i) -> new Valor(rs.getBigDecimal(1), rs.getString(2), "soma do I355, linhas " + rs.getLong(3) + " a "
+                WHERE s.escrituracao_id = ? AND s.origem = 'I355' GROUP BY doc.nome_original_arquivo, doc.id""",
+                (rs, i) -> new Valor(rs.getBigDecimal(1), rs.getLong(5), rs.getString(2), "soma do I355, linhas " + rs.getLong(3) + " a "
                         + rs.getLong(4)), escrituracaoId).stream().findFirst().orElse(null);
     }
 
-    private static void comparar(String item, int exercicio, Valor ecd, Valor ecf, ContextoProcessamento contexto) {
-        if (ecd == null || ecf == null) {
-            return;
-        }
-        BigDecimal diferenca = ecd.valor().subtract(ecf.valor());
-        if (diferenca.abs().compareTo(TOLERANCIA) > 0) {
-            contexto.registrar(Severidade.ALERTA, null, null, "CONFERENCIA_ECD_ECF", item + " de " + exercicio + ": ECD "
-                    + ecd.valor().toPlainString() + " (" + ecd.arquivo() + ", " + ecd.origem() + ") × ECF "
-                    + ecf.valor().toPlainString() + " (" + ecf.arquivo() + ", " + ecf.origem() + "); diferença "
-                    + diferenca.toPlainString() + " (devedor +, credor −).");
+    private static void comparar(List<Comparacao> out, String item, int exercicio, Valor ecd, Valor ecf) {
+        if (ecd != null && ecf != null) {
+            out.add(new Comparacao(exercicio, item, ecd.valor(), ecd.documentoId(), ecd.arquivo(), ecd.origem(), ecf.valor(),
+                    ecf.documentoId(), ecf.arquivo(), ecf.origem(), ecd.valor().subtract(ecf.valor())));
         }
     }
 }

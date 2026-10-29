@@ -115,6 +115,7 @@ public class ProcessamentoDocumentoService {
             transacao.executeWithoutResult(t -> processar(documentoId, contexto));
             DocumentoStatus status = contexto.temAlertaOuErro() ? DocumentoStatus.PROCESSADO_COM_ALERTAS : DocumentoStatus.PROCESSADO;
             transacao.executeWithoutResult(t -> concluir(jobId, documentoId, status, contexto, null));
+            eventos.publishEvent(new DocumentoProcessado(documentoId));
         } catch (AguardandoUsuario pendencia) {
             transacao.executeWithoutResult(t -> concluir(jobId, documentoId, pendencia.status(), contexto, pendencia));
         } catch (FalhaImportacao falha) {
