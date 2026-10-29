@@ -1,20 +1,15 @@
 package com.fiscalhub.backend.service;
 
-import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
-import com.fiscalhub.backend.repository.DebitoRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.fiscalhub.backend.repository.ClienteRepository;
 import com.fiscalhub.backend.repository.UsuarioRepository;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
 
 /**
  * Ponto único de autorização por escritório: carrega o recurso já filtrado pelo escritório do usuário autenticado.
@@ -26,16 +21,13 @@ import java.util.Set;
 public class AcessoRecursoService {
 
     private final ClienteRepository clienteRepository;
-    private final DebitoRepository debitoRepository;
     private final DocumentoFiscalRepository documentoFiscalRepository;
     private final UsuarioRepository usuarioRepository;
 
     public AcessoRecursoService(ClienteRepository clienteRepository,
-                                DebitoRepository debitoRepository,
                                 DocumentoFiscalRepository documentoFiscalRepository,
                                 UsuarioRepository usuarioRepository) {
         this.clienteRepository = clienteRepository;
-        this.debitoRepository = debitoRepository;
         this.documentoFiscalRepository = documentoFiscalRepository;
         this.usuarioRepository = usuarioRepository;
     }
@@ -43,16 +35,6 @@ public class AcessoRecursoService {
     public Cliente cliente(Long id, UsuarioAutenticado ua) {
         return clienteRepository.findByIdAndEscritorioId(id, ua.escritorioId())
                 .orElseThrow(() -> naoEncontrado("Cliente", id));
-    }
-
-    /** Todos os débitos pedidos, do cliente indicado e do escritório; se algum faltar, 404. */
-    public List<Debito> debitos(Long clienteId, Collection<Long> ids, UsuarioAutenticado ua) {
-        Set<Long> pedidos = Set.copyOf(ids);
-        List<Debito> debitos = debitoRepository.findByIdInAndClienteIdAndClienteEscritorioId(pedidos, clienteId, ua.escritorioId());
-        if (debitos.size() != pedidos.size()) {
-            throw new ResourceNotFoundException("Débito não encontrado para o cliente informado.");
-        }
-        return debitos;
     }
 
     /** Documento do escritório (pode ainda não ter cliente: upload pela central, aguardando confirmação). */
