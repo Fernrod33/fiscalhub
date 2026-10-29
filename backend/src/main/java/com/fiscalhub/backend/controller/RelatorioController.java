@@ -38,10 +38,10 @@ public class RelatorioController {
 
     /** de/ate: competências (aaaa-mm); na carga tributária, valem os anos. Opções ausentes = true. */
     public record PedidoRelatorio(@NotNull TipoRelatorio tipo, YearMonth de, YearMonth ate, Boolean incluirDivergencias,
-                                  Boolean incluirFontes, Long simulacaoId) {
+                                  Boolean incluirFontes, Long simulacaoId, Boolean incluirEncerrados) {
         Parametros parametros() {
             return new Parametros(tipo, de, ate, incluirDivergencias == null || incluirDivergencias, incluirFontes == null || incluirFontes,
-                    simulacaoId);
+                    simulacaoId, Boolean.TRUE.equals(incluirEncerrados));
         }
     }
 

@@ -39,8 +39,9 @@ import java.util.stream.Stream;
 public class MontagemRelatorios {
 
     /** Parâmetros da emissão (também gravados no relatório emitido). de/ate: competências; na carga, os exercícios. */
+    /** incluirEncerrados: no diagnóstico, os achados resolvidos e descartados (com a justificativa). */
     public record Parametros(TipoRelatorio tipo, YearMonth de, YearMonth ate, boolean incluirDivergencias, boolean incluirFontes,
-                             Long simulacaoId) {
+                             Long simulacaoId, boolean incluirEncerrados) {
     }
 
     static final String VERSAO_TEMPLATE = "relatorio-2026.10";
@@ -57,11 +58,13 @@ public class MontagemRelatorios {
     private final NamedParameterJdbcTemplate jdbc;
     private final RelatoriosCapacidade capacidade;
     private final RelatorioProposta proposta;
+    private final RelatorioDiagnostico diagnostico;
     private final String versaoNormas;
 
     public MontagemRelatorios(AcessoRecursoService acesso, ConciliacaoService conciliacao, SituacaoFiscalService situacao,
                               CargaTributariaService carga, IdentidadeEscritorioService identidade, NamedParameterJdbcTemplate jdbc,
-                              RelatoriosCapacidade capacidade, RelatorioProposta proposta) {
+                              RelatoriosCapacidade capacidade, RelatorioProposta proposta, RelatorioDiagnostico diagnostico) {
+        this.diagnostico = diagnostico;
         this.capacidade = capacidade;
         this.proposta = proposta;
         this.acesso = acesso;
@@ -86,6 +89,7 @@ public class MontagemRelatorios {
             case CAPACIDADE -> capacidade.capacidade(clienteId, ua);
             case DOSSIE_CAPAG -> capacidade.dossie(clienteId, ua);
             case PROPOSTA_REGULARIZACAO -> proposta.proposta(clienteId, p.simulacaoId(), ua);
+            case DIAGNOSTICO_FISCAL -> diagnostico.diagnostico(clienteId, p.incluirEncerrados(), ua);
         };
         var id = identidade.consultar(ua);
         String responsavel = id.responsavelNome() == null ? null
@@ -441,6 +445,7 @@ public class MontagemRelatorios {
     private static String periodo(Parametros p) {
         if (EnumSet.of(TipoRelatorio.SITUACAO_FISCAL, TipoRelatorio.CAPACIDADE, TipoRelatorio.DOSSIE_CAPAG).contains(p.tipo())) return "posição dos documentos importados";
         if (p.tipo() == TipoRelatorio.PROPOSTA_REGULARIZACAO) return "data-base da simulação";
+        if (p.tipo() == TipoRelatorio.DIAGNOSTICO_FISCAL) return "pontos de atenção na data de emissão";
         if (p.tipo() == TipoRelatorio.CARGA_TRIBUTARIA) {
             return p.de() == null && p.ate() == null ? "todos os exercícios importados"
                     : "exercícios " + (p.de() == null ? "…" : p.de().getYear()) + " a " + (p.ate() == null ? "…" : p.ate().getYear());
@@ -494,6 +499,12 @@ public class MontagemRelatorios {
                     "Desconto da transação: o máximo do edital pela classe da CAPAG oficial importada; o desconto efetivo é "
                             + "definido pela PGFN conforme a capacidade de pagamento. A CAPAG estimada aparece só como cenário "
                             + "rotulado e nunca é a recomendação.");
+            case DIAGNOSTICO_FISCAL -> List.of(
+                    "Cada achado vem de uma regra (código e versão) que consulta os dados importados — conciliação, situação "
+                            + "fiscal, saldos, capacidade, simulação, escriturações e DFC — sem recalcular nada; limites e severidades "
+                            + "são parâmetros versionados do escritório.",
+                    "Regras sem dados suficientes não geram achado: aparecem como não avaliadas, com o que falta importar.",
+                    "Os fundamentos marcados para conferência citam a norma sem o texto vigente baixado; confira antes de agir.");
             case SITUACAO_FISCAL -> List.of(
                     "Débitos, parcelamentos, pendências e CAPAG dos relatórios dos órgãos importados (Relatório de Situação Fiscal "
                             + "da RFB, extrato do Regularize/PGFN, conta corrente e RTI da SEFA-PR), o mais recente de cada tipo. "

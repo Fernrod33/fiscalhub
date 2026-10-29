@@ -749,6 +749,17 @@ class MassaFicticiaAceiteTest {
             assertThat(new BigDecimal(saldo.get("valor").asText())).isPositive();
             assertThat(saldo.at("/origem/arquivo").asText()).isNotBlank();
             assertThat(new BigDecimal(r04.get("valor").asText())).isEqualByComparingTo("44850.00");
+
+            // Diagnóstico fiscal: sumário por severidade, achados com fundamento e evidências, notas e a versão das regras
+            JsonNode emitido = json.readTree(mvc.perform(post("/api/clientes/{c}/relatorios", metalurgica.getId()).with(sessao)
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"tipo\":\"DIAGNOSTICO_FISCAL\",\"incluirEncerrados\":true}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+            var inicio = mvc.perform(get("/api/clientes/{c}/relatorios/" + emitido.get("id").asLong() + "/pdf", metalurgica.getId()).with(sessao))
+                    .andExpect(status().isOk()).andReturn();
+            String texto = String.join(" ", LeitorPdf.ler(mvc.perform(asyncDispatch(inicio)).andReturn().getResponse().getContentAsByteArray())
+                    .linhas().stream().map(DocumentoPdf.Linha::texto).toList());
+            assertThat(texto).contains("Diagnóstico", "Críticos", "Evidências", "Resolvidos e descartados", "Portaria Conjunta",
+                    "ICMS-ST não recolhido");
         }
     }
 

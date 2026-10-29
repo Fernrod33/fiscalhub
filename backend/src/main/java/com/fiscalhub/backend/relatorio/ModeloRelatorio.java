@@ -19,7 +19,8 @@ public record ModeloRelatorio(TipoRelatorio tipo, String titulo, Cabecalho cabec
         SITUACAO_FISCAL("Situação fiscal resumida"),
         CAPACIDADE("Capacidade de pagamento"),
         DOSSIE_CAPAG("Dossiê de apoio à revisão da CAPAG"),
-        PROPOSTA_REGULARIZACAO("Proposta de regularização");
+        PROPOSTA_REGULARIZACAO("Proposta de regularização"),
+        DIAGNOSTICO_FISCAL("Diagnóstico fiscal");
 
         public final String titulo;
 
