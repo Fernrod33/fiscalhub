@@ -76,7 +76,8 @@ class MassaFicticiaAceiteTest {
     static final List<String> ARQUIVOS_FASE_4 = java.util.stream.Stream.concat(
             java.util.stream.IntStream.rangeClosed(1, 12).boxed().flatMap(m -> java.util.stream.Stream.of(
                     String.format("efd-icms-ipi/EFD_ICMS_IPI_%02d2025_11222333000181.txt", m),
-                    String.format("efd-contribuicoes/EFD_CONTRIBUICOES_%02d2025_11222333000181.txt", m))),
+                    String.format("efd-contribuicoes/EFD_CONTRIBUICOES_%02d2025_11222333000181.txt", m),
+                    String.format("dctfweb/DCTFWeb_%02d2025_MIT_11222333000181.pdf", m))),
             java.util.stream.IntStream.rangeClosed(1, 7).mapToObj(m -> String.format("efd-icms-ipi/EFD_ICMS_IPI_%02d2026_11222333000181.txt", m)))
             .toList();
 
@@ -296,12 +297,7 @@ class MassaFicticiaAceiteTest {
         JsonNode c = conteudo("/api/clientes/{c}/conciliacao");
         List<String> diferencas = new ArrayList<>();
         c.get("itens").forEach(i -> {
-            // 2025: a massa traz as EFD (apurado) e as GR-PR do ICMS, mas não a DCTFWeb nem os DARF do ano
-            boolean federal2025 = i.get("periodo").asText().startsWith("2025") && "FEDERAL".equals(i.get("esfera").asText());
-            if (federal2025) {
-                // IRPJ e CSLL de 2025 têm apurado zero (prejuízo): conciliados
-                assertThat(i.get("status").asText()).as(i.get("id").asText()).isIn("NAO_DECLARADO", "CONCILIADO");
-            } else if (!"CONCILIADO".equals(i.get("status").asText())) {
+            if (!"CONCILIADO".equals(i.get("status").asText())) { // 2025 inteiro conciliado (EFD, DCTFWeb e DARF)
                 diferencas.add(i.get("id").asText() + " " + i.get("status").asText());
             }
         });
@@ -355,8 +351,7 @@ class MassaFicticiaAceiteTest {
                 divergentes += java.util.Set.of("CONCILIADO", "PARCELADO", "COMPENSADO_OU_SUSPENSO").contains(i.get("status").asText()) ? 0 : 1;
             }
             assertThat(new BigDecimal(m.at("/sumario/0/valor").asText())).isEqualByComparingTo(apurado);
-            // as três plantadas + os federais de 2025 sem DCTFWeb/DARF na massa (não declarados)
-            assertThat(m.at("/sumario/3/valor").asText()).isEqualTo(String.valueOf(divergentes));
+            assertThat(m.at("/sumario/3/valor").asText()).isEqualTo("3").isEqualTo(String.valueOf(divergentes)); // as três plantadas
             assertThat(m.get("fontes")).isNotEmpty();
             assertThat(m.get("notas").toString()).contains("Lei 9.430/96, art. 61");
         }

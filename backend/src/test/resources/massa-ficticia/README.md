@@ -39,7 +39,7 @@ mesmo). Depois de regenerar, rode `mvn test -Dtest=MassaFicticiaAceiteTest`: se 
 | `situacao-fiscal\` | Relatório de Situação Fiscal (RFB + PGFN) | |
 | `pgfn\` | Extrato de inscrições (Regularize) + tela CAPAG | O extrato traz os dados das inscrições (data, garantia, suspensão) e a situação no CNPJ: insumos do art. 25 da Portaria PGFN 6.757/2022 |
 | `dctf\` | DCTF Mensal 11/2024 (.dec + PDF) | PA 11/2024 porque a DCTF Mensal foi substituída pela DCTFWeb/MIT a partir de 2025 |
-| `dctfweb\` | DCTFWeb 08/2026 declaração completa | Previdenciário + IRRF (eSocial/Reinf) + PIS/COFINS/IPI (MIT) |
+| `dctfweb\` | DCTFWeb 08/2026 declaração completa + 01 a 12/2025 (MIT) | 08/2026: previdenciário + IRRF (eSocial/Reinf) + PIS/COFINS/IPI (MIT). 2025: PIS, COFINS e IPI iguais aos das EFD de 2025 |
 | `pagamentos\` | Relatório consolidado + 3 DARF | |
 | `parana\` | Conta corrente/dívida ativa, RTI, relação de pagamentos GR-PR + 2 guias GR-PR | Conta corrente: ICMS de 2025 (declarado e quitado), 3 CDAs com o detalhamento (inscrição, origem, ajuizamento, parcelamentos) e a situação do CAD/ICMS. RTI: a classificação do devedor e das CDAs. Relação de GR-PR: os 12 recolhimentos de ICMS de 2025 |
 
@@ -58,7 +58,7 @@ mesmo). Depois de regenerar, rode `mvn test -Dtest=MassaFicticiaAceiteTest`: se 
 - **DFC direta 2024 e 2025** por categoria, calculada pelo gerador a partir dos lançamentos (rateio entre as contrapartidas do mesmo sentido) e conferida com a variação do caixa — `dfc_direta`.
 - **Classificação do PR** (Resolução Conjunta PGE/SEFA 01/2025, data do cálculo 14/10/2026): devedor 4 + 4 + 4 + 2 + 3 = **17 → classe B**; CDAs B (parcelada 12/36), B e C (ajuizada). Quitando a CDA ajuizada: 18 → **classe A** — `classificacao_pr`.
 
-> **2025 na conciliação:** a massa traz as EFD (apurado) e as GR-PR do ICMS, mas não a DCTFWeb nem os DARF de 2025: PIS, COFINS e IPI de 2025 aparecem como **não declarados** (esperado).
+> **2025 na conciliação:** EFD (apurado), DCTFWeb de cada mês (declarado: PIS, COFINS e IPI) e os DARF no relatório consolidado de pagamentos (pagos no vencimento) — 2025 inteiro conciliado; as três divergências plantadas continuam as únicas.
 
 ## Pontos de atenção plantados (gabarito)
 

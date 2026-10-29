@@ -297,6 +297,31 @@ def dctfweb(base, c):
     return tot
 
 
+def mit_2025(efd_2025):
+    """PIS, COFINS e IPI de cada mês de 2025, como nas EFD (devido e IPI a recolher), e o vencimento (dia 25)."""
+    return [(x["mes"], util_antes(dt.date(2025 + (x["mes"] == 12), x["mes"] % 12 + 1, 25)),
+             [("6912-01", "PIS - Não cumulativo", x["pc"]["PIS"]["devido"]),
+              ("5856-01", "COFINS - Não cumulativa", x["pc"]["COFINS"]["devido"]),
+              ("5123-01", "IPI - Demais produtos", x["icms"]["ipi_rec"])]) for x in efd_2025]
+
+
+def dctfweb_2025(base, efd_2025):
+    """DCTFWeb (MIT) de 01 a 12/2025: o declarado de PIS, COFINS e IPI igual ao apurado nas EFD de 2025."""
+    a = EMP_A
+    for m, venc, itens in mit_2025(efd_2025):
+        s = head("RECEITA FEDERAL (simulação) — DCTFWeb", "DCTFWeb - DECLARAÇÃO COMPLETA",
+                 f"Categoria: Geral — Período de apuração: {m:02d}/2025 — Situação: Ativa — Origem: MIT")
+        s.append(ident(a))
+        s.append(Paragraph("Resumo dos débitos", ST_H))
+        rows = [["Código", "Descrição", "Débito apurado", "Créditos vinculados", "Saldo a pagar", "Vencimento"]]
+        for cod, nome, val in itens:
+            rows.append([cod, nome + " (MIT)", brl(val), brl(0), brl(val), dbr(venc)])
+        tot = sum(i[2] for i in itens)
+        rows.append(["", "TOTAL", brl(tot), brl(0), brl(tot), ""])
+        s.append(tbl(rows, [18, 66, 26, 26, 26, 20], bold_last=True))
+        build(f"{base}/dctfweb/DCTFWeb_{m:02d}2025_MIT_{a['cnpj']}.pdf", s)
+
+
 def darf(path, a, numero, pa, vcto, itens, pago_em, multa=ZERO, juros=ZERO, obs=""):
     principal = sum(i[2] for i in itens)
     total = principal + multa + juros
@@ -322,7 +347,7 @@ def darf(path, a, numero, pa, vcto, itens, pago_em, multa=ZERO, juros=ZERO, obs=
     return total
 
 
-def pagamentos(base, c):
+def pagamentos(base, c, efd_2025):
     a = EMP_A
     p = f"{base}/pagamentos"
     d1 = darf(f"{p}/DARF_DCTFWeb_082026_Previdenciario_IRRF.pdf", a, "07.18.26258.1234567-8", "08/2026",
@@ -348,6 +373,9 @@ def pagamentos(base, c):
             continue
         r(venc, "07.18.24" + venc.strftime("%j") + ".11" + cod[:4] + "-0", cod[:4], nome, "11/2024", venc, val)
     r(c["ipi_pg"], "07.18.25041.0099887-6", "5123", "IPI - Demais produtos", "11/2024", c["dctf"][0][3], D("41200.00"))
+    for m, venc, itens in mit_2025(efd_2025):  # DARF de cada mês de 2025, pagos no vencimento pelo valor declarado
+        for cod, nome, val in itens:
+            r(venc, f"07.18.25{venc:%j}.{cod[:4]}{m:02d}-1", cod[:4], nome, f"{m:02d}/2025", venc, val)
     for m in range(1, 10):
         dtp = util_antes(dt.date(2026, m, 28))
         r(dtp, f"07.18.26{dtp:%j}.40{m:02d}000-1", "TRANS", "Parcela transação PGFN 2021.009871-4", f"{m:02d}/2026",
@@ -569,6 +597,7 @@ def gerar(base, efd, contabil, efd_2025, efd_2026):
     out["pgfn"] = pgfn(base, c)
     dctf(base, c)
     out["dctfweb_total"] = dctfweb(base, c)
-    out["pag"] = pagamentos(base, c)
+    out["pag"] = pagamentos(base, c, efd_2025)
+    dctfweb_2025(base, efd_2025)
     out["pr"] = parana(base, efd, efd_2025, efd_2026)
     return out
