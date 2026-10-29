@@ -52,7 +52,7 @@ public class RegrasParcelamento {
                                     BigDecimal reparcelamentoPercentual, BigDecimal reparcelamentoPercentualHistorico,
                                     Integer reparcelamentoParcelasEntrada, Integer reparcelamentoAcimaDe,
                                     List<TipoTributo> vedaTributos, boolean vedaNegociado, boolean vedaGiaSt, String rescisao,
-                                    String garantia, String fundamento, String nota, List<String> fontes) {
+                                    String garantia, String fundamento, String nota, List<String> fontes, List<String> portes) {
 
         public boolean vigente(LocalDate data) {
             return !data.isBefore(vigenciaInicio) && (vigenciaFim == null || !data.isAfter(vigenciaFim));
@@ -74,8 +74,16 @@ public class RegrasParcelamento {
     public record Upf(YearMonth mes, BigDecimal valor, String norma, String url, String sha256) {
     }
 
+    /** Limites de receita bruta anual da LC 123/2006, art. 3º. */
+    public record Porte(BigDecimal me, BigDecimal epp, String fundamento, List<String> fontes) {
+        /** ME, EPP ou DEMAIS pela receita bruta do ano. */
+        public String classificar(BigDecimal receitaBruta) {
+            return receitaBruta.compareTo(me) <= 0 ? "ME" : receitaBruta.compareTo(epp) <= 0 ? "EPP" : "DEMAIS";
+        }
+    }
+
     private record Arquivo(String versao, Map<String, Fonte> fontes, List<RegraAcrescimo> acrescimos,
-                           List<RegraParcelamento> modalidades) {
+                           List<RegraParcelamento> modalidades, Porte porte) {
     }
 
     private final Arquivo arquivo;
@@ -103,6 +111,10 @@ public class RegrasParcelamento {
 
     public String versao() {
         return arquivo.versao();
+    }
+
+    public Porte porte() {
+        return arquivo.porte();
     }
 
     public Fonte fonte(String chave) {

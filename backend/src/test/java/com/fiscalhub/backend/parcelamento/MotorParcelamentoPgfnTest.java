@@ -101,6 +101,22 @@ class MotorParcelamentoPgfnTest {
     }
 
     @Test
+    void transacaoDeMeEEppPeloPorteImportado() {
+        // 100% dos acréscimos (90.000) limitado a 70% de 100.000 = 70.000 (art. 5º); entrada em até 12 e saldo em até 133
+        CenarioParcelamento c = CenarioParcelamento.pgfn().dataBase(BASE).parcelas(null)
+                .inscricao("10000.00", "40000.00", "33333.33", "16666.67", INSCRITA).capag("C", null);
+        ResultadoModalidade epp = c.porte("EPP").calcular("PGFN_TRANSACAO_EDITAL_6_2026_ME_EPP");
+        assertThat(epp.elegivel()).isTrue();
+        assertThat(epp.desconto().valor()).isEqualByComparingTo("70000.00");
+        assertThat(epp.prestacoesEntrada()).isEqualTo(12);
+        assertThat(epp.parcelas()).isEqualTo(133);
+
+        assertThat(c.porte("DEMAIS").calcular("PGFN_TRANSACAO_EDITAL_6_2026_ME_EPP").elegivel()).isFalse();
+        ResultadoModalidade semPorte = c.porte(null).calcular("PGFN_TRANSACAO_EDITAL_6_2026_ME_EPP");
+        assertThat(semPorte.elegibilidade().getFirst().motivos()).anyMatch(m -> m.startsWith("Porte não determinado"));
+    }
+
+    @Test
     void transacaoAVistaSemCorrecao() {
         ResultadoModalidade r = ipi().capag("C", null).simular().stream()
                 .filter(m -> m.cenario().equals("A_VISTA")).findFirst().orElseThrow();

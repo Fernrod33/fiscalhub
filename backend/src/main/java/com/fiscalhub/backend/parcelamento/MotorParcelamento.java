@@ -61,8 +61,9 @@ public class MotorParcelamento {
      * parcelas: nulo = o máximo que a regra e a parcela mínima permitem. selicProjetada: % a.m. (nulo = média das
      * últimas 12 SELIC carregadas). parcelaSustentavel: da análise gerencial (nulo = sem selo).
      */
+    /** porte: ME, EPP ou DEMAIS pela receita bruta importada (nulo = não determinado). */
     public record Pedido(LocalDate dataBase, Integer parcelas, boolean pessoaFisica, String capagOficial, String capagEstimada,
-                         BigDecimal selicProjetada, BigDecimal parcelaSustentavel, boolean reparcelamento) {
+                         BigDecimal selicProjetada, BigDecimal parcelaSustentavel, boolean reparcelamento, String porte) {
     }
 
     public record Etapa(String descricao, String formula, BigDecimal valor, String unidade, String fundamento) {
@@ -240,7 +241,7 @@ public class MotorParcelamento {
         List<Consolidado> cons = new ArrayList<>();
         List<DebitoSimulado> usados = new ArrayList<>();
         for (DebitoSimulado d : debitos) {
-            List<String> motivos = motivos(r, d, base, reparcelamento);
+            List<String> motivos = motivos(r, d, base, reparcelamento, pedido.porte());
             Consolidado c = motivos.isEmpty() ? consolidar(d, base, r.orgao() == OrgaoCredor.SEFA_PR, reparcelamento ? r : null,
                     motivos, avisos, memoria) : null;
             eleg.add(new Elegibilidade(d.id(), d.descricao(), c != null, motivos));
@@ -394,8 +395,15 @@ public class MotorParcelamento {
                 r.rescisao(), r.garantia(), r.nota(), fontes(r).stream().anyMatch(FonteUsada::secundaria), fontes(r));
     }
 
-    private List<String> motivos(RegraParcelamento r, DebitoSimulado d, LocalDate base, boolean reparcelamento) {
+    private List<String> motivos(RegraParcelamento r, DebitoSimulado d, LocalDate base, boolean reparcelamento, String porte) {
         List<String> m = new ArrayList<>();
+        if (r.portes() != null) {
+            if (porte == null) {
+                m.add("Porte não determinado: importe a ECD ou a ECF com a receita bruta (" + regras.porte().fundamento() + ").");
+            } else if (!r.portes().contains(porte)) {
+                m.add("Modalidade só para " + String.join(" e ", r.portes()) + "; pela receita bruta importada o porte é " + porte + ".");
+            }
+        }
         if (r.vedaTributos().contains(d.tributo())) {
             m.add("Tributo vedado nesta modalidade: " + d.tributo() + " (" + r.fundamento().split(":")[0] + ").");
         }

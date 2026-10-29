@@ -46,6 +46,7 @@ final class CenarioParcelamento {
     private BigDecimal selicProjetada;
     private BigDecimal parcelaSustentavel;
     private boolean reparcelamento;
+    private String porte;
     private UnaryOperator<DebitoSimulado> ajuste = d -> d;
 
     final IndiceMonetarioRepository repositorio = mock(IndiceMonetarioRepository.class);
@@ -123,6 +124,11 @@ final class CenarioParcelamento {
         return this;
     }
 
+    CenarioParcelamento porte(String porte) {
+        this.porte = porte;
+        return this;
+    }
+
     CenarioParcelamento reparcelamento() {
         this.reparcelamento = true;
         return this;
@@ -187,7 +193,7 @@ final class CenarioParcelamento {
     }
 
     private Pedido pedido() {
-        return new Pedido(dataCalculo, parcelas, false, capagOficial, capagEstimada, selicProjetada, parcelaSustentavel, reparcelamento);
+        return new Pedido(dataCalculo, parcelas, false, capagOficial, capagEstimada, selicProjetada, parcelaSustentavel, reparcelamento, porte);
     }
 
     private DebitoSimulado debito(long id, BigDecimal valor, LocalDate vencimento) {

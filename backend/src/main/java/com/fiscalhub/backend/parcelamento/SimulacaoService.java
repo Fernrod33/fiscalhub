@@ -7,6 +7,7 @@ import com.fiscalhub.backend.capacidade.ParametrosCapacidade;
 import com.fiscalhub.backend.entity.Cliente;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
 import com.fiscalhub.backend.exception.BusinessRuleException;
+import com.fiscalhub.backend.relatorio.CargaTributariaService;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.parcelamento.MotorParcelamento.DebitoSimulado;
 import com.fiscalhub.backend.parcelamento.MotorParcelamento.Pedido;
@@ -57,7 +58,8 @@ public class SimulacaoService {
     /** Insumos da simulação, todos importados ou parâmetro do escritório (com a origem). */
     public record InsumosSimulacao(String capagOficial, LocalDate capagOficialData, String capagEstimada,
                                    BigDecimal parcelaSustentavel, BigDecimal selicProjetadaParametro, boolean pessoaFisica,
-                                   List<String> avisos) {
+                                   List<String> avisos, String porte, Integer porteExercicio, BigDecimal porteReceitaBruta,
+                                   SituacaoFiscalService.OrigemValor porteOrigem) {
     }
 
     /** Melhor modalidade elegível de um órgão: a de menor custo entre as que cabem na parcela sustentável. */
@@ -80,12 +82,15 @@ public class SimulacaoService {
     private final SituacaoFiscalService situacao;
     private final CapacidadeService capacidade;
     private final ParametrosCapacidade parametros;
+    private final CargaTributariaService carga;
     private final MotorParcelamento motor;
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
 
     public SimulacaoService(AcessoRecursoService acesso, SituacaoFiscalService situacao, CapacidadeService capacidade,
-                            ParametrosCapacidade parametros, MotorParcelamento motor, JdbcTemplate jdbc, ObjectMapper json) {
+                            ParametrosCapacidade parametros, MotorParcelamento motor, JdbcTemplate jdbc, ObjectMapper json,
+                            CargaTributariaService carga) {
+        this.carga = carga;
         this.acesso = acesso;
         this.situacao = situacao;
         this.capacidade = capacidade;
@@ -136,11 +141,19 @@ public class SimulacaoService {
         }
         BigDecimal selic = parametros.consultar(ua.escritorioId()).gerencial().selicProjetada();
         boolean pf = cliente.getCnpj() != null && cliente.getCnpj().replaceAll("\\D", "").length() == 11;
+        // porte (LC 123/2006, art. 3º): receita bruta do último exercício importado; sem ela, não determinado
+        CargaTributariaService.ExercicioCarga exercicio = carga.carga(clienteId, null, null, ua).stream()
+                .filter(e -> e.receitaBruta() != null).max(Comparator.comparingInt(CargaTributariaService.ExercicioCarga::exercicio)).orElse(null);
+        String porte = exercicio == null || pf ? null : motor.regras().porte().classificar(exercicio.receitaBruta());
+        if (porte == null && !pf) {
+            avisos.add("Porte não determinado (sem receita bruta importada na ECD ou na ECF): a transação para ME e EPP não se aplica.");
+        }
         InsumosSimulacao insumos = new InsumosSimulacao(capag == null ? null : capag.classe(), capag == null ? null : capag.dataReferencia(),
-                estimada, sustentavel, selic, pf, avisos);
+                estimada, sustentavel, selic, pf, avisos, porte, exercicio == null ? null : exercicio.exercicio(),
+                exercicio == null ? null : exercicio.receitaBruta(), exercicio == null ? null : exercicio.origemReceita());
 
         List<ResultadoModalidade> modalidades = motor.simular(debitos, new Pedido(dataBase, pedido.parcelas(), pf, insumos.capagOficial(),
-                estimada, selic, sustentavel, pedido.reparcelamento()));
+                estimada, selic, sustentavel, pedido.reparcelamento(), porte));
         List<RecomendacaoOrgao> recomendacao = recomendar(modalidades);
         BigDecimal custo = recomendacao.stream().map(RecomendacaoOrgao::custoProjetado).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new SimulacaoCompleta(null, 1, null, dataBase, chaves(clienteId, pedido.debitoIds()),
