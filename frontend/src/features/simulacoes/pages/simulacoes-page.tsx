@@ -94,7 +94,7 @@ function Comparacao({ s, escolhida, aoEscolher }: { s: Simulacao; escolhida?: st
                   <button type="button" aria-pressed={escolhida === k} onClick={() => aoEscolher(k)}
                           aria-label={`${m.nome}${m.cenarioRotulo ? ` — ${m.cenarioRotulo}` : ''}`}
                           className={cn('grid h-full w-full gap-2 rounded-md border p-3 text-left transition-colors hover:bg-accent',
-                            escolhida === k && 'border-primary ring-2 ring-primary', !m.elegivel && 'opacity-80')}>
+                            escolhida === k && 'border-primary ring-2 ring-primary', !m.elegivel && 'border-dashed')}>
                     <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
                       {m.nome}
                       {recomendadas.has(k) && <Selo tom="success">recomendada</Selo>}

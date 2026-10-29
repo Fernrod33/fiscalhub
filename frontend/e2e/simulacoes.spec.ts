@@ -20,7 +20,7 @@ test('massa → Simulações: inscrição de IPI, parcelamento × transação, s
   await page.getByRole('checkbox', { name: /IPI 90 3 24 002201-55/ }).check();
   await page.getByRole('button', { name: 'Simular' }).click();
   const pgfn = page.getByRole('region', { name: 'Modalidades — PGFN' });
-  const transacao = pgfn.getByRole('button', { name: /Transação por adesão.*CAPAG oficial C/ });
+  const transacao = pgfn.getByRole('button', { name: /Transação por adesão.*\(capacidade de pagamento\) — CAPAG oficial C/ });
   await expect(transacao).toBeVisible({ timeout: 60_000 });
   await expect(transacao).toContainText('recomendada');
   await expect(transacao).toContainText('Cabe na parcela sustentável');

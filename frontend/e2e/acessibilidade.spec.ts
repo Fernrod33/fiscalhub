@@ -11,7 +11,6 @@ async function verificar(page: Page, tela: string) {
     await page.evaluate((t) => localStorage.setItem('fiscalhub.tema', JSON.stringify(t)), tema);
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(600); // fim das animações de entrada
     const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     const graves = violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
       .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);

@@ -13,12 +13,17 @@ export async function criarEscritorioEEntrar(page: Page) {
   await page.getByLabel('Seu nome').fill('Pessoa Teste');
   await page.getByLabel('E-mail').fill(email);
   await page.getByLabel('Senha').fill(senha);
+  // espera a resposta da API (o hash da senha é lento com a suíte em paralelo), não um tempo fixo
+  const cadastro = page.waitForResponse((r) => r.url().endsWith('/api/auth/signup') && r.request().method() === 'POST', { timeout: 60_000 });
   await page.getByRole('button', { name: 'Cadastrar' }).click();
+  expect((await cadastro).status(), 'cadastro do escritório').toBe(200);
   await expect(page).toHaveURL(/\/login$/);
 
   await page.getByLabel('E-mail').fill(email);
   await page.getByLabel('Senha').fill(senha);
+  const login = page.waitForResponse((r) => r.url().includes('/api/auth/') && r.request().method() === 'POST', { timeout: 60_000 });
   await page.getByRole('button', { name: 'Entrar' }).click();
+  expect((await login).ok(), 'login').toBe(true);
   await expect(page.getByRole('heading', { level: 1, name: 'Olá, Pessoa' })).toBeVisible();
   return { email, senha };
 }
@@ -57,7 +62,6 @@ export const ARQUIVOS_MASSA_COMPLETA = [
 ];
 
 export async function semViolacoesGraves(page: Page, tela: string) {
-  await page.waitForTimeout(600); // fim das animações de entrada
   // iframes: false — a prévia do relatório é um iframe com sandbox (sem script), onde o axe não roda
   const { violations } = await new AxeBuilder({ page }).setLegacyMode().options({ iframes: false }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')

@@ -12,6 +12,8 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_URL ?? 'http://localhost:5173',
     trace: 'retain-on-failure',
+    // telas sem animação: o axe avalia o estado final (o contraste de um elemento ainda entrando dava falso positivo)
+    contextOptions: { reducedMotion: 'reduce' },
   },
   webServer: {
     command: 'npm run dev -- --port 5173 --strictPort',
