@@ -7,6 +7,7 @@ import { Cartao, CartaoTitulo } from '@/components/cartao';
 import { DataTable, type ColumnDef } from '@/components/data-table';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
+import { useSimulacoesSalvas } from '@/features/simulacoes/api';
 import type { PedidoRelatorio, RelatorioEmitido, TipoRelatorio } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
 import { mensagemErro } from '@/lib/http';
@@ -39,13 +40,17 @@ export default function RelatoriosPage() {
   const [incluirFontes, setIncluirFontes] = useState(true);
   const anual = tipo === 'CARGA_TRIBUTARIA';
   // retrato atual dos documentos, sem período: situação fiscal, capacidade e dossiê
-  const semPeriodo = tipo === 'SITUACAO_FISCAL' || tipo === 'CAPACIDADE' || tipo === 'DOSSIE_CAPAG';
+  const semPeriodo = tipo === 'SITUACAO_FISCAL' || tipo === 'CAPACIDADE' || tipo === 'DOSSIE_CAPAG' || tipo === 'PROPOSTA_REGULARIZACAO';
+  // proposta: a simulação salva (motor novo) que vira proposta; padrão, a mais recente
+  const simulacoes = useSimulacoesSalvas(clienteId).data?.filter((x) => !x.motorAntigo) ?? [];
+  const [simulacao, setSimulacao] = useState<number>();
+  const simulacaoId = tipo === 'PROPOSTA_REGULARIZACAO' ? simulacao ?? simulacoes[0]?.id : undefined;
   const pedido: PedidoRelatorio = {
     tipo,
     // carga: o backend usa só o ano
     de: semPeriodo || !de ? undefined : anual ? `${de}-01` : de,
     ate: semPeriodo || !ate ? undefined : anual ? `${ate}-12` : ate,
-    incluirDivergencias, incluirFontes,
+    incluirDivergencias, incluirFontes, simulacaoId,
   };
   // texto: um objeto novo a cada render reiniciaria a espera para sempre
   const previa = usePrevia(clienteId, JSON.parse(useAtrasado(JSON.stringify(pedido))) as PedidoRelatorio);
@@ -116,6 +121,16 @@ export default function RelatoriosPage() {
                   : <input type="month" value={ate} onChange={(e) => setAte(e.target.value)} className="h-9 rounded-md border bg-background px-2" />}
               </label>
             </>
+          )}
+          {tipo === 'PROPOSTA_REGULARIZACAO' && (
+            <label className="grid gap-1 text-sm">
+              <span>Simulação salva</span>
+              {simulacoes.length
+                ? <select value={simulacaoId} onChange={(e) => setSimulacao(Number(e.target.value))} className="h-9 rounded-md border bg-background px-2">
+                    {simulacoes.map((x) => <option key={x.id} value={x.id}>v{x.versao} · data-base {fmt.data(x.dataBase)} · {x.recomendacao ?? 'sem recomendação'}</option>)}
+                  </select>
+                : <span className="text-muted-foreground">Salve uma simulação na aba Simulações.</span>}
+            </label>
           )}
           {tipo === 'TRIBUTOS' && (
             <label className="flex items-center gap-2 text-sm">

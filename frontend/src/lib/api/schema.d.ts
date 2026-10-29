@@ -132,38 +132,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/simulacoes/calcular": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["calcular"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/simulacoes/calcular/salvar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["calcularESalvar"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/escritorio/identidade/logo": {
         parameters: {
             query?: never;
@@ -260,7 +228,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/clientes/{clienteId}/relatorios": {
+    "/api/clientes/{clienteId}/simulacoes": {
         parameters: {
             query?: never;
             header?: never;
@@ -268,6 +236,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["listar_2"];
+        put?: never;
+        post: operations["salvar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/simulacoes/{id}/recalcular": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["recalcular"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/simulacoes/calcular": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["simular"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/relatorios": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_3"];
         put?: never;
         post: operations["emitir"];
         delete?: never;
@@ -404,54 +420,6 @@ export interface paths {
         patch: operations["desativar"];
         trace?: never;
     };
-    "/api/simulacoes/{id}/aprovar": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch: operations["aprovar"];
-        trace?: never;
-    };
-    "/api/simulacoes/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getSimulacaoById"];
-        put?: never;
-        post?: never;
-        delete: operations["deleteSimulacao"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/simulacoes/cliente/{clienteId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getByCliente"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/referencial/contas": {
         parameters: {
             query?: never;
@@ -556,6 +524,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["resumo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/simulacoes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detalhe"];
+        put?: never;
+        post?: never;
+        delete: operations["excluir_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/simulacoes/melhor": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["melhor"];
         put?: never;
         post?: never;
         delete?: never;
@@ -907,7 +907,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["detalhe"];
+        get: operations["detalhe_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -971,7 +971,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_3"];
+        get: operations["listar_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1030,6 +1030,7 @@ export interface components {
         };
         ParametrosGerencial: {
             percentualFcoLivre: number;
+            selicProjetada?: number;
         };
         IdentidadeRequest: {
             nomeExibicao: string;
@@ -1102,81 +1103,6 @@ export interface components {
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
             senhaProvisoria: string;
         };
-        SimulacaoRequestDTO: {
-            /** Format: int64 */
-            clienteId: number;
-            debitoIds: number[];
-            /** @enum {string} */
-            orgao: "RECEITA_FEDERAL" | "RECEITA_ESTADUAL_PR";
-            /** @enum {string} */
-            modalidade: "ORDINARIO_RFB" | "PERT_RFB" | "REFIS" | "ORDINARIO_SEFA_PR" | "ESPECIAL_SEFA_PR";
-            /** Format: int32 */
-            numeroParcelas: number;
-            /** Format: date */
-            dataCalculo?: string;
-            incluirEntrada?: boolean;
-            /** Format: int32 */
-            percentualReducaoMulta?: number;
-            /** Format: int32 */
-            percentualReducaoJuros?: number;
-        };
-        EtapaCalculoDTO: {
-            /** Format: int32 */
-            ordem: number;
-            descricao: string;
-            formula: string;
-            valor: number;
-            unidade: string;
-        };
-        ParcelaDTO: {
-            /** Format: int32 */
-            numeroParcela: number;
-            /** Format: date */
-            dataVencimento: string;
-            valorParcela: number;
-            saldoRestante: number;
-        };
-        SimulacaoResultDTO: {
-            /** Format: int64 */
-            simulacaoId: number;
-            /** Format: int64 */
-            clienteId: number;
-            debitoIds: number[];
-            /** @enum {string} */
-            orgao: "RECEITA_FEDERAL" | "RECEITA_ESTADUAL_PR";
-            /** @enum {string} */
-            modalidade: "ORDINARIO_RFB" | "PERT_RFB" | "REFIS" | "ORDINARIO_SEFA_PR" | "ESPECIAL_SEFA_PR";
-            /** @enum {string} */
-            tributo: "IRPJ" | "CSLL" | "PIS" | "COFINS" | "IPI" | "ITR" | "IRPF" | "INSS" | "TERCEIROS" | "IRRF" | "FGTS" | "ICMS" | "ICMS_ST" | "ICMS_DIFAL" | "ICMS_FCP" | "ITCMD" | "IPVA" | "ISS" | "IPTU" | "ITBI" | "OUTROS";
-            clienteRazaoSocial: string;
-            clienteCnpj: string;
-            valorOriginal: number;
-            /** Format: date */
-            dataVencimentoOriginal: string;
-            /** Format: date */
-            dataCalculo: string;
-            /** Format: int32 */
-            diasEmAtraso: number;
-            percentualMultaMora: number;
-            valorMultaMora: number;
-            percentualMultaOficio: number;
-            valorMultaOficio: number;
-            percentualJurosMora: number;
-            valorJurosMora: number;
-            indiceUtilizado: string;
-            valorReducaoMulta: number;
-            valorReducaoJuros: number;
-            valorAtualizado: number;
-            valorEntrada: number;
-            /** Format: int32 */
-            numeroParcelas: number;
-            valorParcela: number;
-            custoTotal: number;
-            economiaObtida: number;
-            avisoParcelaMinima: string;
-            memoriaCalculo: components["schemas"]["EtapaCalculoDTO"][];
-            tabelaParcelas: components["schemas"]["ParcelaDTO"][];
-        };
         DocumentoFiscalRequestDTO: {
             /** @enum {string} */
             tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
@@ -1245,21 +1171,199 @@ export interface components {
             /** Format: int64 */
             clienteId: number;
         };
+        PedidoParcelamento: {
+            debitoIds: number[];
+            /** Format: date */
+            dataBase?: string;
+            /** Format: int32 */
+            parcelas?: number;
+            reparcelamento?: boolean;
+        };
+        Consolidado: {
+            /** Format: int64 */
+            debitoId: number;
+            descricao: string;
+            /** @enum {string} */
+            orgao: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
+            /** Format: date */
+            vencimento: string;
+            principal: number;
+            percentualMulta: number;
+            multa: number;
+            percentualJuros: number;
+            juros: number;
+            encargo: number;
+            total: number;
+            desconto: number;
+            posicao: string;
+            fundamento: string;
+            origem: components["schemas"]["OrigemValor"];
+        };
+        Desconto: {
+            valor: number;
+            classe: string;
+            limiteAcrescimos: number;
+            limiteTotal: number;
+            regra: string;
+        };
+        Elegibilidade: {
+            /** Format: int64 */
+            debitoId: number;
+            descricao: string;
+            elegivel: boolean;
+            motivos: string[];
+        };
+        Etapa: {
+            descricao: string;
+            formula: string;
+            valor: number;
+            unidade: string;
+            fundamento: string;
+        };
+        FonteUsada: {
+            chave: string;
+            titulo: string;
+            url: string;
+            /** Format: date */
+            data: string;
+            sha256: string;
+            secundaria: boolean;
+            observacao: string;
+        };
+        InsumosSimulacao: {
+            capagOficial: string;
+            /** Format: date */
+            capagOficialData: string;
+            capagEstimada: string;
+            parcelaSustentavel: number;
+            selicProjetadaParametro: number;
+            pessoaFisica: boolean;
+            avisos: string[];
+        };
+        OrigemValor: {
+            /** Format: int64 */
+            documentoId: number;
+            arquivo: string;
+            tipoDocumento: string;
+            /** Format: int32 */
+            pagina: number;
+            registro: string;
+            /** Format: int64 */
+            linha: number;
+            trecho: string;
+        };
+        Parcela: {
+            /** Format: int32 */
+            numero: number;
+            tipo: string;
+            /** Format: date */
+            vencimento: string;
+            nominal: number;
+            percentualCorrecao: number;
+            valor: number;
+            projetada: boolean;
+            saldoNominal: number;
+            saldoProjetado: number;
+        };
+        RecomendacaoOrgao: {
+            /** @enum {string} */
+            orgao: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
+            chave: string;
+            versaoRegra: string;
+            cenario: string;
+            nome: string;
+            custoProjetado: number;
+            economiaVsAVista: number;
+            cabe: boolean;
+            justificativa: string;
+        };
+        ResultadoModalidade: {
+            chave: string;
+            versaoRegra: string;
+            nome: string;
+            /** @enum {string} */
+            tipo: "PARCELAMENTO" | "TRANSACAO" | "PROGRAMA";
+            /** @enum {string} */
+            orgao: "RFB" | "PGFN" | "SEFA_PR" | "PGE_PR";
+            cenario: string;
+            cenarioRotulo: string;
+            elegivel: boolean;
+            bloqueio: string;
+            avisos: string[];
+            elegibilidade: components["schemas"]["Elegibilidade"][];
+            debitos: components["schemas"]["Consolidado"][];
+            totalConsolidado: number;
+            desconto: components["schemas"]["Desconto"];
+            entrada: number;
+            /** Format: int32 */
+            prestacoesEntrada: number;
+            /** Format: int32 */
+            parcelas: number;
+            valorParcela: number;
+            indice: string;
+            selicProjetada: number;
+            selicProjetadaOrigem: string;
+            cronograma: components["schemas"]["Parcela"][];
+            custoNominal: number;
+            custoProjetado: number;
+            economiaVsAVista: number;
+            selo: components["schemas"]["Selo"];
+            memoria: components["schemas"]["Etapa"][];
+            fundamento: string;
+            rescisao: string;
+            garantia: string;
+            nota: string;
+            fonteSecundaria: boolean;
+            fontes: components["schemas"]["FonteUsada"][];
+        };
+        Selo: {
+            cabe: boolean;
+            maiorParcela: number;
+            parcelaSustentavel: number;
+            percentualComprometido: number;
+            texto: string;
+        };
+        SimulacaoCompleta: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int32 */
+            versao: number;
+            /** Format: int64 */
+            anteriorId: number;
+            /** Format: date */
+            dataBase: string;
+            debitoChaves: string[];
+            pedido: components["schemas"]["PedidoParcelamento"];
+            versaoRegras: string;
+            versaoIndices: string;
+            insumos: components["schemas"]["InsumosSimulacao"];
+            modalidades: components["schemas"]["ResultadoModalidade"][];
+            recomendacao: components["schemas"]["RecomendacaoOrgao"][];
+            custoRecomendado: number;
+            motorAntigo: string;
+            /** Format: date-time */
+            criadoEm: string;
+            criadoPor: string;
+        };
         PedidoRelatorio: {
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO";
             de?: string;
             ate?: string;
             incluirDivergencias?: boolean;
             incluirFontes?: boolean;
+            /** Format: int64 */
+            simulacaoId?: number;
         };
         Parametros: {
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO";
             de: string;
             ate: string;
             incluirDivergencias: boolean;
             incluirFontes: boolean;
+            /** Format: int64 */
+            simulacaoId: number;
         };
         RelatorioEmitido: {
             /** Format: int64 */
@@ -1269,7 +1373,7 @@ export interface components {
             /** Format: int64 */
             numero: number;
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO";
             titulo: string;
             periodo: string;
             parametros: components["schemas"]["Parametros"];
@@ -1306,18 +1410,6 @@ export interface components {
             classeOficial: string;
             criterios: components["schemas"]["CriterioCapacidade"][];
             observacao: string;
-        };
-        OrigemValor: {
-            /** Format: int64 */
-            documentoId: number;
-            arquivo: string;
-            tipoDocumento: string;
-            /** Format: int32 */
-            pagina: number;
-            registro: string;
-            /** Format: int64 */
-            linha: number;
-            trecho: string;
         };
         ResultadoCapacidade: {
             metodologia: string;
@@ -1357,42 +1449,6 @@ export interface components {
         AlteracaoPapelDTO: {
             /** @enum {string} */
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
-        };
-        SimulacaoParcelamento: {
-            /** Format: int64 */
-            id?: number;
-            /** @enum {string} */
-            orgao: "RECEITA_FEDERAL" | "RECEITA_ESTADUAL_PR";
-            /** @enum {string} */
-            modalidade: "ORDINARIO_RFB" | "PERT_RFB" | "REFIS" | "ORDINARIO_SEFA_PR" | "ESPECIAL_SEFA_PR";
-            valorOriginal: number;
-            /** Format: date */
-            dataVencimentoOriginal: string;
-            /** Format: date */
-            dataCalculo: string;
-            /** Format: int32 */
-            diasEmAtraso?: number;
-            percentualMultaMora?: number;
-            valorMultaMora?: number;
-            percentualMultaOficio?: number;
-            valorMultaOficio?: number;
-            percentualJurosMora?: number;
-            valorJuros?: number;
-            indiceUtilizado?: string;
-            valorAtualizado?: number;
-            valorEntrada?: number;
-            /** Format: int32 */
-            numeroParcelas?: number;
-            valorParcela?: number;
-            custoTotal?: number;
-            economiaObtida?: number;
-            aprovada?: boolean;
-            observacoes?: string;
-            memoriaCalculoJson?: string;
-            /** Format: date-time */
-            dataCriacao?: string;
-            /** Format: date-time */
-            dataAtualizacao?: string;
         };
         ContaReferencial: {
             codigo: string;
@@ -1484,6 +1540,26 @@ export interface components {
             mensagem: string;
         };
         StreamingResponseBody: unknown;
+        SimulacaoSalva: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int32 */
+            versao: number;
+            /** Format: int32 */
+            versaoMotor: number;
+            /** Format: int64 */
+            anteriorId: number;
+            /** Format: date */
+            dataBase: string;
+            /** Format: date-time */
+            criadoEm: string;
+            criadoPor: string;
+            recomendacao: string;
+            custoRecomendado: number;
+            versaoRegras: string;
+            versaoIndices: string;
+            motorAntigo: string;
+        };
         SaldoFiscal: {
             /** Format: int64 */
             id: number;
@@ -1777,6 +1853,7 @@ export interface components {
             selicAte: string;
             percentualJuros: number;
             juros: number;
+            fundamento: string;
         };
         AlertaConciliacao: {
             regra: string;
@@ -1988,7 +2065,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR";
+            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -2416,54 +2493,6 @@ export interface operations {
             };
         };
     };
-    calcular: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SimulacaoRequestDTO"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SimulacaoResultDTO"];
-                };
-            };
-        };
-    };
-    calcularESalvar: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SimulacaoRequestDTO"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SimulacaoResultDTO"];
-                };
-            };
-        };
-    };
     baixarLogo: {
         parameters: {
             query?: never;
@@ -2681,6 +2710,103 @@ export interface operations {
         };
     };
     listar_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SimulacaoSalva"][];
+                };
+            };
+        };
+    };
+    salvar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoParcelamento"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SimulacaoCompleta"];
+                };
+            };
+        };
+    };
+    recalcular: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SimulacaoCompleta"];
+                };
+            };
+        };
+    };
+    simular: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoParcelamento"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SimulacaoCompleta"];
+                };
+            };
+        };
+    };
+    listar_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2946,92 +3072,6 @@ export interface operations {
             };
         };
     };
-    aprovar: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SimulacaoParcelamento"];
-                };
-            };
-        };
-    };
-    getSimulacaoById: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SimulacaoParcelamento"];
-                };
-            };
-        };
-    };
-    deleteSimulacao: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    getByCliente: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                clienteId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["SimulacaoParcelamento"][];
-                };
-            };
-        };
-    };
     buscar: {
         parameters: {
             query: {
@@ -3206,6 +3246,72 @@ export interface operations {
                     "*/*": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    detalhe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SimulacaoCompleta"];
+                };
+            };
+        };
+    };
+    excluir_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    melhor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SimulacaoSalva"];
                 };
             };
         };
@@ -3694,7 +3800,7 @@ export interface operations {
             };
         };
     };
-    detalhe: {
+    detalhe_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -3779,7 +3885,7 @@ export interface operations {
             };
         };
     };
-    listar_3: {
+    listar_4: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];

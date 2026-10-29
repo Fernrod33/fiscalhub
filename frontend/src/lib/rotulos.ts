@@ -80,6 +80,8 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   CLIENTE_EDITAR: 'Editou cliente',
   CLIENTE_EXCLUIR: 'Excluiu cliente',
   SIMULACAO_CRIAR: 'Criou simulação',
+  SIMULACAO_RECALCULAR: 'Recalculou simulação',
+  SIMULACAO_EXCLUIR: 'Excluiu simulação',
   USUARIO_CRIAR: 'Criou usuário',
   USUARIO_ALTERAR_PAPEL: 'Alterou papel',
   USUARIO_DESATIVAR: 'Desativou usuário',
@@ -107,6 +109,7 @@ export const TIPOS_RELATORIO: Record<TipoRelatorio, { rotulo: string; descricao:
   CARGA_TRIBUTARIA: { rotulo: 'Carga tributária efetiva', descricao: 'Tributos ÷ receita bruta e IRPJ + CSLL ÷ lucro antes do IR, por exercício.' },
   SITUACAO_FISCAL: { rotulo: 'Situação fiscal resumida', descricao: 'Débitos, parcelamentos, pendências, CAPAG e o que impede a certidão.' },
   CAPACIDADE: { rotulo: 'Capacidade de pagamento', descricao: 'CAPAG oficial × estimada, classificação do PR e análise gerencial, com critérios e parâmetros.' },
+  PROPOSTA_REGULARIZACAO: { rotulo: 'Proposta de regularização', descricao: 'Simulação salva: recomendação por órgão, comparação, cronograma, memória, riscos e fontes normativas.' },
   DOSSIE_CAPAG: { rotulo: 'Dossiê da revisão da CAPAG', descricao: 'BP e DRE referenciais, DFC direta, memória de cálculo e irrecuperáveis, para assinatura.' },
 };
 

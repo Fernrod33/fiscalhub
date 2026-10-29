@@ -1,3 +1,4 @@
+import { MelhorProposta } from '@/features/simulacoes/components/melhor-proposta';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Pencil, Upload } from 'lucide-react';
@@ -64,6 +65,8 @@ export default function VisaoGeralPage() {
       <CargaTributaria clienteId={id} />
 
       <ResumoCapacidade clienteId={id} />
+
+      <MelhorProposta clienteId={id} />
 
       <EscrituracoesCliente clienteId={id} />
 

@@ -225,7 +225,13 @@ function Parametros({ parametros }: { parametros: ParametrosEscritorio }) {
         <label className="grid gap-1 text-sm">
           <span>Parcela sustentável (% do caixa livre)</span>
           <input type="number" step="any" value={p.gerencial.percentualFcoLivre} disabled={!alterar}
-                 onChange={(e) => setP((x) => ({ ...x, gerencial: { percentualFcoLivre: Number(e.target.value) } }))}
+                 onChange={(e) => setP((x) => ({ ...x, gerencial: { ...x.gerencial, percentualFcoLivre: Number(e.target.value) } }))}
+                 className="num h-9 rounded-md border bg-background px-2" />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span>SELIC projetada nas simulações (% a.m.; vazio = média de 12 meses do BCB)</span>
+          <input type="number" step="any" min={0} max={10} value={p.gerencial.selicProjetada ?? ''} disabled={!alterar}
+                 onChange={(e) => setP((x) => ({ ...x, gerencial: { ...x.gerencial, selicProjetada: e.target.value === '' ? undefined : Number(e.target.value) } }))}
                  className="num h-9 rounded-md border bg-background px-2" />
         </label>
         {alterar && <div className="flex items-end"><Button type="submit" disabled={salvar.isPending}>Salvar parâmetros</Button></div>}

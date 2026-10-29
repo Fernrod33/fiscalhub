@@ -1,16 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { ARQUIVOS_MASSA, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
+import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
 
-/** A massa completa da Metalúrgica: ECD 2022-2025, ECF, EFD de 2025 e 2026, PGFN, PR (a mesma do MassaFicticiaAceiteTest). */
-const ARQUIVOS = [
-  ...ARQUIVOS_MASSA,
-  'ecd/ECD_2022_11222333000181_ORIGINAL.txt', 'ecd/ECD_2023_11222333000181_ORIGINAL.txt', 'ecd/ECD_2024_11222333000181_ORIGINAL.txt',
-  'ecd/ECD_2024_11222333000181_SUBSTITUTA.txt', 'ecd/ECD_2025_11222333000181_ORIGINAL.txt', 'ecf/ECF_2025_LUCRO_REAL_11222333000181.txt',
-  'parana/RTI_9012345663.pdf', 'parana/GR-PR_Parcelamento_parcela_12-36.pdf',
-  ...Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).flatMap((m) => [
-    `efd-icms-ipi/EFD_ICMS_IPI_${m}2025_11222333000181.txt`, `efd-contribuicoes/EFD_CONTRIBUICOES_${m}2025_11222333000181.txt`]),
-  ...Array.from({ length: 7 }, (_, i) => `efd-icms-ipi/EFD_ICMS_IPI_0${i + 1}2026_11222333000181.txt`),
-];
 
 test('massa → Capacidade: CAPAG oficial C × estimada, simulação no PR e emissão do relatório e do dossiê', async ({ page }) => {
   test.setTimeout(420_000);
