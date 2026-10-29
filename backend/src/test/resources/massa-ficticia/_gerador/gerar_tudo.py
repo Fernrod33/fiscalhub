@@ -73,7 +73,8 @@ def simulacoes(pdf_c):
         return [v] * (n - 1) + [total - v * (n - 1)]
 
     def federal(nominais, primeiro):  # primeiro: meses entre a consolidação e a 1ª prestação
-        return [q(v * (1 + (selic * max(0, primeiro + k - 1) + 1) / 100)) for k, v in enumerate(nominais)]
+        # no mês da consolidação, sem acréscimo; depois, SELIC dos meses entre a consolidação e o pagamento + 1%
+        return [q(v * (1 + (D(0) if primeiro + k == 0 else selic * (primeiro + k - 1) + 1) / 100)) for k, v in enumerate(nominais)]
 
     def parana(nominais, fator):  # 1ª na concessão, sem juros; k-ésima: SELIC de k meses sobre imposto e multa
         return [v + q(v * fator * selic * k / 100) for k, v in enumerate(nominais)]
@@ -90,7 +91,7 @@ def simulacoes(pdf_c):
     total = cof + q(cof * D("0.33") * dias / 100) + q(cof / 100)
     n = int(total // 500)
     nom = iguais(total, n)
-    out["rfb_ordinario_cofins"] = resumo(total, nom, federal(nom, 1), dias=dias)
+    out["rfb_ordinario_cofins"] = resumo(total, nom, federal(nom, 0), dias=dias)  # 1ª no mês do pedido (IN RFB 2.063, arts. 4º e 13)
     # 2. IPI inscrito não negociado (PGFN ordinário): valores do extrato + encargo de 20%; 60 parcelas, 1ª no mês do pedido
     p, m, j = D("38750.00"), D("7750.00"), D("6980.12")
     enc = q((p + m + j) * D("0.20"))

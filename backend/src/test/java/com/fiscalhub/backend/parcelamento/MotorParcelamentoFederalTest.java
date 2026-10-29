@@ -62,9 +62,13 @@ class MotorParcelamentoFederalTest {
             List<Parcela> tabela = r.cronograma();
             BigDecimal base = r.valorParcela();
 
-            // 1ª parcela (mês seguinte à consolidação): só o 1%; 2ª: SELIC de 1 mês (1%) + 1%
-            assertThat(tabela.get(0).valor()).isEqualByComparingTo(base.multiply(new BigDecimal("1.01")).setScale(2, RoundingMode.HALF_UP));
-            assertThat(tabela.get(1).valor()).isEqualByComparingTo(base.multiply(new BigDecimal("1.02")).setScale(2, RoundingMode.HALF_UP));
+            // 1ª prestação no mês do pedido (o deferimento depende do pagamento dela: Lei 10.522/2002, art. 11; IN RFB 2.063/2022,
+            // arts. 4º e 13), sem acréscimo: a consolidação já leva os juros até esse mês. Depois, SELIC acumulada do mês seguinte
+            // à consolidação até o anterior ao pagamento + 1% (Lei 10.522, art. 13; IN, art. 11): 2ª só o 1%; 3ª, 1% + 1%
+            assertThat(tabela.get(0).valor()).isEqualByComparingTo(base);
+            assertThat(tabela.get(0).vencimento()).isEqualTo(LocalDate.of(2024, 2, 29)); // último dia útil do mês do pedido
+            assertThat(tabela.get(1).valor()).isEqualByComparingTo(base.multiply(new BigDecimal("1.01")).setScale(2, RoundingMode.HALF_UP));
+            assertThat(tabela.get(2).valor()).isEqualByComparingTo(base.multiply(new BigDecimal("1.02")).setScale(2, RoundingMode.HALF_UP));
         }
     }
 
@@ -109,8 +113,9 @@ class MotorParcelamentoFederalTest {
             // data-base 15/12/2025: SELIC carregada até 2025-12; 2026 em diante é projeção (média das 12 últimas = 1%)
             ResultadoModalidade r = CenarioParcelamento.federal().dataBase(LocalDate.of(2025, 12, 15)).calcularFederal();
 
-            assertThat(r.cronograma().get(0).projetada()).isFalse(); // jan/2026: só o 1%
-            assertThat(r.cronograma().get(1).projetada()).isTrue();  // fev/2026: SELIC de jan/2026 projetada
+            assertThat(r.cronograma().get(0).projetada()).isFalse(); // dez/2025, mês do pedido: sem acréscimo
+            assertThat(r.cronograma().get(1).projetada()).isFalse(); // jan/2026: só o 1%
+            assertThat(r.cronograma().get(2).projetada()).isTrue();  // fev/2026: SELIC de jan/2026 projetada
             assertThat(r.selicProjetada()).isEqualByComparingTo("1.0000");
             assertThat(r.avisos()).anyMatch(a -> a.contains(MotorParcelamento.ROTULO_PROJECAO));
             assertThat(r.custoProjetado()).isGreaterThan(r.custoNominal());
@@ -122,7 +127,7 @@ class MotorParcelamentoFederalTest {
 
             assertThat(r.selicProjetada()).isEqualByComparingTo("2.00");
             assertThat(r.selicProjetadaOrigem()).isEqualTo("parâmetro do escritório");
-            assertThat(r.cronograma().get(1).percentualCorrecao()).isEqualByComparingTo("3.00");
+            assertThat(r.cronograma().get(2).percentualCorrecao()).isEqualByComparingTo("3.00");
         }
 
         @Test

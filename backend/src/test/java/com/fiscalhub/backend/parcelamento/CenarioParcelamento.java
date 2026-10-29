@@ -177,7 +177,7 @@ final class CenarioParcelamento {
     private MotorParcelamento motor() {
         RegrasParcelamento regras = new RegrasParcelamento();
         IndiceMonetarioService servico = new IndiceMonetarioService(repositorio);
-        return new MotorParcelamento(new AcrescimosMoratorios(servico, regras), servico, regras);
+        return new MotorParcelamento(new AcrescimosMoratorios(servico, regras), servico, regras, new com.fiscalhub.backend.calendario.CalendarioDiasUteis());
     }
 
     private List<DebitoSimulado> debitos() {

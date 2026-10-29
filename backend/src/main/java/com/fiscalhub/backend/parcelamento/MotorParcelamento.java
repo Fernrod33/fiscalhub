@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.parcelamento;
 
+import com.fiscalhub.backend.calendario.CalendarioDiasUteis;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.entity.enums.TipoTributo;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -111,8 +111,11 @@ public class MotorParcelamento {
     private final AcrescimosMoratorios acrescimos;
     private final IndiceMonetarioService indices;
     private final RegrasParcelamento regras;
+    private final CalendarioDiasUteis calendario;
 
-    public MotorParcelamento(AcrescimosMoratorios acrescimos, IndiceMonetarioService indices, RegrasParcelamento regras) {
+    public MotorParcelamento(AcrescimosMoratorios acrescimos, IndiceMonetarioService indices, RegrasParcelamento regras,
+                             CalendarioDiasUteis calendario) {
+        this.calendario = calendario;
         this.acrescimos = acrescimos;
         this.indices = indices;
         this.regras = regras;
@@ -194,10 +197,16 @@ public class MotorParcelamento {
 
     private ResultadoModalidade inelegivel(RegraParcelamento r, List<DebitoSimulado> debitos, String motivo) {
         List<Elegibilidade> eleg = debitos.stream().map(d -> new Elegibilidade(d.id(), d.descricao(), false, List.of(motivo))).toList();
-        return new ResultadoModalidade(r.chave(), r.versao(), r.nome(), r.tipo(), r.orgao(), "OFICIAL", null, false, motivo,
-                List.of(), eleg, List.of(), BigDecimal.ZERO, null, BigDecimal.ZERO, 0, 0, BigDecimal.ZERO, "SELIC", null, null,
-                List.of(), BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, List.of(), r.fundamento(), r.rescisao(),
-                r.garantia(), r.nota(), fontes(r).stream().anyMatch(FonteUsada::secundaria), fontes(r));
+        return vazio(r, "OFICIAL", null, motivo, List.of(), eleg, List.of());
+    }
+
+    /** Modalidade sem nada a calcular (programa encerrado, nenhum débito elegível): o motivo e a regra, sem valores. */
+    private ResultadoModalidade vazio(RegraParcelamento r, String cenario, String rotulo, String motivo, List<String> avisos,
+                                      List<Elegibilidade> eleg, List<Etapa> memoria) {
+        return new ResultadoModalidade(r.chave(), r.versao(), r.nome(), r.tipo(), r.orgao(), cenario, rotulo, false, motivo, avisos,
+                eleg, List.of(), BigDecimal.ZERO, null, BigDecimal.ZERO, 0, 0, BigDecimal.ZERO, "SELIC", null, null, List.of(),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, null, memoria, r.fundamento(), r.rescisao(), r.garantia(), r.nota(),
+                fontes(r).stream().anyMatch(FonteUsada::secundaria), fontes(r));
     }
 
     private ResultadoModalidade calcular(RegraParcelamento r, List<DebitoSimulado> debitos, Pedido pedido, String cenario,
@@ -242,11 +251,7 @@ public class MotorParcelamento {
         }
         BigDecimal total = soma(cons.stream().map(Consolidado::total).toList());
         if (cons.isEmpty()) {
-            return new ResultadoModalidade(r.chave(), r.versao(), r.nome(), r.tipo(), r.orgao(), cenario, rotulo, false,
-                    bloqueio != null ? bloqueio : "Nenhum débito elegível.", avisos, eleg, List.of(), BigDecimal.ZERO, null,
-                    BigDecimal.ZERO, 0, 0, BigDecimal.ZERO, "SELIC", null, null, List.of(), BigDecimal.ZERO, BigDecimal.ZERO,
-                    BigDecimal.ZERO, null, memoria, r.fundamento(), r.rescisao(), r.garantia(), r.nota(),
-                    fontes(r).stream().anyMatch(FonteUsada::secundaria), fontes(r));
+            return vazio(r, cenario, rotulo, bloqueio != null ? bloqueio : "Nenhum débito elegível.", avisos, eleg, memoria);
         }
         boolean elegivel = true;
         if (r.debitoMaximo() != null && total.compareTo(r.debitoMaximo()) > 0) {
@@ -560,7 +565,7 @@ public class MotorParcelamento {
         for (int k = 0; k < nominais.size(); k++) {
             YearMonth mes = primeiro.plusMonths(k);
             LocalDate venc = r.primeiraParcela() == RegrasParcelamento.PrimeiraParcela.DATA_BASE
-                    ? base.plusMonths(k) : ultimoDiaUtil(mes);
+                    ? base.plusMonths(k) : calendario.ultimoDiaUtil(mes, null, null);
             boolean[] projetou = {false};
             BigDecimal pctCorrecao;
             BigDecimal nominal = nominais.get(k)[0];
@@ -569,7 +574,9 @@ public class MotorParcelamento {
                 pctCorrecao = BigDecimal.ZERO;
                 valor = nominal;
             } else if (r.correcao() == Correcao.SELIC_ACUMULADA_MAIS_1) {
-                pctCorrecao = projecao.soma(consolidacao.plusMonths(1), mes.minusMonths(1), projetou).add(BigDecimal.ONE);
+                // paga no mês da consolidação: sem acréscimo (os juros até esse mês, com o 1% dele, já estão consolidados)
+                pctCorrecao = !mes.isAfter(consolidacao) ? BigDecimal.ZERO
+                        : projecao.soma(consolidacao.plusMonths(1), mes.minusMonths(1), projetou).add(BigDecimal.ONE);
                 valor = nominal.multiply(BigDecimal.ONE.add(pctCorrecao.divide(CEM, 10, RoundingMode.HALF_UP))).setScale(2, RoundingMode.HALF_UP);
             } else {
                 pctCorrecao = k == 0 ? BigDecimal.ZERO : projecao.soma(consolidacao.plusMonths(1), mes, projetou);
@@ -588,15 +595,6 @@ public class MotorParcelamento {
                     p.saldoNominal(), restante));
         }
         return comSaldo;
-    }
-
-    /** ponytail: só fim de semana; feriados nacionais não descontados (o vencimento real pode ser 1 dia útil antes). */
-    static LocalDate ultimoDiaUtil(YearMonth mes) {
-        LocalDate d = mes.atEndOfMonth();
-        while (d.getDayOfWeek() == DayOfWeek.SATURDAY || d.getDayOfWeek() == DayOfWeek.SUNDAY) {
-            d = d.minusDays(1);
-        }
-        return d;
     }
 
     /** PR: os juros vincendos incidem sobre imposto e multa da parcela (RICMS/PR, art. 81, §3º, I). */

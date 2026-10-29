@@ -668,7 +668,7 @@ class MassaFicticiaAceiteTest {
                     .contentType(MediaType.APPLICATION_JSON).content(inscricao("90 3 24 002201-55")))
                     .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             JsonNode salva = json.readTree(resposta);
-            assertThat(salva.get("versaoRegras").asText()).isEqualTo("2026-10-29");
+            assertThat(salva.get("versaoRegras").asText()).isEqualTo("2026-10-30");
             JsonNode melhor = conteudo("/api/clientes/{c}/simulacoes/melhor");
             assertThat(melhor.get("id").asLong()).isEqualTo(salva.get("id").asLong());
             assertThat(melhor.get("recomendacao").asText()).contains("Transação por adesão");

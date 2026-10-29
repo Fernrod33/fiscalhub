@@ -131,9 +131,9 @@
       "parcelas": 10,
       "valor_parcela": "544.82",
       "custo_nominal": "5448.24",
-      "custo_projetado": "5750.35",
-      "primeira": "550.27",
-      "ultima": "599.84",
+      "custo_projetado": "5695.37",
+      "primeira": "544.82",
+      "ultima": "594.33",
       "dias": "19"
     },
     "pgfn_ordinario_ipi": {
@@ -141,8 +141,8 @@
       "parcelas": 60,
       "valor_parcela": "1069.60",
       "custo_nominal": "64176.14",
-      "custo_projetado": "83301.85",
-      "primeira": "1080.30",
+      "custo_projetado": "83291.15",
+      "primeira": "1069.60",
       "ultima": "1707.09",
       "encargo": "10696.02"
     },
@@ -151,8 +151,8 @@
       "parcelas": 120,
       "valor_parcela": "306.14",
       "custo_nominal": "38750.00",
-      "custo_projetado": "60879.78",
-      "primeira": "648.18",
+      "custo_projetado": "60873.36",
+      "primeira": "641.76",
       "ultima": "672.89",
       "desconto": "25426.14",
       "entrada": "3850.57"

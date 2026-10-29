@@ -1,0 +1,4 @@
+# Feriados estaduais e municipais, como dado versionado: só com a lei que institui o feriado (coluna fonte).
+# data: MM-dd (todo ano) ou yyyy-MM-dd (só aquele ano); municipio vazio = o estado inteiro.
+# Os nacionais (fixos e móveis) estão no CalendarioDiasUteis.
+uf;municipio;data;nome;fonte
