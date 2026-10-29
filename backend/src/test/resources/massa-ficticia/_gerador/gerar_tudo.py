@@ -60,6 +60,63 @@ def dfc(ledger):
                 atividades={k: str(v) for k, v in sorted(ativ.items())}, variacao_caixa=str(variacao))
 
 
+def simulacoes(pdf_c):
+    """Simulações da Fase 5 na data-base fixa de 14/10/2026, pelas regras de resources/parcelamento/regras.json, refeitas
+    aqui à mão. SELIC das parcelas futuras: 1,01% a.m. (média das SELIC carregadas no teste, só jan/2025)."""
+    import datetime as dt
+    from decimal import ROUND_HALF_UP
+    q = lambda x: x.quantize(D("0.01"), ROUND_HALF_UP)
+    selic = D("1.01")
+
+    def iguais(total, n):
+        v = q(total / n)
+        return [v] * (n - 1) + [total - v * (n - 1)]
+
+    def federal(nominais, primeiro):  # primeiro: meses entre a consolidação e a 1ª prestação
+        return [q(v * (1 + (selic * max(0, primeiro + k - 1) + 1) / 100)) for k, v in enumerate(nominais)]
+
+    def parana(nominais, fator):  # 1ª na concessão, sem juros; k-ésima: SELIC de k meses sobre imposto e multa
+        return [v + q(v * fator * selic * k / 100) for k, v in enumerate(nominais)]
+
+    def resumo(total, nominais, corrigidas, **extra):
+        return dict(total=str(total), parcelas=len(nominais), valor_parcela=str(nominais[0] if "entrada" not in extra else extra.pop("valor_parcela")),
+                    custo_nominal=str(sum(nominais)), custo_projetado=str(sum(corrigidas)),
+                    primeira=str(corrigidas[0]), ultima=str(corrigidas[-1]), **{k: str(v) for k, v in extra.items()})
+
+    out = {"data_base": "2026-10-14", "selic_projetada": str(selic)}
+    # 1. COFINS 08/2026 paga a menor (RFB ordinário): 19 dias → multa 6,27%; juros 1%; até 10 parcelas de R$ 500+
+    cof = pdf_c["cof"] - pdf_c["cof_pago"]
+    dias = (dt.date(2026, 10, 14) - pdf_c["venc_pc"]).days
+    total = cof + q(cof * D("0.33") * dias / 100) + q(cof / 100)
+    n = int(total // 500)
+    nom = iguais(total, n)
+    out["rfb_ordinario_cofins"] = resumo(total, nom, federal(nom, 1), dias=dias)
+    # 2. IPI inscrito não negociado (PGFN ordinário): valores do extrato + encargo de 20%; 60 parcelas, 1ª no mês do pedido
+    p, m, j = D("38750.00"), D("7750.00"), D("6980.12")
+    enc = q((p + m + j) * D("0.20"))
+    total = p + m + j + enc
+    nom = iguais(total, 60)
+    out["pgfn_ordinario_ipi"] = resumo(total, nom, federal(nom, 0), encargo=enc)
+    # 3. Transação Edital 6/2026 (reaberto pelo 10/2026), CAPAG oficial C: desconto máximo, entrada 6% em 6, saldo em 114
+    desc = min(m + j + enc, q(total * D("0.65")))
+    entrada = q(total * D("0.06"))
+    nom = iguais(entrada, 6) + iguais(total - desc - entrada, 114)
+    out["pgfn_transacao_ipi_c"] = resumo(total, nom, federal(nom, 0), desconto=desc, entrada=entrada, valor_parcela=nom[6])
+    # 4. ICMS-ST 08/2026 (SEFA-PR ordinário): 34 dias → multa 10%; juros 1%; EFD: até 24 parcelas; sem UPF/PR: bloqueada
+    st, venc = D("44850.00"), dt.date(2026, 9, 10)
+    total = st + q(st / 10) + q(st / 100)
+    fator = ((st + q(st / 10)) / total).quantize(D("0.0000000001"), ROUND_HALF_UP)
+    nom = iguais(total, 24)
+    out["sefa_pr_icms_st"] = resumo(total, nom, parana(nom, fator), dias=(dt.date(2026, 10, 14) - venc).days)
+    # 5. Reparcelamento do parcelamento PR-2025-0045871 (saldo 98.884,20): 60 parcelas, 6 pagas juntas na assinatura
+    saldo = D("98884.20")
+    v = q(saldo / 60)
+    nom = [v * 6] + iguais(saldo - v * 6, 54)
+    nom[-1] = saldo - v * 6 - v * 53
+    out["sefa_pr_reparcelamento"] = resumo(saldo, nom, parana(nom, D("1")), entrada=v * 6, valor_parcela=v)
+    return out
+
+
 def main(base):
     contabil = ecd_ecf.gerar(base)
     fisc = efd.gerar(base)
@@ -87,6 +144,7 @@ def main(base):
         "classificacao_pr": pdf["pr"]["classificacao"],
         "capag_oficial": {"classe": "C", "capacidade": str(pdfs.CAPAG_VALOR)},
         "irrecuperaveis_pgfn": [],
+        "simulacoes": simulacoes(pdf["cen"]),
     }
     with open(os.path.join(base, "_gerador", "valores_esperados.json"), "w", encoding="utf-8") as fh:
         json.dump(resumo, fh, ensure_ascii=False, indent=2, default=str)

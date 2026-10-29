@@ -4,10 +4,9 @@ import com.fiscalhub.backend.entity.Cliente;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
-import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.Papel;
-import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +31,7 @@ class DebitosESimulacaoTest {
 
     @Autowired MockMvc mvc;
     @Autowired DadosTeste dados;
-    @Autowired SimulacaoParcelamentoRepository simulacaoRepository;
+    @Autowired JdbcTemplate jdbc;
 
     private RequestPostProcessor token;
     private Cliente cliente;
@@ -66,27 +65,50 @@ class DebitosESimulacaoTest {
     }
 
     @Test
-    void salvaSimulacaoConsolidandoDoisDebitos() throws Exception {
+    void salvaSimulacaoComCadaDebitoEOsVersionamentosERecalculaComoNovaVersao() throws Exception {
         dados.selic(YearMonth.of(2024, 1), YearMonth.of(2024, 12), "1.00");
 
-        String resposta = mvc.perform(post("/api/simulacoes/calcular/salvar").with(token)
+        String resposta = mvc.perform(post("/api/clientes/{c}/simulacoes", cliente.getId()).with(token)
                         .contentType(APPLICATION_JSON).content(simulacao()))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.valorOriginal").value(1000.00))
-                .andExpect(jsonPath("$.dataVencimentoOriginal").value("2024-02-20"))
-                .andExpect(jsonPath("$.clienteId").value(cliente.getId().intValue()))
-                .andExpect(jsonPath("$.debitoIds.length()").value(2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.versao").value(1))
+                .andExpect(jsonPath("$.dataBase").value("2024-04-05"))
+                .andExpect(jsonPath("$.versaoRegras").value("2026-10-29"))
+                .andExpect(jsonPath("$.versaoIndices").value("SELIC até 2024-12; UPF/PR até 2025-04"))
+                .andExpect(jsonPath("$.modalidades[?(@.chave == 'RFB_ORDINARIO')].debitos[*].vencimento")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder("2024-02-20", "2024-03-20")))
+                .andExpect(jsonPath("$.recomendacao[0].orgao").value("RFB"))
                 .andReturn().getResponse().getContentAsString();
+        long id = ((Number) JsonPath.read(resposta, "$.id")).longValue();
 
-        Long id = ((Number) JsonPath.read(resposta, "$.simulacaoId")).longValue();
-        SimulacaoParcelamento salva = simulacaoRepository.findById(id).orElseThrow();
-        assertThat(salva.getCliente().getId()).isEqualTo(cliente.getId());
-        assertThat(salva.getDebitos()).extracting(Debito::getId).containsExactlyInAnyOrder(debito1.getId(), debito2.getId());
+        mvc.perform(post("/api/clientes/{c}/simulacoes/{id}/recalcular", cliente.getId(), id).with(token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.versao").value(2))
+                .andExpect(jsonPath("$.anteriorId").value(id));
+        mvc.perform(get("/api/clientes/{c}/simulacoes", cliente.getId()).with(token))
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].versao").value(2));
+        assertThat(jdbc.queryForList("SELECT acao FROM auditoria_evento WHERE recurso_tipo = 'SIMULACAO'", String.class))
+                .contains("SIMULACAO_CRIAR", "SIMULACAO_RECALCULAR");
+    }
+
+    @Test
+    void simulacaoDoMotorAntigoApareceRotuladaEERecalculavel() throws Exception {
+        dados.selic(YearMonth.of(2024, 1), YearMonth.of(2024, 12), "1.00");
+        Long antiga = dados.simulacao(debito1);
+
+        mvc.perform(get("/api/clientes/{c}/simulacoes/{id}", cliente.getId(), antiga).with(token))
+                .andExpect(jsonPath("$.motorAntigo").value(org.hamcrest.Matchers.startsWith("Calculada pelo motor antigo")));
+        mvc.perform(post("/api/clientes/{c}/simulacoes/{id}/recalcular", cliente.getId(), antiga).with(token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.versao").value(2))
+                .andExpect(jsonPath("$.dataBase").value("2024-06-01"))
+                .andExpect(jsonPath("$.modalidades[?(@.chave == 'RFB_ORDINARIO')].debitos.length()").value(1));
     }
 
     @Test
     void semSelicCadastradaRespondeErroClaro() throws Exception {
-        mvc.perform(post("/api/simulacoes/calcular").with(token)
+        mvc.perform(post("/api/clientes/{c}/simulacoes/calcular", cliente.getId()).with(token)
                         .contentType(APPLICATION_JSON).content(simulacao()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").value("Índice SELIC ausente para 2024-03."));
@@ -94,7 +116,6 @@ class DebitosESimulacaoTest {
 
     private String simulacao() {
         return """
-                {"clienteId":%d,"debitoIds":[%d,%d],"orgao":"RECEITA_FEDERAL","modalidade":"ORDINARIO_RFB",
-                 "numeroParcelas":2,"dataCalculo":"2024-04-05"}""".formatted(cliente.getId(), debito1.getId(), debito2.getId());
+                {"debitoIds":[%d,%d],"parcelas":2,"dataBase":"2024-04-05"}""".formatted(debito1.getId(), debito2.getId());
     }
 }

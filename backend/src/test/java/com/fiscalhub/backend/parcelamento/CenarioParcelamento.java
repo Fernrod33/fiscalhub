@@ -1,15 +1,15 @@
-package com.fiscalhub.backend.service.calculo;
+package com.fiscalhub.backend.parcelamento;
 
-import com.fiscalhub.backend.dto.SimulacaoRequestDTO;
-import com.fiscalhub.backend.dto.SimulacaoResultDTO;
-import com.fiscalhub.backend.entity.Cliente;
-import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.IndiceMonetario;
-import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
+import com.fiscalhub.backend.entity.enums.OrgaoCredor;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
 import com.fiscalhub.backend.entity.enums.TipoTributo;
+import com.fiscalhub.backend.parcelamento.MotorParcelamento.DebitoSimulado;
+import com.fiscalhub.backend.parcelamento.MotorParcelamento.Pedido;
+import com.fiscalhub.backend.parcelamento.MotorParcelamento.ResultadoModalidade;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
 import com.fiscalhub.backend.service.IndiceMonetarioService;
+import com.fiscalhub.backend.situacao.AcrescimosMoratorios;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -25,26 +26,33 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Fixture dos testes do motor de parcelamento: débitos, requisição e índices em memória.
- * Padrão: um débito de R$ 10.000,00 vencido em 10/01/2024, 10 parcelas, sem entrada.
- * O IndiceMonetarioService é o real, sobre um repositório fake em memória.
+ * Fixture dos testes do motor: débitos, pedido e índices em memória, com as regras reais de resources/parcelamento.
+ * Padrão: um débito de R$ 10.000,00 vencido em 10/01/2024, 10 parcelas. O IndiceMonetarioService é o real, sobre um
+ * repositório fake em memória.
  */
 final class CenarioParcelamento {
 
     static final LocalDate VENCIMENTO = LocalDate.of(2024, 1, 10);
 
-    private final ModalidadeParcelamento modalidade;
+    private final OrgaoCredor orgao;
+    private final TipoTributo tributo;
     private final List<IndiceMonetario> indices = new ArrayList<>();
+    private final List<DebitoSimulado> outros = new ArrayList<>();
     private BigDecimal valor = new BigDecimal("10000.00");
     private LocalDate dataCalculo = VENCIMENTO.plusDays(10);
-    private int parcelas = 10;
-    private boolean entrada;
-    private final List<Debito> outrosDebitos = new ArrayList<>();
+    private Integer parcelas = 10;
+    private String capagOficial;
+    private String capagEstimada;
+    private BigDecimal selicProjetada;
+    private BigDecimal parcelaSustentavel;
+    private boolean reparcelamento;
+    private UnaryOperator<DebitoSimulado> ajuste = d -> d;
 
     final IndiceMonetarioRepository repositorio = mock(IndiceMonetarioRepository.class);
 
-    private CenarioParcelamento(ModalidadeParcelamento modalidade) {
-        this.modalidade = modalidade;
+    private CenarioParcelamento(OrgaoCredor orgao, TipoTributo tributo) {
+        this.orgao = orgao;
+        this.tributo = tributo;
         when(repositorio.findByTipoAndAnoAndMes(any(), anyInt(), anyInt())).thenAnswer(inv -> buscar(
                 inv.getArgument(0), YearMonth.of(inv.<Integer>getArgument(1), inv.<Integer>getArgument(2))));
         when(repositorio.findByTipoAndPeriodo(any(), anyInt(), anyInt(), anyInt(), anyInt())).thenAnswer(inv -> periodo(
@@ -53,26 +61,26 @@ final class CenarioParcelamento {
                 YearMonth.of(inv.<Integer>getArgument(3), inv.<Integer>getArgument(4))));
     }
 
-    /** Parcelamento ordinário RFB com SELIC de 1,00% a.m. de 2024-01 a 2025-12. */
+    /** Débito na RFB com SELIC de 1,00% a.m. de 2024-01 a 2025-12. */
     static CenarioParcelamento federal() {
-        return new CenarioParcelamento(ModalidadeParcelamento.ORDINARIO_RFB)
+        return new CenarioParcelamento(OrgaoCredor.RFB, TipoTributo.IRPJ)
                 .selic(YearMonth.of(2024, 1), YearMonth.of(2025, 12), "1.00");
     }
 
-    /** PERT (única modalidade federal que hoje aplica entrada). */
-    static CenarioParcelamento federalPert() {
-        return new CenarioParcelamento(ModalidadeParcelamento.PERT_RFB)
-                .selic(YearMonth.of(2024, 1), YearMonth.of(2025, 12), "1.00");
+    /** Inscrição na PGFN (valores do documento: ver {@link #inscricao}), SELIC de 1,00% a.m. de 2024-01 a 2026-12. */
+    static CenarioParcelamento pgfn() {
+        return new CenarioParcelamento(OrgaoCredor.PGFN, TipoTributo.IPI)
+                .selic(YearMonth.of(2024, 1), YearMonth.of(2026, 12), "1.00");
     }
 
     /** Sem nenhum índice cadastrado. */
     static CenarioParcelamento federalSemSelic() {
-        return new CenarioParcelamento(ModalidadeParcelamento.ORDINARIO_RFB);
+        return new CenarioParcelamento(OrgaoCredor.RFB, TipoTributo.IRPJ);
     }
 
-    /** Parcelamento ordinário SEFA-PR com UFPR 100,00 (jan/24), 101,00 (fev/24), 110,00 (fev/25) e SELIC 1,00% a.m. */
+    /** ICMS declarado na EFD (SEFA-PR) com UFPR 100,00 (jan/24), 101,00 (fev/24), 110,00 (fev/25) e SELIC 1,00% a.m. */
     static CenarioParcelamento estadualPR() {
-        return new CenarioParcelamento(ModalidadeParcelamento.ORDINARIO_SEFA_PR)
+        return new CenarioParcelamento(OrgaoCredor.SEFA_PR, TipoTributo.ICMS)
                 .ufpr(YearMonth.of(2024, 1), "100.00")
                 .ufpr(YearMonth.of(2024, 2), "101.00")
                 .ufpr(YearMonth.of(2025, 2), "110.00")
@@ -84,24 +92,57 @@ final class CenarioParcelamento {
         return this;
     }
 
+    CenarioParcelamento dataBase(LocalDate data) {
+        this.dataCalculo = data;
+        return this;
+    }
+
     CenarioParcelamento valor(String valor) {
         this.valor = new BigDecimal(valor);
         return this;
     }
 
-    CenarioParcelamento parcelas(int parcelas) {
+    CenarioParcelamento parcelas(Integer parcelas) {
         this.parcelas = parcelas;
         return this;
     }
 
-    /** Acrescenta outro débito do mesmo cliente à simulação. */
-    CenarioParcelamento maisUmDebito(String valor, LocalDate vencimento) {
-        outrosDebitos.add(debito(outrosDebitos.size() + 2L, new BigDecimal(valor), vencimento));
+    CenarioParcelamento capag(String oficial, String estimada) {
+        this.capagOficial = oficial;
+        this.capagEstimada = estimada;
         return this;
     }
 
-    CenarioParcelamento comEntrada() {
-        this.entrada = true;
+    CenarioParcelamento selicProjetada(String taxa) {
+        this.selicProjetada = new BigDecimal(taxa);
+        return this;
+    }
+
+    CenarioParcelamento parcelaSustentavel(String valor) {
+        this.parcelaSustentavel = new BigDecimal(valor);
+        return this;
+    }
+
+    CenarioParcelamento reparcelamento() {
+        this.reparcelamento = true;
+        return this;
+    }
+
+    /** Ajusta o débito principal (inscrição, negociação, tributo...). */
+    CenarioParcelamento debito(UnaryOperator<DebitoSimulado> ajuste) {
+        this.ajuste = ajuste;
+        return this;
+    }
+
+    /** Valores da inscrição como no extrato (principal, multa, juros, encargo), inscrita em dataInscricao. */
+    CenarioParcelamento inscricao(String principal, String multa, String juros, String encargo, LocalDate dataInscricao) {
+        return debito(d -> new DebitoSimulado(d.id(), d.orgao(), d.tributo(), d.descricao(), null, new BigDecimal(principal),
+                new BigDecimal(multa), new BigDecimal(juros), new BigDecimal(encargo), null, dataCalculo, "90 3 24 000001-00",
+                dataInscricao, null, null, false, false, null));
+    }
+
+    CenarioParcelamento maisUmDebito(String valor, LocalDate vencimento) {
+        outros.add(debito(outros.size() + 2L, new BigDecimal(valor), vencimento));
         return this;
     }
 
@@ -117,41 +158,41 @@ final class CenarioParcelamento {
         return indice(TipoIndice.UFPR, mes, valor);
     }
 
-    SimulacaoResultDTO calcularFederal() {
-        return new CalculadoraReceitaFederalService(new IndiceMonetarioService(repositorio)).calcular(entrada());
+    ResultadoModalidade calcularFederal() {
+        return calcular("RFB_ORDINARIO");
     }
 
-    SimulacaoResultDTO calcularPR() {
-        return new CalculadoraReceitaEstadualPRService(new IndiceMonetarioService(repositorio)).calcular(entrada());
+    ResultadoModalidade calcularPR() {
+        return calcular("SEFA_PR_ORDINARIO");
     }
 
-    private EntradaCalculo entrada() {
-        Cliente cliente = new Cliente();
-        cliente.setId(1L);
-        cliente.setRazaoSocial("Cliente Teste Ltda");
-        cliente.setCnpj("11222333000181");
-        List<Debito> debitos = new ArrayList<>(List.of(debito(1L, valor, VENCIMENTO)));
-        debitos.addAll(outrosDebitos);
-        return new EntradaCalculo(cliente, debitos, request());
+    ResultadoModalidade calcular(String modalidade) {
+        return motor().calcular(modalidade, debitos(), pedido());
     }
 
-    private static Debito debito(Long id, BigDecimal valor, LocalDate vencimento) {
-        Debito d = new Debito();
-        d.setId(id);
-        d.setTributo(TipoTributo.IRPJ);
-        d.setValorPrincipal(valor);
-        d.setDataVencimento(vencimento);
+    List<ResultadoModalidade> simular() {
+        return motor().simular(debitos(), pedido());
+    }
+
+    private MotorParcelamento motor() {
+        RegrasParcelamento regras = new RegrasParcelamento();
+        IndiceMonetarioService servico = new IndiceMonetarioService(repositorio);
+        return new MotorParcelamento(new AcrescimosMoratorios(servico, regras), servico, regras);
+    }
+
+    private List<DebitoSimulado> debitos() {
+        List<DebitoSimulado> d = new ArrayList<>(List.of(ajuste.apply(debito(1L, valor, VENCIMENTO))));
+        d.addAll(outros);
         return d;
     }
 
-    private SimulacaoRequestDTO request() {
-        SimulacaoRequestDTO r = new SimulacaoRequestDTO();
-        r.setClienteId(1L);
-        r.setModalidade(modalidade);
-        r.setNumeroParcelas(parcelas);
-        r.setDataCalculo(dataCalculo);
-        r.setIncluirEntrada(entrada);
-        return r;
+    private Pedido pedido() {
+        return new Pedido(dataCalculo, parcelas, false, capagOficial, capagEstimada, selicProjetada, parcelaSustentavel, reparcelamento);
+    }
+
+    private DebitoSimulado debito(long id, BigDecimal valor, LocalDate vencimento) {
+        return new DebitoSimulado(id, orgao, tributo, tributo + " " + id, vencimento, valor, null, null, null, null, null, null, null,
+                null, null, false, false, null);
     }
 
     private CenarioParcelamento indice(TipoIndice tipo, YearMonth mes, String valor) {

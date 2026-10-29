@@ -7,12 +7,10 @@ import com.fiscalhub.backend.entity.Cliente;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
-import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.Papel;
 import com.fiscalhub.backend.repository.ClienteRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
-import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +44,7 @@ class AcessoEntreEscritoriosTest {
     @Autowired MockMvc mvc;
     @Autowired DadosTeste dados;
     @Autowired ClienteRepository clienteRepository;
-    @Autowired SimulacaoParcelamentoRepository simulacaoRepository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired DocumentoFiscalRepository documentoRepository;
 
     private RequestPostProcessor tokenA;
@@ -56,7 +54,7 @@ class AcessoEntreEscritoriosTest {
     private Cliente clienteB;
     private DocumentoFiscal documentoB;
     private Debito debitoB;
-    private SimulacaoParcelamento simulacaoB;
+    private Long simulacaoB;
 
     @BeforeEach
     void setUp() {
@@ -80,8 +78,7 @@ class AcessoEntreEscritoriosTest {
         softly.assertAll();
 
         assertThat(clienteRepository.findById(clienteB.getId())).isPresent();
-        assertThat(simulacaoRepository.findById(simulacaoB.getId())).get()
-                .extracting(SimulacaoParcelamento::getAprovada).isEqualTo(false);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM simulacao_parcelamento WHERE id = ?", Integer.class, simulacaoB)).isEqualTo(1);
         assertThat(documentoRepository.findById(documentoB.getId())).isPresent();
     }
 
@@ -91,7 +88,7 @@ class AcessoEntreEscritoriosTest {
         Cliente outroClienteB = dados.cliente(usuarioB, "12345678000195");
         String corpo = simulacaoJson(outroClienteB.getId(), debitoB.getId());
 
-        mvc.perform(post("/api/simulacoes/calcular").with(tokenB).contentType(APPLICATION_JSON).content(corpo))
+        mvc.perform(post("/api/clientes/{c}/simulacoes/calcular", outroClienteB.getId()).with(tokenB).contentType(APPLICATION_JSON).content(corpo))
                 .andExpect(status().isNotFound());
     }
 
@@ -103,7 +100,7 @@ class AcessoEntreEscritoriosTest {
                 "/api/clientes",
                 "/api/clientes/" + clienteB.getId(),
                 "/api/clientes/" + clienteB.getId() + "/debitos",
-                "/api/simulacoes/" + simulacaoB.getId(),
+                "/api/clientes/" + clienteB.getId() + "/simulacoes/" + simulacaoB,
                 "/api/documentos/" + documentoB.getId())) {
             mvc.perform(get(url).with(tokenB)).andExpect(status().isOk());
             mvc.perform(get(url).with(colega)).andExpect(status().isOk());
@@ -124,7 +121,11 @@ class AcessoEntreEscritoriosTest {
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isForbidden());
         mvc.perform(post("/api/clientes").with(assistente)
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isForbidden());
-        mvc.perform(delete("/api/simulacoes/{id}", simulacaoB.getId()).with(assistente))
+        mvc.perform(delete("/api/clientes/{c}/simulacoes/{id}", c, simulacaoB).with(assistente))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/clientes/{c}/simulacoes", c).with(assistente).contentType(APPLICATION_JSON)
+                .content(simulacaoJson(c, debitoB.getId()))).andExpect(status().isForbidden());
+        mvc.perform(post("/api/clientes/{c}/simulacoes/{id}/recalcular", c, simulacaoB).with(assistente))
                 .andExpect(status().isForbidden());
 
         mvc.perform(importacao(c).with(assistente)).andExpect(status().isCreated());
@@ -168,7 +169,7 @@ class AcessoEntreEscritoriosTest {
     @Test
     void semTokenOuComTokenInvalidoResponde401() throws Exception {
         for (String url : List.of("/api/usuarios/me", "/api/clientes",
-                "/api/clientes/" + clienteB.getId() + "/debitos", "/api/simulacoes/" + simulacaoB.getId(),
+                "/api/clientes/" + clienteB.getId() + "/debitos", "/api/clientes/" + clienteB.getId() + "/simulacoes/" + simulacaoB,
                 "/api/clientes/" + clienteB.getId() + "/documentos")) {
             mvc.perform(get(url)).andExpect(status().isUnauthorized());
             mvc.perform(get(url).cookie(new Cookie(CookieSessao.NOME, "token-invalido"))).andExpect(status().isUnauthorized());
@@ -176,7 +177,7 @@ class AcessoEntreEscritoriosTest {
     }
 
     private Map<String, MockHttpServletRequestBuilder> chamadasSobreRecursosDeB() {
-        Long c = clienteB.getId(), s = simulacaoB.getId(), doc = documentoB.getId();
+        Long c = clienteB.getId(), s = simulacaoB, doc = documentoB.getId();
         String simulacaoJson = simulacaoJson(c, debitoB.getId());
         return Map.ofEntries(
                 Map.entry("GET cliente", get("/api/clientes/{id}", c)),
@@ -191,12 +192,13 @@ class AcessoEntreEscritoriosTest {
                 Map.entry("GET capacidade oficial", get("/api/clientes/{id}/capacidade-oficial", c)),
                 Map.entry("GET conciliacao", get("/api/clientes/{id}/conciliacao", c)),
                 Map.entry("GET item da conciliacao", get("/api/clientes/{id}/conciliacao/{item}", c, "COFINS-2026-08")),
-                Map.entry("GET simulacao", get("/api/simulacoes/{id}", s)),
-                Map.entry("GET simulacoes do cliente", get("/api/simulacoes/cliente/{id}", c)),
-                Map.entry("POST calcular", post("/api/simulacoes/calcular").contentType(APPLICATION_JSON).content(simulacaoJson)),
-                Map.entry("POST calcular/salvar", post("/api/simulacoes/calcular/salvar").contentType(APPLICATION_JSON).content(simulacaoJson)),
-                Map.entry("PATCH aprovar simulacao", patch("/api/simulacoes/{id}/aprovar", s)),
-                Map.entry("DELETE simulacao", delete("/api/simulacoes/{id}", s)),
+                Map.entry("GET simulacao", get("/api/clientes/{c}/simulacoes/{id}", c, s)),
+                Map.entry("GET simulacoes do cliente", get("/api/clientes/{c}/simulacoes", c)),
+                Map.entry("GET melhor simulacao", get("/api/clientes/{c}/simulacoes/melhor", c)),
+                Map.entry("POST calcular", post("/api/clientes/{c}/simulacoes/calcular", c).contentType(APPLICATION_JSON).content(simulacaoJson)),
+                Map.entry("POST salvar", post("/api/clientes/{c}/simulacoes", c).contentType(APPLICATION_JSON).content(simulacaoJson)),
+                Map.entry("POST recalcular", post("/api/clientes/{c}/simulacoes/{id}/recalcular", c, s)),
+                Map.entry("DELETE simulacao", delete("/api/clientes/{c}/simulacoes/{id}", c, s)),
                 Map.entry("GET documentos do cliente", get("/api/clientes/{c}/documentos", c)),
                 Map.entry("GET documento", get("/api/documentos/{d}", doc)),
                 Map.entry("GET status do documento", get("/api/documentos/{d}/status", doc)),
@@ -219,8 +221,7 @@ class AcessoEntreEscritoriosTest {
 
     private static String simulacaoJson(Long clienteId, Long debitoId) {
         return """
-                {"clienteId":%d,"debitoIds":[%d],"orgao":"RECEITA_FEDERAL","modalidade":"ORDINARIO_RFB",
-                 "numeroParcelas":10,"dataCalculo":"2024-04-05"}""".formatted(clienteId, debitoId);
+                {"debitoIds":[%d],"parcelas":10,"dataBase":"2024-04-05"}""".formatted(debitoId);
     }
 
     static MockHttpServletRequestBuilder importacao(Long clienteId) {

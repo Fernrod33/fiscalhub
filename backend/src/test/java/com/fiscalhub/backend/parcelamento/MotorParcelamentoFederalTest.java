@@ -1,9 +1,10 @@
-package com.fiscalhub.backend.service.calculo;
+package com.fiscalhub.backend.parcelamento;
 
-import com.fiscalhub.backend.dto.ParcelaDTO;
-import com.fiscalhub.backend.dto.SimulacaoResultDTO;
+import com.fiscalhub.backend.entity.enums.TipoTributo;
 import com.fiscalhub.backend.exception.BusinessRuleException;
-import org.junit.jupiter.api.Disabled;
+import com.fiscalhub.backend.parcelamento.MotorParcelamento.DebitoSimulado;
+import com.fiscalhub.backend.parcelamento.MotorParcelamento.Parcela;
+import com.fiscalhub.backend.parcelamento.MotorParcelamento.ResultadoModalidade;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -16,112 +17,26 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class CalculadoraReceitaFederalServiceTest {
+class MotorParcelamentoFederalTest {
 
-    /** Comportamento ATUAL do motor (inclusive o que diverge da lei). Se algum quebrar, o cálculo mudou. */
-    @Nested
-    class Caracterizacao {
-
-        @Test
-        void atrasoDe10Dias_multaDiariaESemJuros() {
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(10).calcularFederal();
-
-            assertThat(r.getDiasEmAtraso()).isEqualTo(10);
-            assertThat(r.getPercentualMultaMora()).isEqualByComparingTo("3.30");
-            assertThat(r.getValorMultaMora()).isEqualByComparingTo("330.00");
-            assertThat(r.getPercentualJurosMora()).isEqualByComparingTo("0");
-            assertThat(r.getValorAtualizado()).isEqualByComparingTo("10330.00");
-            assertThat(r.getNumeroParcelas()).isEqualTo(10);
-            assertThat(r.getValorParcela()).isEqualByComparingTo("1033.00");
-            assertThat(r.getCustoTotal()).isEqualByComparingTo("10330.00");
-            assertThat(r.getAvisoParcelaMinima()).isNull();
-        }
-
-        @Test
-        void atrasoDe45Dias_multaSaltaPara20EJurosDeUmMes() {
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
-
-            assertThat(r.getPercentualMultaMora()).isEqualByComparingTo("20.00");
-            assertThat(r.getValorMultaMora()).isEqualByComparingTo("2000.00");
-            assertThat(r.getPercentualJurosMora()).isEqualByComparingTo("1.0000");
-            assertThat(r.getValorJurosMora()).isEqualByComparingTo("100.00");
-            assertThat(r.getValorAtualizado()).isEqualByComparingTo("12100.00");
-            assertThat(r.getValorEntrada()).isEqualByComparingTo("0");
-            assertThat(r.getValorParcela()).isEqualByComparingTo("1210.00");
-            assertThat(r.getTabelaParcelas()).hasSize(10);
-        }
-
-        @Test
-        void atrasoDe45DiasComEntradaPert_entradaDe5PorCento() {
-            SimulacaoResultDTO r = CenarioParcelamento.federalPert().diasDeAtraso(45).comEntrada().calcularFederal();
-
-            assertThat(r.getValorAtualizado()).isEqualByComparingTo("12100.00");
-            assertThat(r.getValorEntrada()).isEqualByComparingTo("605.00");
-            assertThat(r.getValorParcela()).isEqualByComparingTo("1149.50");
-            assertThat(r.getCustoTotal()).isEqualByComparingTo("12100.00");
-            assertThat(r.getTabelaParcelas()).hasSize(11);
-            assertThat(r.getTabelaParcelas().get(0).getNumeroParcela()).isZero();
-        }
-
-        @Test
-        void atrasoDe400Dias_selicCompostaDe13Meses() {
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(400).calcularFederal();
-
-            assertThat(r.getDiasEmAtraso()).isEqualTo(400);
-            assertThat(r.getPercentualMultaMora()).isEqualByComparingTo("20.00");
-            // 1,01^13 - 1 (fev/2024 a fev/2025, composta)
-            assertThat(r.getPercentualJurosMora()).isEqualByComparingTo("13.8093");
-            assertThat(r.getValorJurosMora()).isEqualByComparingTo("1380.93");
-            assertThat(r.getValorAtualizado()).isEqualByComparingTo("13380.93");
-            assertThat(r.getValorParcela()).isEqualByComparingTo("1338.09");
-            assertThat(r.getCustoTotal()).isEqualByComparingTo("13380.90");
-        }
-
-        @Test
-        void variosDebitos_somaOPrincipalEUsaOVencimentoMaisAntigo() {
-            // 6.000 vencido em 10/01/2024 + 4.000 vencido em 10/03/2024 == 10.000 vencido em 10/01/2024
-            SimulacaoResultDTO consolidado = CenarioParcelamento.federal().valor("6000.00")
-                    .maisUmDebito("4000.00", LocalDate.of(2024, 3, 10)).diasDeAtraso(45).calcularFederal();
-            SimulacaoResultDTO unico = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
-
-            assertThat(consolidado.getValorOriginal()).isEqualByComparingTo("10000.00");
-            assertThat(consolidado.getDataVencimentoOriginal()).isEqualTo(CenarioParcelamento.VENCIMENTO);
-            assertThat(consolidado.getValorAtualizado()).isEqualByComparingTo(unico.getValorAtualizado());
-            assertThat(consolidado.getValorParcela()).isEqualByComparingTo(unico.getValorParcela());
-            assertThat(consolidado.getDebitoIds()).containsExactly(1L, 2L);
-        }
-
-        @Test
-        void parcelasAbaixoDoMinimo_reduzQuantidadeParaRespeitarR$500() {
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(45).parcelas(60).calcularFederal();
-
-            assertThat(r.getNumeroParcelas()).isEqualTo(24);
-            assertThat(r.getValorParcela()).isEqualByComparingTo("504.17");
-            assertThat(r.getCustoTotal()).isEqualByComparingTo("12100.08");
-            assertThat(r.getAvisoParcelaMinima()).contains("24").contains("500.00");
-        }
-    }
-
-    /** Resultado exigido pela norma. Desativados até a correção do motor na Fase 5. */
+    /** Resultado exigido pela norma (os 6 testes da Fase 2b, reativados sem mudar os valores esperados). */
     @Nested
     class Normativo {
 
         @Test
-        @Disabled("Fase 5 — divergência normativa: multa de mora é 0,33% ao dia limitada a 20% (art. 61 Lei 9.430/96); hoje salta para 20% no 31º dia")
         void multaDe45DiasE14Virgula85PorCento() {
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
+            ResultadoModalidade r = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
 
-            assertThat(r.getPercentualMultaMora()).isEqualByComparingTo("14.85");
+            assertThat(r.debitos().getFirst().percentualMulta()).isEqualByComparingTo("14.85");
         }
 
         @Test
-        @Disabled("Fase 5 — divergência normativa: juros = soma simples da SELIC mensal do mês seguinte ao vencimento até o mês anterior ao pagamento + 1% no mês do pagamento (art. 61 §3º Lei 9.430/96); hoje é SELIC composta incluindo o mês do pagamento")
         void jurosSaoSomaSimplesDaSelicMais1PorCentoNoMesDoPagamento() {
             // vencimento jan/2024, pagamento fev/2025: SELIC de fev/2024 a jan/2025 (12 × 1,00%) + 1% = 13%
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(400).calcularFederal();
+            ResultadoModalidade r = CenarioParcelamento.federal().diasDeAtraso(400).calcularFederal();
 
-            assertThat(r.getPercentualJurosMora()).isEqualByComparingTo("13.00");
-            assertThat(r.getValorJurosMora()).isEqualByComparingTo("1300.00");
+            assertThat(r.debitos().getFirst().percentualJuros()).isEqualByComparingTo("13.00");
+            assertThat(r.debitos().getFirst().juros()).isEqualByComparingTo("1300.00");
         }
 
         @Test
@@ -142,15 +57,123 @@ class CalculadoraReceitaFederalServiceTest {
         }
 
         @Test
-        @Disabled("Fase 5 — divergência normativa: cada parcela é acrescida de SELIC acumulada desde a consolidação até o mês anterior ao pagamento + 1% no mês do pagamento (art. 13 Lei 10.522/02); hoje as parcelas são fixas")
         void parcelasSaoAcrescidasDeSelicAcumuladaMais1PorCento() {
-            SimulacaoResultDTO r = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
-            List<ParcelaDTO> tabela = r.getTabelaParcelas();
-            BigDecimal base = r.getValorParcela();
+            ResultadoModalidade r = CenarioParcelamento.federal().diasDeAtraso(45).calcularFederal();
+            List<Parcela> tabela = r.cronograma();
+            BigDecimal base = r.valorParcela();
 
             // 1ª parcela (mês seguinte à consolidação): só o 1%; 2ª: SELIC de 1 mês (1%) + 1%
-            assertThat(tabela.get(0).getValorParcela()).isEqualByComparingTo(base.multiply(new BigDecimal("1.01")).setScale(2, RoundingMode.HALF_UP));
-            assertThat(tabela.get(1).getValorParcela()).isEqualByComparingTo(base.multiply(new BigDecimal("1.02")).setScale(2, RoundingMode.HALF_UP));
+            assertThat(tabela.get(0).valor()).isEqualByComparingTo(base.multiply(new BigDecimal("1.01")).setScale(2, RoundingMode.HALF_UP));
+            assertThat(tabela.get(1).valor()).isEqualByComparingTo(base.multiply(new BigDecimal("1.02")).setScale(2, RoundingMode.HALF_UP));
+        }
+    }
+
+    /** Casos-limite das regras (valores tirados do texto da norma, em regras.json). */
+    @Nested
+    class Limites {
+
+        @Test
+        void consolidaCadaDebitoComOProprioVencimento() {
+            // 6.000 vencido em 10/01/2024 (45 dias: 14,85%) + 4.000 vencido em 10/02/2024 (14 dias: 4,62%), data-base 24/02/2024
+            ResultadoModalidade r = CenarioParcelamento.federal().valor("6000.00")
+                    .maisUmDebito("4000.00", LocalDate.of(2024, 2, 10)).diasDeAtraso(45).calcularFederal();
+
+            assertThat(r.debitos()).extracting(c -> c.percentualMulta().toPlainString()).containsExactly("14.85", "4.62");
+            assertThat(r.debitos().get(0).juros()).isEqualByComparingTo("60.00"); // venceu em jan: 1% no mês do pagamento
+            assertThat(r.debitos().get(1).juros()).isEqualByComparingTo("0.00");  // venceu no mês da consolidação
+            assertThat(r.totalConsolidado()).isEqualByComparingTo("11135.80"); // 6.951,00 + 4.184,80
+        }
+
+        @Test
+        void parcelaMinimaDeR$500ReduzOPrazoPedido() {
+            ResultadoModalidade r = CenarioParcelamento.federal().diasDeAtraso(45).parcelas(60).calcularFederal();
+
+            // 11.585,00 ÷ 500 = 23,17 → 23 parcelas
+            assertThat(r.parcelas()).isEqualTo(23);
+            assertThat(r.valorParcela()).isEqualByComparingTo("503.70");
+            assertThat(r.avisos()).anyMatch(a -> a.contains("23") && a.contains("500,00"));
+        }
+
+        @Test
+        void semPrazoPedidoUsaOMaximoQueAParcelaMinimaPermite() {
+            ResultadoModalidade r = CenarioParcelamento.federal().valor("100000.00").diasDeAtraso(45).parcelas(null).calcularFederal();
+
+            assertThat(r.parcelas()).isEqualTo(60);
+            assertThat(r.cronograma()).hasSize(60);
+            BigDecimal soma = r.cronograma().stream().map(Parcela::nominal).reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertThat(soma).isEqualByComparingTo(r.totalConsolidado()); // a última parcela leva o arredondamento
+        }
+
+        @Test
+        void mesFuturoSemSelicUsaAProjecaoRotulada() {
+            // data-base 15/12/2025: SELIC carregada até 2025-12; 2026 em diante é projeção (média das 12 últimas = 1%)
+            ResultadoModalidade r = CenarioParcelamento.federal().dataBase(LocalDate.of(2025, 12, 15)).calcularFederal();
+
+            assertThat(r.cronograma().get(0).projetada()).isFalse(); // jan/2026: só o 1%
+            assertThat(r.cronograma().get(1).projetada()).isTrue();  // fev/2026: SELIC de jan/2026 projetada
+            assertThat(r.selicProjetada()).isEqualByComparingTo("1.0000");
+            assertThat(r.avisos()).anyMatch(a -> a.contains(MotorParcelamento.ROTULO_PROJECAO));
+            assertThat(r.custoProjetado()).isGreaterThan(r.custoNominal());
+        }
+
+        @Test
+        void selicProjetadaDoEscritorioSubstituiAMedia() {
+            ResultadoModalidade r = CenarioParcelamento.federal().dataBase(LocalDate.of(2025, 12, 15)).selicProjetada("2.00").calcularFederal();
+
+            assertThat(r.selicProjetada()).isEqualByComparingTo("2.00");
+            assertThat(r.selicProjetadaOrigem()).isEqualTo("parâmetro do escritório");
+            assertThat(r.cronograma().get(1).percentualCorrecao()).isEqualByComparingTo("3.00");
+        }
+
+        @Test
+        void irrfVedadoNoOrdinarioMasNaoNoSimplificado() {
+            CenarioParcelamento c = CenarioParcelamento.federal().diasDeAtraso(45).debito(CenarioParcelamentoTributo.de(TipoTributo.IRRF));
+
+            assertThat(c.calcular("RFB_ORDINARIO").elegivel()).isFalse();
+            assertThat(c.calcular("RFB_ORDINARIO").elegibilidade().getFirst().motivos()).anyMatch(m -> m.contains("IRRF"));
+            assertThat(c.calcular("RFB_SIMPLIFICADO").elegivel()).isTrue();
+        }
+
+        @Test
+        void debitoParceladoSoEntraNoReparcelamentoCom10Ou20PorCento() {
+            CenarioParcelamento c = CenarioParcelamento.federal().diasDeAtraso(45).reparcelamento()
+                    .debito(d -> new DebitoSimulado(d.id(), d.orgao(), d.tributo(), d.descricao(), d.vencimento(), d.principal(), null, null,
+                            null, null, null, null, null, "Parcelamento 123", null, false, false, null));
+            List<ResultadoModalidade> todas = c.simular();
+            ResultadoModalidade ordinario = todas.stream().filter(m -> m.chave().equals("RFB_ORDINARIO") && m.cenario().equals("OFICIAL")).findFirst().orElseThrow();
+            ResultadoModalidade repar = todas.stream().filter(m -> m.chave().equals("RFB_ORDINARIO") && m.cenario().equals("REPARCELAMENTO")).findFirst().orElseThrow();
+
+            assertThat(ordinario.elegivel()).isFalse();
+            assertThat(repar.elegivel()).isTrue();
+            assertThat(repar.entrada()).isEqualByComparingTo("1158.50"); // 10% de 11.585,00
+            assertThat(repar.cronograma().getFirst().tipo()).isEqualTo("ENTRADA");
+        }
+
+        @Test
+        void programasEncerradosNaoAceitamAdesaoEDizemPorque() {
+            List<ResultadoModalidade> todas = CenarioParcelamento.federal().diasDeAtraso(45).simular();
+
+            assertThat(todas).filteredOn(m -> m.chave().equals("PERT_RFB") || m.chave().equals("REFIS"))
+                    .hasSize(2).allMatch(m -> !m.elegivel() && m.bloqueio().contains("encerrada"));
+            assertThat(todas).anyMatch(m -> m.chave().equals("A_VISTA_RFB") && m.custoProjetado().compareTo(new BigDecimal("11585.00")) == 0);
+        }
+
+        @Test
+        void seloComparaAMaiorParcelaComAParcelaSustentavel() {
+            ResultadoModalidade cabe = CenarioParcelamento.federal().diasDeAtraso(45).parcelaSustentavel("2000.00").calcularFederal();
+            ResultadoModalidade naoCabe = CenarioParcelamento.federal().diasDeAtraso(45).parcelaSustentavel("1000.00").calcularFederal();
+
+            assertThat(cabe.selo().cabe()).isTrue();
+            assertThat(naoCabe.selo().cabe()).isFalse();
+            assertThat(naoCabe.selo().texto()).startsWith("Compromete ");
+        }
+    }
+
+    /** Ajuste de tributo do débito do cenário. */
+    static final class CenarioParcelamentoTributo {
+        static java.util.function.UnaryOperator<DebitoSimulado> de(TipoTributo t) {
+            return d -> new DebitoSimulado(d.id(), d.orgao(), t, d.descricao(), d.vencimento(), d.principal(), null, null, null, null,
+                    null, null, null, null, null, false, false, null);
         }
     }
 }

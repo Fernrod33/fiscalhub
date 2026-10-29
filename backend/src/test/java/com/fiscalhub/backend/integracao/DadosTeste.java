@@ -6,12 +6,9 @@ import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.Escritorio;
 import com.fiscalhub.backend.entity.IndiceMonetario;
-import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.DocumentoTipo;
-import com.fiscalhub.backend.entity.enums.ModalidadeParcelamento;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
-import com.fiscalhub.backend.entity.enums.OrgaoReceita;
 import com.fiscalhub.backend.entity.enums.Papel;
 import com.fiscalhub.backend.entity.enums.SituacaoDebito;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
@@ -20,7 +17,7 @@ import com.fiscalhub.backend.repository.ClienteRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.fiscalhub.backend.repository.EscritorioRepository;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
-import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
+import org.springframework.jdbc.core.JdbcTemplate;
 import com.fiscalhub.backend.repository.UsuarioRepository;
 import com.fiscalhub.backend.security.CookieSessao;
 import com.fiscalhub.backend.security.JwtUtils;
@@ -48,7 +45,7 @@ public class DadosTeste {
     private final UsuarioRepository usuarioRepository;
     private final ClienteRepository clienteRepository;
     private final DocumentoFiscalRepository documentoRepository;
-    private final SimulacaoParcelamentoRepository simulacaoRepository;
+    private final JdbcTemplate jdbc;
     private final IndiceMonetarioRepository indiceRepository;
     private final DebitoRepository debitoRepository;
     private final PasswordEncoder passwordEncoder;
@@ -57,13 +54,13 @@ public class DadosTeste {
 
     public DadosTeste(EscritorioRepository escritorioRepository, UsuarioRepository usuarioRepository,
                       ClienteRepository clienteRepository, DocumentoFiscalRepository documentoRepository,
-                      SimulacaoParcelamentoRepository simulacaoRepository, IndiceMonetarioRepository indiceRepository,
+                      JdbcTemplate jdbc, IndiceMonetarioRepository indiceRepository,
                       DebitoRepository debitoRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils) {
         this.escritorioRepository = escritorioRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
         this.documentoRepository = documentoRepository;
-        this.simulacaoRepository = simulacaoRepository;
+        this.jdbc = jdbc;
         this.indiceRepository = indiceRepository;
         this.debitoRepository = debitoRepository;
         this.passwordEncoder = passwordEncoder;
@@ -155,16 +152,15 @@ public class DadosTeste {
         return debitoRepository.save(d);
     }
 
-    public SimulacaoParcelamento simulacao(Debito debito) {
-        SimulacaoParcelamento s = new SimulacaoParcelamento();
-        s.setOrgao(OrgaoReceita.RECEITA_FEDERAL);
-        s.setModalidade(ModalidadeParcelamento.ORDINARIO_RFB);
-        s.setValorOriginal(debito.getValorPrincipal());
-        s.setDataVencimentoOriginal(debito.getDataVencimento());
-        s.setDataCalculo(LocalDate.of(2024, 6, 1));
-        s.setCliente(debito.getCliente());
-        s.setDebitos(new ArrayList<>(List.of(debito)));
-        return simulacaoRepository.save(s);
+    /** Simulação gravada pelo motor antigo (antes da Fase 5), como as que ficaram no banco. */
+    public Long simulacao(Debito debito) {
+        Long id = jdbc.queryForObject("""
+                INSERT INTO simulacao_parcelamento (cliente_id, orgao, modalidade, valor_original, data_vencimento_original, data_calculo,
+                    numero_parcelas, valor_atualizado, aprovada, data_criacao) VALUES (?, 'RECEITA_FEDERAL', 'ORDINARIO_RFB', ?, ?, ?, 10, ?, FALSE, now())
+                RETURNING id""", Long.class, debito.getCliente().getId(), debito.getValorPrincipal(), debito.getDataVencimento(),
+                LocalDate.of(2024, 6, 1), debito.getValorPrincipal());
+        jdbc.update("INSERT INTO simulacao_debito (simulacao_id, debito_id) VALUES (?, ?)", id, debito.getId());
+        return id;
     }
 
     /** Mesma taxa (% a.m.) em todos os meses do intervalo, inclusive. */

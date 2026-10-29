@@ -122,5 +122,60 @@
     "classe": "C",
     "capacidade": "400000.00"
   },
-  "irrecuperaveis_pgfn": []
+  "irrecuperaveis_pgfn": [],
+  "simulacoes": {
+    "data_base": "2026-10-14",
+    "selic_projetada": "1.01",
+    "rfb_ordinario_cofins": {
+      "total": "5448.24",
+      "parcelas": 10,
+      "valor_parcela": "544.82",
+      "custo_nominal": "5448.24",
+      "custo_projetado": "5750.35",
+      "primeira": "550.27",
+      "ultima": "599.84",
+      "dias": "19"
+    },
+    "pgfn_ordinario_ipi": {
+      "total": "64176.14",
+      "parcelas": 60,
+      "valor_parcela": "1069.60",
+      "custo_nominal": "64176.14",
+      "custo_projetado": "83301.85",
+      "primeira": "1080.30",
+      "ultima": "1707.09",
+      "encargo": "10696.02"
+    },
+    "pgfn_transacao_ipi_c": {
+      "total": "64176.14",
+      "parcelas": 120,
+      "valor_parcela": "306.14",
+      "custo_nominal": "38750.00",
+      "custo_projetado": "60879.78",
+      "primeira": "648.18",
+      "ultima": "672.89",
+      "desconto": "25426.14",
+      "entrada": "3850.57"
+    },
+    "sefa_pr_icms_st": {
+      "total": "49783.50",
+      "parcelas": 24,
+      "valor_parcela": "2074.31",
+      "custo_nominal": "49783.50",
+      "custo_projetado": "55513.77",
+      "primeira": "2074.31",
+      "ultima": "2551.90",
+      "dias": "34"
+    },
+    "sefa_pr_reparcelamento": {
+      "total": "98884.20",
+      "parcelas": 55,
+      "valor_parcela": "1648.07",
+      "custo_nominal": "98884.20",
+      "custo_projetado": "123602.79",
+      "primeira": "9888.42",
+      "ultima": "2546.93",
+      "entrada": "9888.42"
+    }
+  }
 }

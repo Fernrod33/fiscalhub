@@ -119,13 +119,15 @@ class SituacaoFiscalTest {
                 .andReturn().getResponse().getContentAsString();
         Number cofins = JsonPath.<List<Number>>read(debitos, "$[?(@.tributo == 'COFINS' && @.orgaoCredor == 'RFB')].id").getFirst();
         Number inscricao = JsonPath.<List<Number>>read(debitos, "$[?(@.numeroInscricao == '90 3 24 002201-55')].id").getFirst();
-        mvc.perform(post("/api/simulacoes/calcular").with(sessao).contentType(APPLICATION_JSON).content(simulacao(cofins)))
+        mvc.perform(post("/api/clientes/{c}/simulacoes/calcular", cliente.getId()).with(sessao).contentType(APPLICATION_JSON).content(simulacao(cofins)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.valorOriginal").value(5079.00))
-                .andExpect(jsonPath("$.dataVencimentoOriginal").value("2026-09-25"));
-        mvc.perform(post("/api/simulacoes/calcular").with(sessao).contentType(APPLICATION_JSON).content(simulacao(inscricao)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").value(containsString("não traz vencimento ou principal")));
+                .andExpect(jsonPath("$.modalidades[?(@.chave == 'RFB_ORDINARIO')].debitos[0].principal").value(5079.00))
+                .andExpect(jsonPath("$.modalidades[?(@.chave == 'RFB_ORDINARIO')].debitos[0].vencimento").value("2026-09-25"));
+        // o relatório de situação fiscal lista a inscrição sem valores: a simulação diz o que importar, sem estimar
+        mvc.perform(post("/api/clientes/{c}/simulacoes/calcular", cliente.getId()).with(sessao).contentType(APPLICATION_JSON).content(simulacao(inscricao)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.modalidades[?(@.chave == 'PGFN_ORDINARIO')].elegibilidade[0].motivos[0]")
+                        .value(org.hamcrest.Matchers.hasItem(containsString("sem principal no documento"))));
     }
 
     @Test
@@ -177,8 +179,7 @@ class SituacaoFiscalTest {
 
     private String simulacao(Number debito) {
         return """
-                {"clienteId":%d,"debitoIds":[%d],"orgao":"RECEITA_FEDERAL","modalidade":"ORDINARIO_RFB",
-                 "numeroParcelas":2,"dataCalculo":"2026-11-20"}""".formatted(cliente.getId(), debito.longValue());
+                {"debitoIds":[%d],"parcelas":2,"dataBase":"2026-11-20"}""".formatted(debito.longValue());
     }
 
     /** PDF de uma página com a linha dada (null: sem texto, como um scan). */

@@ -3,13 +3,11 @@ package com.fiscalhub.backend.service;
 import com.fiscalhub.backend.entity.Debito;
 import com.fiscalhub.backend.entity.DocumentoFiscal;
 import com.fiscalhub.backend.entity.Cliente;
-import com.fiscalhub.backend.entity.SimulacaoParcelamento;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
 import com.fiscalhub.backend.repository.DebitoRepository;
 import com.fiscalhub.backend.repository.DocumentoFiscalRepository;
 import com.fiscalhub.backend.repository.ClienteRepository;
-import com.fiscalhub.backend.repository.SimulacaoParcelamentoRepository;
 import com.fiscalhub.backend.repository.UsuarioRepository;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import org.springframework.stereotype.Service;
@@ -29,18 +27,15 @@ public class AcessoRecursoService {
 
     private final ClienteRepository clienteRepository;
     private final DebitoRepository debitoRepository;
-    private final SimulacaoParcelamentoRepository simulacaoRepository;
     private final DocumentoFiscalRepository documentoFiscalRepository;
     private final UsuarioRepository usuarioRepository;
 
     public AcessoRecursoService(ClienteRepository clienteRepository,
                                 DebitoRepository debitoRepository,
-                                SimulacaoParcelamentoRepository simulacaoRepository,
                                 DocumentoFiscalRepository documentoFiscalRepository,
                                 UsuarioRepository usuarioRepository) {
         this.clienteRepository = clienteRepository;
         this.debitoRepository = debitoRepository;
-        this.simulacaoRepository = simulacaoRepository;
         this.documentoFiscalRepository = documentoFiscalRepository;
         this.usuarioRepository = usuarioRepository;
     }
@@ -58,11 +53,6 @@ public class AcessoRecursoService {
             throw new ResourceNotFoundException("Débito não encontrado para o cliente informado.");
         }
         return debitos;
-    }
-
-    public SimulacaoParcelamento simulacao(Long id, UsuarioAutenticado ua) {
-        return simulacaoRepository.findByIdAndClienteEscritorioId(id, ua.escritorioId())
-                .orElseThrow(() -> naoEncontrado("Simulação", id));
     }
 
     /** Documento do escritório (pode ainda não ter cliente: upload pela central, aguardando confirmação). */

@@ -603,6 +603,115 @@ class MassaFicticiaAceiteTest {
         }
     }
 
+    // ---------------------------------------------------------------- simulações (Fase 5) com a massa
+
+    /** Data-base fixa de 14/10/2026; valores refeitos à mão pelo gerador (_gerador/valores_esperados.json, "simulacoes"). */
+    @Nested
+    class Simulacoes {
+
+        @Test
+        void parcelamentoOrdinarioRfbDaDiferencaDaCofins() throws Exception {
+            JsonNode m = modalidade(simular(debito(d -> "RFB".equals(d.get("orgaoCredor").asText()) && "COFINS".equals(d.get("tributo").asText())
+                    && "2026-08-01".equals(d.get("competencia").asText()))), "RFB_ORDINARIO", "OFICIAL");
+            conferir(m, "rfb_ordinario_cofins");
+            assertThat(m.at("/debitos/0/percentualMulta").decimalValue()).isEqualByComparingTo("6.27"); // 0,33% × 19 dias
+        }
+
+        @Test
+        void parcelamentoOrdinarioPgfnDaInscricaoDeIpiComEncargo() throws Exception {
+            JsonNode m = modalidade(simular(inscricao("90 3 24 002201-55")), "PGFN_ORDINARIO", "OFICIAL");
+            conferir(m, "pgfn_ordinario_ipi");
+            assertThat(m.at("/debitos/0/encargo").decimalValue()).isEqualByComparingTo(esperado("pgfn_ordinario_ipi", "encargo"));
+        }
+
+        @Test
+        void transacaoPorAdesaoComAClasseCOficialDoEdital() throws Exception {
+            JsonNode r = simular(inscricao("90 3 24 002201-55"));
+            JsonNode m = modalidade(r, "PGFN_TRANSACAO_EDITAL_6_2026", "OFICIAL");
+            conferir(m, "pgfn_transacao_ipi_c");
+            assertThat(m.get("versaoRegra").asText()).isEqualTo("PGFN_TRANSACAO_EDITAL_6_2026@2026-10-01");
+            assertThat(m.at("/desconto/classe").asText()).isEqualTo("C");
+            assertThat(m.at("/desconto/valor").decimalValue()).isEqualByComparingTo(esperado("pgfn_transacao_ipi_c", "desconto"));
+            assertThat(m.get("entrada").decimalValue()).isEqualByComparingTo(esperado("pgfn_transacao_ipi_c", "entrada"));
+            assertThat(r.at("/insumos/capagOficial").asText()).isEqualTo("C");
+            // a estimada (D) só como cenário rotulado; a recomendação nunca usa esse cenário
+            assertThat(modalidade(r, "PGFN_TRANSACAO_EDITAL_6_2026", "SE_REVISAO_DEFERIDA").get("cenarioRotulo").asText())
+                    .startsWith("se a revisão da CAPAG for deferida");
+            JsonNode rec = encontrar(r.get("recomendacao"), x -> "PGFN".equals(x.get("orgao").asText()));
+            assertThat(rec.get("chave").asText()).isEqualTo("PGFN_TRANSACAO_EDITAL_6_2026");
+            assertThat(rec.get("cenario").asText()).isNotEqualTo("SE_REVISAO_DEFERIDA");
+        }
+
+        @Test
+        void parcelamentoOrdinarioSefaPrDoIcmsStBloqueadoSemUpf() throws Exception {
+            JsonNode m = modalidade(simular(debito(d -> "SEFA_PR".equals(d.get("orgaoCredor").asText()) && "ICMS_ST".equals(d.get("tributo").asText()))),
+                    "SEFA_PR_ORDINARIO", "OFICIAL");
+            conferir(m, "sefa_pr_icms_st");
+            assertThat(m.at("/debitos/0/percentualMulta").decimalValue()).isEqualByComparingTo("10");
+            assertThat(m.get("elegivel").asBoolean()).isFalse();
+            assertThat(m.get("bloqueio").asText()).contains("UPF/PR de 2026-10");
+        }
+
+        @Test
+        void reparcelamentoDoParcelamentoEstadual() throws Exception {
+            long cda = debitoId(d -> "2024.0012345-8".equals(d.get("numeroInscricao").asText()));
+            JsonNode r = simular("{\"debitoIds\":[" + cda + "],\"dataBase\":\"2026-10-14\",\"reparcelamento\":true}");
+            assertThat(modalidade(r, "SEFA_PR_ORDINARIO", "OFICIAL").get("elegivel").asBoolean()).isFalse(); // já parcelada
+            JsonNode m = modalidade(r, "SEFA_PR_ORDINARIO", "REPARCELAMENTO");
+            conferir(m, "sefa_pr_reparcelamento");
+            assertThat(m.get("entrada").decimalValue()).isEqualByComparingTo(esperado("sefa_pr_reparcelamento", "entrada"));
+        }
+
+        @Test
+        void salvarGuardaAsVersoesEOCartaoMostraAMelhorProposta() throws Exception {
+            String resposta = mvc.perform(post("/api/clientes/{c}/simulacoes", metalurgica.getId()).with(sessao)
+                    .contentType(MediaType.APPLICATION_JSON).content(inscricao("90 3 24 002201-55")))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            JsonNode salva = json.readTree(resposta);
+            assertThat(salva.get("versaoRegras").asText()).isEqualTo("2026-10-29");
+            JsonNode melhor = conteudo("/api/clientes/{c}/simulacoes/melhor");
+            assertThat(melhor.get("id").asLong()).isEqualTo(salva.get("id").asLong());
+            assertThat(melhor.get("recomendacao").asText()).contains("Transação por adesão");
+        }
+
+        private void conferir(JsonNode m, String caso) {
+            assertThat(m.get("totalConsolidado").decimalValue()).as(caso + " total").isEqualByComparingTo(esperado(caso, "total"));
+            assertThat(m.get("valorParcela").decimalValue()).as(caso + " parcela").isEqualByComparingTo(esperado(caso, "valor_parcela"));
+            assertThat(m.get("cronograma")).as(caso + " prestações").hasSize(esperados.at("/simulacoes/" + caso + "/parcelas").asInt());
+            assertThat(m.get("custoNominal").decimalValue()).as(caso + " custo nominal").isEqualByComparingTo(esperado(caso, "custo_nominal"));
+            assertThat(m.get("custoProjetado").decimalValue()).as(caso + " custo projetado").isEqualByComparingTo(esperado(caso, "custo_projetado"));
+            JsonNode cron = m.get("cronograma");
+            assertThat(cron.get(0).get("valor").decimalValue()).as(caso + " 1ª").isEqualByComparingTo(esperado(caso, "primeira"));
+            assertThat(cron.get(cron.size() - 1).get("valor").decimalValue()).as(caso + " última").isEqualByComparingTo(esperado(caso, "ultima"));
+            assertThat(m.get("selicProjetada").decimalValue()).isEqualByComparingTo(esperados.at("/simulacoes/selic_projetada").asText());
+        }
+
+        private BigDecimal esperado(String caso, String campo) {
+            return new BigDecimal(esperados.at("/simulacoes/" + caso + "/" + campo).asText());
+        }
+
+        private JsonNode simular(String corpo) throws Exception {
+            return json.readTree(mvc.perform(post("/api/clientes/{c}/simulacoes/calcular", metalurgica.getId()).with(sessao)
+                    .contentType(MediaType.APPLICATION_JSON).content(corpo)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        }
+
+        private String debito(java.util.function.Predicate<JsonNode> condicao) throws Exception {
+            return "{\"debitoIds\":[" + debitoId(condicao) + "],\"dataBase\":\"2026-10-14\"}";
+        }
+
+        private String inscricao(String numero) throws Exception {
+            return debito(d -> numero.equals(d.get("numeroInscricao").asText()) && "PGFN".equals(d.get("orgaoCredor").asText()));
+        }
+
+        private long debitoId(java.util.function.Predicate<JsonNode> condicao) throws Exception {
+            return encontrar(conteudo("/api/clientes/{c}/debitos"), condicao).get("id").asLong();
+        }
+
+        private JsonNode modalidade(JsonNode r, String chave, String cenario) {
+            return encontrar(r.get("modalidades"), m -> chave.equals(m.get("chave").asText()) && cenario.equals(m.get("cenario").asText()));
+        }
+    }
+
     // ---------------------------------------------------------------- apoio
 
     private long importar(Path arquivo) throws Exception {

@@ -42,8 +42,12 @@ public class ParametrosCapacidade {
                         @NotNull @DecimalMin("0") @DecimalMax("100") BigDecimal realizacaoImobilizado) {
     }
 
-    /** percentualFcoLivre: fração do caixa operacional livre que pode ir para parcelas (padrão 30%). */
-    public record ParametrosGerencial(@NotNull @DecimalMin("1") @DecimalMax("100") BigDecimal percentualFcoLivre) {
+    /**
+     * percentualFcoLivre: fração do caixa operacional livre que pode ir para parcelas (padrão 30%). selicProjetada: % a.m.
+     * para as parcelas futuras das simulações (nulo = média das 12 últimas SELIC do Banco Central).
+     */
+    public record ParametrosGerencial(@NotNull @DecimalMin("1") @DecimalMax("100") BigDecimal percentualFcoLivre,
+                                      @DecimalMin("0") @DecimalMax("10") BigDecimal selicProjetada) {
     }
 
     public record ParametrosEscritorio(@NotNull @Valid ParametrosCapag capag, @NotNull @Valid ParametrosGerencial gerencial, String atualizadoPor,
@@ -53,7 +57,7 @@ public class ParametrosCapacidade {
     public static final ParametrosEscritorio PADRAO = new ParametrosEscritorio(
             new ParametrosCapag(new BigDecimal("2"), new BigDecimal("1"), new BigDecimal("0.5"), "MENOR", 2,
                     new BigDecimal("100"), new BigDecimal("80"), new BigDecimal("50"), new BigDecimal("30")),
-            new ParametrosGerencial(new BigDecimal("30")), null, null);
+            new ParametrosGerencial(new BigDecimal("30"), null), null, null);
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;

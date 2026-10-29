@@ -183,10 +183,10 @@ class AdaptadoresTest {
             assertThat(p.multa()).isEqualByComparingTo(BigDecimal.ZERO);
         });
         Extracao relatorio = extrair("pagamentos/Relatorio_Consolidado_Pagamentos_11222333000181.pdf", AdaptadorRelatorioPagamentos.class);
-        assertThat(relatorio.pagamentos).hasSize(17);
+        assertThat(relatorio.pagamentos).hasSize(53); // 17 + os DARF de PIS, COFINS e IPI dos 12 meses de 2025
         assertThat(relatorio.pagamentos).filteredOn(p -> "2021.009871-4".equals(p.parcelamento())).hasSize(9);
-        assertThat(relatorio.pagamentos.get(3).numero()).isEqualTo("07.18.25041.0099887-6"); // número cortado na célula, junto
-        assertThat(relatorio.pagamentos.get(3).dataPagamento()).isEqualTo(LocalDate.of(2025, 2, 10));
+        assertThat(relatorio.pagamentos).filteredOn(p -> "07.18.25041.0099887-6".equals(p.numero())) // número cortado na célula, junto
+                .singleElement().satisfies(p -> assertThat(p.dataPagamento()).isEqualTo(LocalDate.of(2025, 2, 10)));
     }
 
     @Test
