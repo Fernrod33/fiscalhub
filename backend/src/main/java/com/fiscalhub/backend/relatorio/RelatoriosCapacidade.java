@@ -10,7 +10,6 @@ import com.fiscalhub.backend.contabil.DemonstracaoService;
 import com.fiscalhub.backend.relatorio.ModeloRelatorio.*;
 import com.fiscalhub.backend.relatorio.MontagemRelatorios.Corpo;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
-import com.fiscalhub.backend.situacao.SituacaoFiscalService.OrigemValor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -50,11 +49,7 @@ class RelatoriosCapacidade {
             secoes.add(new Secao("CAPAG oficial", "Não disponível — importe a tela de CAPAG do Regularize.", false, null, null));
         }
         secoes.add(criterios(est, documentos));
-        secoes.add(secao("Créditos irrecuperáveis (art. 25)", "Nenhuma inscrição na PGFN nos documentos importados.", false, est.itens(),
-                colunas("Inscrição", "Valor:MOEDA", "Situação", "Fundamento"), i -> linha(i.id(), i.valor(),
-                        i.classe() == null ? ND : i.classe().equals("IRRECUPERAVEL") ? "irrecuperável" : "recuperável",
-                        i.observacao() == null ? i.criterios().stream().filter(x -> x.naoDisponivel() != null).map(CriterioCapacidade::naoDisponivel)
-                                .findFirst().orElse("nenhum inciso do art. 25 se aplica") : i.observacao()), null, null));
+        secoes.add(irrecuperaveis(est));
         secoes.add(criterios(pr, documentos));
         secoes.add(secao("CDAs do Paraná — classe recalculada × oficial", "Nenhuma CDA de ICMS nos documentos importados.", false, pr.itens(),
                 colunas("CDA", "Valor:MOEDA", "Índice (média geométrica)", "Classe recalculada", "Classe oficial (RTI)", "Observação"),
@@ -122,10 +117,7 @@ class RelatoriosCapacidade {
                 + "os lançamentos de " + curso + ".", !in.dfcs().containsKey(curso), null, null));
         ResultadoCapacidade est = metodologia(c, "CAPAG_ESTIMADA");
         secoes.add(criterios(est, documentos));
-        secoes.add(secao("Créditos irrecuperáveis (art. 25)", "Nenhuma inscrição na PGFN nos documentos importados.", false, est.itens(),
-                colunas("Inscrição", "Valor:MOEDA", "Situação", "Fundamento"), i -> linha(i.id(), i.valor(),
-                        i.classe() == null ? ND : i.classe().equals("IRRECUPERAVEL") ? "irrecuperável" : "recuperável",
-                        Objects.toString(i.observacao(), "nenhum inciso do art. 25 se aplica")), null, null));
+        secoes.add(irrecuperaveis(est));
         secoes.add(parametros(c));
         List<Indicador> sumario = List.of(
                 new Indicador("CAPAG oficial", c.capagOficial() == null ? ND : c.capagOficial().classe(), Formato.TEXTO, null),
@@ -134,6 +126,15 @@ class RelatoriosCapacidade {
                         "método: " + c.parametros().capag().metodoConsiderado().replace('_', ' ').toLowerCase()),
                 new Indicador("Exercícios", anos.toString(), Formato.TEXTO, "BP, DRE e DFC direta"));
         return new Corpo(sumario, secoes, documentos, new ArrayList<>(est.alertas()));
+    }
+
+    /** Créditos irrecuperáveis (art. 25): a mesma seção no relatório de capacidade e no dossiê. */
+    private static Secao irrecuperaveis(ResultadoCapacidade est) {
+        return secao("Créditos irrecuperáveis (art. 25)", "Nenhuma inscrição na PGFN nos documentos importados.", false, est.itens(),
+                colunas("Inscrição", "Valor:MOEDA", "Situação", "Fundamento"), i -> linha(i.id(), i.valor(),
+                        i.classe() == null ? ND : i.classe().equals("IRRECUPERAVEL") ? "irrecuperável" : "recuperável",
+                        i.observacao() != null ? i.observacao() : i.criterios().stream().filter(x -> x.naoDisponivel() != null)
+                                .map(CriterioCapacidade::naoDisponivel).findFirst().orElse("nenhum inciso do art. 25 se aplica")), null, null);
     }
 
     private Secao criterios(ResultadoCapacidade r, Set<Long> documentos) {
@@ -145,7 +146,7 @@ class RelatoriosCapacidade {
                 colunas("Critério", "Valor", "Pontos / índice", "Faixa ou cálculo", "Fundamento", "Origem"),
                 x -> linha(x.nome(), x.naoDisponivel() != null ? x.naoDisponivel() : Formatos.celula(x.valor(), x.formato()),
                         Objects.toString(x.pontos(), "—"), Objects.toString(x.faixa(), "—"), x.fundamento(),
-                        x.origens().stream().filter(Objects::nonNull).map(RelatoriosCapacidade::origem).distinct().collect(Collectors.joining(" + "))),
+                        x.origens().stream().filter(Objects::nonNull).map(MontagemRelatorios::origem).distinct().collect(Collectors.joining(" + "))),
                 null, texto);
     }
 
@@ -185,9 +186,6 @@ class RelatoriosCapacidade {
         return c.metodologias().stream().flatMap(m -> m.normas().stream()).distinct();
     }
 
-    private static String origem(OrigemValor o) {
-        return MontagemRelatorios.origem(o);
-    }
 
     private static List<String> linha(String... celulas) {
         return Arrays.asList(celulas);

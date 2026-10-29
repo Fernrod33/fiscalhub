@@ -486,6 +486,10 @@ A API sobe em `http://localhost:8080`.
 mvn test   # requer Docker em execução
 ```
 
+> **VS Code:** a extensão Java compila no mesmo `target/classes` do Maven e, com o autobuild ligado, apaga ou troca
+> classes no meio de um `mvn test` (erros intermitentes de `ClassNotFoundException` ou "Unresolved compilation
+> problem"). Em `.vscode/settings.json` (não versionado), use `"java.autobuild.enabled": false`; se aparecer, `mvn clean`.
+
 - **Integração** (`integracao/`, anotação `@TesteIntegracao`, um único contexto):
   - isolamento entre escritórios e papéis;
   - escritório, signup e gestão de usuários;

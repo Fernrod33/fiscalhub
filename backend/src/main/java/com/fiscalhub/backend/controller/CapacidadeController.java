@@ -9,6 +9,8 @@ import com.fiscalhub.backend.capacidade.ParametrosCapacidade;
 import com.fiscalhub.backend.capacidade.RegrasCapacidade;
 import com.fiscalhub.backend.capacidade.ResultadoCapacidade;
 import com.fiscalhub.backend.security.ConsultorOuAdmin;
+import com.fiscalhub.backend.security.LimiteFrequencia;
+import org.springframework.beans.factory.annotation.Value;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -37,21 +39,33 @@ public class CapacidadeController {
     private final DfcDiretaService dfc;
     private final ParametrosCapacidade parametros;
     private final RegrasCapacidade regras;
+    private final LimiteFrequencia limite;
+    private final int consultasPorMinuto;
 
-    public CapacidadeController(CapacidadeService capacidade, DfcDiretaService dfc, ParametrosCapacidade parametros, RegrasCapacidade regras) {
+    public CapacidadeController(CapacidadeService capacidade, DfcDiretaService dfc, ParametrosCapacidade parametros, RegrasCapacidade regras,
+                                LimiteFrequencia limite, @Value("${fiscalhub.capacidade.consultas-por-minuto:60}") int consultasPorMinuto) {
         this.capacidade = capacidade;
         this.dfc = dfc;
         this.parametros = parametros;
         this.regras = regras;
+        this.limite = limite;
+        this.consultasPorMinuto = consultasPorMinuto;
+    }
+
+    /** Capacidade, simulação e DFC releem arquivos do storage: limite por usuário, como nos relatórios. */
+    private void limitar(UsuarioAutenticado ua) {
+        limite.verificar("consultas de capacidade e DFC", ua.id(), consultasPorMinuto);
     }
 
     @GetMapping("/clientes/{clienteId}/capacidade")
     public CapacidadeService.Capacidade capacidade(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        limitar(ua);
         return capacidade.capacidade(clienteId, ua);
     }
 
     @GetMapping("/clientes/{clienteId}/capacidade/resumo")
     public CapacidadeService.ResumoCapacidade resumo(@PathVariable long clienteId, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        limitar(ua);
         return capacidade.resumo(clienteId, ua);
     }
 
@@ -59,6 +73,7 @@ public class CapacidadeController {
     @PostMapping("/clientes/{clienteId}/capacidade/pr/simulacao")
     public ResultadoCapacidade simularPr(@PathVariable long clienteId, @RequestBody PedidoSimulacao pedido,
                                          @AuthenticationPrincipal UsuarioAutenticado ua) {
+        limitar(ua);
         return capacidade.simularPr(clienteId, new Simulacao(pedido.quitar() == null ? Set.of() : pedido.quitar(),
                 pedido.parcelar() == null ? Set.of() : pedido.parcelar()), ua);
     }
@@ -70,6 +85,7 @@ public class CapacidadeController {
 
     @GetMapping("/clientes/{clienteId}/dfc")
     public DfcDiretaService.Dfc dfc(@PathVariable long clienteId, @RequestParam int exercicio, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        limitar(ua);
         return dfc.dfc(clienteId, exercicio, ua);
     }
 

@@ -46,15 +46,15 @@ public class AnaliseGerencial implements MetodologiaCapacidade {
 
     public static IndicadoresGerenciais indicadores(Insumos in, int ano) {
         Dfc dfc = in.dfcs().get(ano);
-        BigDecimal ac = valor(in.bp(), "1.01", ano), pc = neg(valor(in.bp(), "2.01", ano)), estoques = valor(in.bp(), "1.01.03", ano);
-        BigDecimal rlp = valor(in.bp(), "1.02.01", ano), pnc = neg(valor(in.bp(), "2.02", ano)), ativo = valor(in.bp(), "1", ano);
+        BigDecimal ac = Insumos.linha(in.bp(), "1.01", ano), pc = neg(Insumos.linha(in.bp(), "2.01", ano)), estoques = Insumos.linha(in.bp(), "1.01.03", ano);
+        BigDecimal rlp = Insumos.linha(in.bp(), "1.02.01", ano), pnc = neg(Insumos.linha(in.bp(), "2.02", ano)), ativo = Insumos.linha(in.bp(), "1", ano);
         BigDecimal despFin = Insumos.soma(in.dre(), CapagEstimada.DESPESAS_FINANCEIRAS, ano);
         BigDecimal recFin = Insumos.soma(in.dre(), CapagEstimada.RECEITAS_FINANCEIRAS, ano).negate();
-        BigDecimal lair = neg(valor(in.dre(), "3.01", ano));
+        BigDecimal lair = neg(Insumos.linha(in.dre(), "3.01", ano));
         BigDecimal ebit = lair == null ? null : lair.add(despFin).subtract(recFin);
-        BigDecimal receita = neg(valor(in.dre(), "3.01.01.01.01", ano));
-        BigDecimal cpv = valor(in.dre(), "3.01.01.03", ano);
-        BigDecimal clientes = valor(in.bp(), "1.01.02.02", ano), fornecedores = neg(valor(in.bp(), "2.01.01.03", ano));
+        BigDecimal receita = neg(Insumos.linha(in.dre(), "3.01.01.01.01", ano));
+        BigDecimal cpv = Insumos.linha(in.dre(), "3.01.01.03", ano);
+        BigDecimal clientes = Insumos.linha(in.bp(), "1.01.02.02", ano), fornecedores = neg(Insumos.linha(in.bp(), "2.01.01.03", ano));
         BigDecimal ciclo = null;
         if (receita != null && cpv != null && cpv.signum() != 0 && receita.signum() != 0 && clientes != null && estoques != null && fornecedores != null) {
             ciclo = clientes.multiply(DIAS).divide(receita, 1, RoundingMode.HALF_EVEN)
@@ -139,9 +139,6 @@ public class AnaliseGerencial implements MetodologiaCapacidade {
                 : new CriterioCapacidade(nome, cru(v), f, null, null, "análise do consultor", List.of(), null);
     }
 
-    private static BigDecimal valor(com.fiscalhub.backend.contabil.DemonstracaoService.Comparativo c, String codigo, int ano) {
-        return Insumos.linha(c, codigo, ano);
-    }
 
     private static BigDecimal neg(BigDecimal v) {
         return v == null ? null : v.negate();
