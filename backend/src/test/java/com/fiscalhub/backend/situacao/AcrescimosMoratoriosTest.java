@@ -89,6 +89,6 @@ class AcrescimosMoratoriosTest {
                 return !m.isBefore(inicio) && !m.isAfter(fim);
             }).toList();
         });
-        return new AcrescimosMoratorios(new IndiceMonetarioService(repositorio));
+        return new AcrescimosMoratorios(new IndiceMonetarioService(repositorio), new com.fiscalhub.backend.parcelamento.RegrasParcelamento());
     }
 }

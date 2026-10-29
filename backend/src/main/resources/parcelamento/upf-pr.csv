@@ -1,0 +1,7 @@
+# UPF/PR oficial, mês a mês: só valores lidos na resolução da SEFA-PR baixada (URL e SHA-256 do PDF).
+# Mês ausente = regras que dependem da UPF/PR (parcela mínima, valor mínimo e garantia do RICMS/PR) bloqueadas com aviso.
+# Para incluir um mês: baixe a resolução em sefanet.pr.gov.br, confira o valor e acrescente a linha (nunca estime).
+mes;valor;norma;url;sha256
+2025-02;141.62;Resolução SEFA 57/2025;https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500057.pdf;8e4ef6c9391176ac9f33187c6d045886c898b8bcbac6e4676c5d4da6350650e6
+2025-03;141.85;Resolução SEFA 187/2025;https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500187.pdf;bfefc7cc5edc3d4f55ea5452909455e8116a804dd63a57b881d5e8d806ce7fc3
+2025-04;143.71;Resolução SEFA 291/2025;https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500291.pdf;f69d3e0817c44242dc0a267a4ff0bff23fb327236ec721e5afe17ef7786d87f2
