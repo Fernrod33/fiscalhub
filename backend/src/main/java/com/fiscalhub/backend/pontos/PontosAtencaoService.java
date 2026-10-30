@@ -124,6 +124,12 @@ public class PontosAtencaoService {
         }
         long cliente = ((Number) doc.getFirst().get("cliente")).longValue();
         long escritorio = ((Number) doc.getFirst().get("escritorio")).longValue();
+        // no meio de uma importação em lote: espera o último documento do cliente (ele dispara a reavaliação)
+        Integer emCurso = jdbc.queryForObject("SELECT count(*) FROM documento_fiscal WHERE cliente_id = ? AND status IN ('RECEBIDO', 'PROCESSANDO')",
+                Integer.class, cliente);
+        if (emCurso != null && emCurso > 0) {
+            return;
+        }
         if (pendentes.add(cliente)) {
             fila.submit(() -> {
                 pendentes.remove(cliente);
@@ -258,6 +264,12 @@ public class PontosAtencaoService {
     }
 
     public PontoAtencao mudarEstado(long clienteId, long id, String estado, String comentario, UsuarioAutenticado ua) {
+        synchronized (travas.computeIfAbsent(clienteId, k -> new Object())) { // nunca no meio de uma reavaliação do cliente
+            return mudar(clienteId, id, estado, comentario, ua);
+        }
+    }
+
+    private PontoAtencao mudar(long clienteId, long id, String estado, String comentario, UsuarioAutenticado ua) {
         PontoAtencao p = detalhe(clienteId, id, ua);
         if (!List.of("NOVO", "EM_ANALISE", "RESOLVIDO", "DESCARTADO").contains(estado)) {
             throw new BusinessRuleException("Estado inválido: " + estado + ".");
@@ -284,7 +296,7 @@ public class PontosAtencaoService {
                 SELECT c.id, c.razao_social, c.cnpj,
                   count(p.id) FILTER (WHERE p.severidade = 'CRITICA'), count(p.id) FILTER (WHERE p.severidade = 'ALTA'),
                   count(p.id) FILTER (WHERE p.severidade = 'MEDIA'), count(p.id) FILTER (WHERE p.severidade = 'INFO'),
-                  (SELECT count(*) FROM documento_fiscal d WHERE d.cliente_id = c.id AND d.status IN ('PENDENTE', 'PROCESSANDO', 'AGUARDANDO_CLIENTE', 'AGUARDANDO_MAPEAMENTO')),
+                  (SELECT count(*) FROM documento_fiscal d WHERE d.cliente_id = c.id AND d.status IN ('RECEBIDO', 'PROCESSANDO', 'AGUARDANDO_CLIENTE', 'AGUARDANDO_MAPEAMENTO')),
                   (SELECT count(*) FROM documento_fiscal d WHERE d.cliente_id = c.id AND d.status IN ('ERRO', 'LAYOUT_NAO_RECONHECIDO')),
                   (SELECT a.avaliado_em FROM avaliacao_pontos a WHERE a.cliente_id = c.id)
                 FROM cliente c LEFT JOIN ponto_atencao p ON p.cliente_id = c.id AND p.estado IN ('NOVO', 'EM_ANALISE')

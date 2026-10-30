@@ -67,14 +67,6 @@ public class CalendarioDiasUteis {
         return d;
     }
 
-    /** Dia útil anterior mais próximo (ou o próprio dia), como na antecipação dos vencimentos federais. */
-    public LocalDate utilAnterior(LocalDate d, String uf, String municipio) {
-        while (!util(d, uf, municipio)) {
-            d = d.minusDays(1);
-        }
-        return d;
-    }
-
     /** Domingo de Páscoa (algoritmo de Meeus/Jones/Butcher, calendário gregoriano). */
     static LocalDate pascoa(int ano) {
         int a = ano % 19, b = ano / 100, c = ano % 100, d = b / 4, e = b % 4, f = (b + 8) / 25, g = (b - f + 1) / 3;

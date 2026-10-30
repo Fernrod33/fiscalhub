@@ -26,8 +26,8 @@ class CalendarioDiasUteisTest {
     void ultimoDiaUtilPulaFimDeSemanaEFeriado() {
         assertThat(cal.ultimoDiaUtil(YearMonth.of(2026, 10), null, null)).isEqualTo(LocalDate.of(2026, 10, 30)); // 31 é sábado
         assertThat(cal.ultimoDiaUtil(YearMonth.of(2027, 4), null, null)).isEqualTo(LocalDate.of(2027, 4, 30));
-        assertThat(cal.utilAnterior(LocalDate.of(2026, 11, 20), null, null)).isEqualTo(LocalDate.of(2026, 11, 19)); // Consciência Negra
-        assertThat(cal.utilAnterior(LocalDate.of(2026, 12, 25), null, null)).isEqualTo(LocalDate.of(2026, 12, 24));
+        assertThat(cal.util(LocalDate.of(2026, 11, 20), null, null)).as("Consciência Negra").isFalse();
+        assertThat(cal.ultimoDiaUtil(YearMonth.of(2026, 12), null, null)).isEqualTo(LocalDate.of(2026, 12, 31));
     }
 
     @Test
