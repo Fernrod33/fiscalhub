@@ -101,6 +101,7 @@ O schema é versionado em `src/main/resources/db/migration` e aplicado pelo Flyw
 | `V20__situacao_fiscal.sql` | `debito` ampliado (escrituração, chave, fontes, encargo, total, origem por página e linha; vencimento e principal passam a aceitar nulo), `parcelamento`, `pendencia_fiscal`, `capacidade_pagamento_oficial`; `escrituracao_contabil.origem` e `versao_leiaute` mais largos |
 | `V21__declarado_e_pago.sql` | `debito_declarado` e `pagamento` |
 | `V22__identidade_do_escritorio.sql` | identidade nos relatórios no `escritorio` (nome de exibição, chave do logotipo, cor, rodapé, responsável técnico); tudo nulo nos existentes |
+| `V26__pontos_de_atencao.sql` | `ponto_atencao` (chave de identidade, hash da evidência, estado), histórico, última avaliação (regras não avaliadas) e parâmetros das regras por escritório |
 | `V25__simulacao_motor_unico.sql` | simulação versionada (resultado em JSON, versão das regras e dos índices, versão anterior); simulações antigas = motor antigo; `fonte_secundaria` nas regras da capacidade |
 | `V24__capacidade_de_pagamento.sql` | `divida_detalhe`, `situacao_cadastral`, `regra_capacidade_pagamento` (com as regras dos textos oficiais), `parametro_capacidade` e `dfc_depara_escritorio` |
 | `V23__relatorio_emitido.sql` | `relatorio_emitido` (parâmetros, snapshot, versões, PDF e Excel com SHA-256, número por escritório), com trigger que impede `UPDATE` |
@@ -419,8 +420,11 @@ a versão de cada modalidade, `chave@início da vigência`):
 | `RFB_ORDINARIO` / `RFB_SIMPLIFICADO` | Lei 10.522/2002, arts. 10 a 14-F; IN RFB 2.063/2022 | até 60; mínimo R$ 500 PJ / R$ 200 PF; SELIC acumulada + 1% por prestação; reparcelamento 10% / 20%; vedações do art. 20 (só no ordinário) |
 | `PGFN_ORDINARIO` | Portaria PGFN 448/2019 | até 60; encargo legal de 20% na consolidação; garantia acima de R$ 1 milhão; 1ª no mês do pedido |
 | `PGFN_TRANSACAO_EDITAL_6_2026` | Edital PGDAU 6/2026 e 10/2026; Lei 13.988/2020; Portaria PGFN 6.757/2022 | duas versões (adesão 01/06–30/09/2026, corte 03/03/2026; reaberta 01/10/2026–29/01/2027, corte 03/07/2026); classes C e D: até 100% de juros, multas e encargos, limitado a 65% de cada inscrição, nunca o principal; entrada 6% em até 6 + 114; sem desconto, 60 meses; mínimo R$ 100 |
+| `PGFN_TRANSACAO_EDITAL_6_2026_ME_EPP` | Edital 6/2026, art. 5º; LC 123/2006, art. 3º | ME e EPP pelo porte da receita bruta importada (ECD/ECF; sem ela, não se aplica): entrada 6% em até 12 + 133, desconto até 70% |
 | `SEFA_PR_ORDINARIO` | Lei PR 11.580/1996, art. 41; RICMS/PR, arts. 80 a 84 | até 60 (EFD: 24); 30 UPF/PR a parcelar, 6 UPF/PR por parcela; garantia acima de 5.000 UPF/PR e 36 parcelas; juros vincendos da 2ª em diante; vedado GIA-ST/DeSTDA; reparcelamento com 6 parcelas se 37–60 |
 | `PERT_RFB`, `REFIS`, `REGULARIZA_PARANA` | programas encerrados | aparecem como não elegíveis, com o motivo |
+
+**1ª prestação** (RFB e PGFN) no mês do pedido, sem acréscimo (Lei 10.522, art. 11; IN RFB 2.063, arts. 4º e 13; a consolidação já leva os juros até esse mês); a 2ª leva 1%; a 3ª, a SELIC de um mês + 1%. **Vencimentos** pelo `CalendarioDiasUteis` (feriados nacionais fixos e móveis e `resources/calendario/feriados-locais.csv`, dado com a lei de cada feriado local).
 
 Acréscimos (`acrescimos` no mesmo arquivo) por órgão, lidos pelo `AcrescimosMoratorios` (o único cálculo de multa e
 juros do sistema): RFB e PGFN pelo art. 61 da Lei 9.430 (PGFN com o encargo de 20%); PR pela Lei 11.580, art. 38
@@ -453,6 +457,62 @@ elegíveis que cabem na parcela sustentável (selo e % comprometido).
 das regras e dos índices, parâmetros da projeção e o resultado inteiro (JSON). Simulações anteriores à Fase 5 ficam como
 "motor antigo" e se recalculam com um clique. Relatório `PROPOSTA_REGULARIZACAO` (com `simulacaoId`) sai da simulação
 salva, sem recalcular.
+
+## Pontos de atenção (Fase 6)
+
+Cada achado diz **o que é** (título e descrição com os valores), **por que importa** (fundamento), **a evidência**
+(cada dado com a origem: documento, página ou registro e linha, e o link para a tela onde ele aparece) e **o que
+fazer** (recomendação).
+
+**Regras** (pacote `pontos/`): cada uma é uma classe pequena que implementa `RegraPontoAtencao` (`codigo()`,
+`avaliar(ContextoPontos, Definicao)`) e é um bean. Nenhuma calcula: consultam o `ContextoPontos` (conciliação,
+situação fiscal, saldos, apurações, capacidade, simulação, escriturações, DFC), que repassa aos serviços donos dos
+dados com cache por avaliação. Faltou um número? O método novo vai no serviço dono (ex.: `ConferenciaEcdEcf.comparacoes`).
+
+| Regra | O que detecta | Fonte | Categoria / severidade |
+|---|---|---|---|
+| R01 | pago a menor ou não pago, com os acréscimos até hoje | conciliação + `AcrescimosMoratorios` | conformidade / alta |
+| R02 | pago em atraso sem acréscimos | conciliação | conformidade / alta |
+| R03 | apurado × declarado (não declarado ou a menor) | conciliação | conformidade / crítica |
+| R04 | ICMS-ST não recolhido com saldo credor do ICMS próprio | conciliação + saldos (E110) | conformidade / alta |
+| R05 | saldo credor de ICMS por [3] meses seguidos ou acima de [2]× o débito médio | saldos + apurações | oportunidade / média |
+| R06 | omissão de declaração (crítica se impede a certidão: PC 1.751/2014, art. 4º, I) | pendências | conformidade / alta |
+| R07 | débito que impede a certidão | situação fiscal | risco / crítica |
+| R08 | revisão da CAPAG potencialmente vantajosa | capacidade | oportunidade / alta |
+| R09 | inscrições elegíveis a transação com desconto, não negociadas | simulação (motor da Fase 5) | oportunidade / alta |
+| R10 | parcelamento em atraso ou parcelas acima da parcela sustentável | parcelamentos + capacidade | risco / alta |
+| R11 | despesa indedutível (multa) adicionada no e-Lalur | ECF Parte A | monitoramento / média |
+| R12 | prejuízo fiscal e base negativa acumulados (trava de [30]%) | ECF Parte B | oportunidade / info |
+| R13 | créditos de PIS/COFINS com saldo por [3] meses | EFD-Contribuições 1100/1500 | oportunidade / média |
+| R14 | saídas de capital e dividendos (DFC) com débito federal sem garantia | DFC + débitos | risco / crítica |
+| R15 | divergência ECD × ECF acima de [R$ 1,00] | `ConferenciaEcdEcf` | conformidade / média |
+| R16 | escrituração substituta importada | escriturações | monitoramento / info |
+
+Fundamentos com `conferido: false` em `pontos/regras.json` (R03, R05, R11, R12, R13, R14) citam a norma sem o texto vigente
+baixado; o relatório e a tela de regras marcam isso.
+
+**Escrever uma regra nova:** (1) a entrada em `resources/pontos/regras.json` (código, título, categoria, severidade
+padrão, fundamento, recomendação, `parametros` com os limites, `conferido`) e `versao` nova; (2) a classe em
+`RegrasIniciais` (ou um arquivo próprio no pacote) com `@Component`, implementando `RegraPontoAtencao`; (3) a chave de
+identidade do achado estável entre reimportações (inscrição, tributo e competência — nunca o id do banco); (4) sem
+dado suficiente, `Avaliacao.naoAvaliada("falta importar …")`, nunca um achado inventado; (5) o teste em
+`RegrasIniciaisTest` (dispara, não dispara, limiar exato, dados insuficientes) e, se a massa tiver o caso, a linha em
+`PONTOS` do gerador.
+
+**Ciclo de vida** (`ponto_atencao`, V26; histórico em `ponto_atencao_historico`, auditoria na mudança de estado):
+
+- a reavaliação roda depois de cada importação processada (evento `DocumentoProcessado`, agrupado por cliente numa
+  fila local) e sob demanda (`POST .../reavaliar`, limite `fiscalhub.pontos.reavaliacoes-por-minuto`);
+- achado novo: `NOVO`; o consultor muda para `EM_ANALISE`, `RESOLVIDO` ou `DESCARTADO` (justificativa obrigatória);
+- a chave de identidade (`regra|chave`) não deixa duplicar; o que deixou de ocorrer (regra avaliada sem o achado) vira
+  `RESOLVIDO` com "condição não ocorre mais"; `RESOLVIDO` que volta a ocorrer vira `NOVO`;
+- `DESCARTADO` não volta enquanto o hash das evidências for o mesmo; mudou a evidência, volta como `NOVO`.
+
+**Parâmetros:** os padrões são dado versionado; o escritório sobrepõe limites e severidade (`parametro_ponto_atencao`,
+`PUT /api/escritorio/pontos-atencao/regras/{codigo}`, ADMIN, auditado). Só aceita parâmetro que a regra já tem, do mesmo tipo.
+
+**Diagnóstico fiscal** (`DIAGNOSTICO_FISCAL`, `incluirEncerrados`): sumário por severidade e valor envolvido, os
+abertos com fundamento, recomendação e evidências, e os resolvidos e descartados com a justificativa.
 
 ## Modelo de apuração
 
@@ -707,6 +767,18 @@ Relatórios novos (`POST /api/clientes/{id}/relatorios`): `CAPACIDADE` e `DOSSIE
 | DELETE | `/api/clientes/{id}/simulacoes/{sid}` | ADMIN, CONSULTOR | exclui (auditado) |
 
 Calcular, salvar e recalcular têm o limite por usuário das consultas de capacidade (`fiscalhub.capacidade.consultas-por-minuto`).
+
+### Pontos de atenção
+
+| Método | Rota | Papel | Descrição |
+|---|---|---|---|
+| GET | `/api/clientes/{id}/pontos-atencao?severidade=&categoria=&estado=` | todos | achados priorizados (severidade, valor, data) |
+| GET | `/api/clientes/{id}/pontos-atencao/{pid}` | todos | achado com o histórico de estados |
+| PATCH | `/api/clientes/{id}/pontos-atencao/{pid}/estado` | ADMIN, CONSULTOR | `{estado, comentario}`; descartar exige comentário (auditado) |
+| POST | `/api/clientes/{id}/pontos-atencao/reavaliar` | todos | reavalia agora (limite por usuário) |
+| GET | `/api/clientes/{id}/pontos-atencao/nao-avaliadas` | todos | regras sem dados e o que falta importar |
+| GET | `/api/escritorio/pontos-atencao/resumo` | todos | painel: carteira (achados por severidade, importações pendentes/erro) e simulações recentes |
+| GET/PUT | `/api/escritorio/pontos-atencao/regras[/{codigo}]` | todos / ADMIN | parâmetros e severidade das regras (auditado) |
 
 ### Auditoria
 

@@ -75,6 +75,34 @@ mesmo). Depois de regenerar, rode `mvn test -Dtest=MassaFicticiaAceiteTest`: se 
 11. **CDA ajuizada de 2023** (2023.0045678-2, R$ 315.000,00, classe C): a que mais pesa na classe do devedor; quitá-la leva o devedor de B para A.
 12. **Nenhum crédito irrecuperável na PGFN** (inscrições de 2022 a 2024, sem suspensão judicial, CNPJ ativo).
 
+## Gabarito dos pontos de atenção (Fase 6)
+
+`valores_esperados.json` → `pontos_atencao` (lista `PONTOS` do gerador): os achados abertos que a massa tem que gerar,
+e nenhum outro (`MassaFicticiaAceiteTest.PontosAtencao`).
+
+| Item | Regra | Severidade | Achado |
+|---|---|---|---|
+| 1 | R01 | alta | Pago a menor: COFINS 08/2026 |
+| 1 | R07 | crítica | Débito que impede a certidão: RFB COFINS 08/2026 (a diferença em aberto na situação fiscal) |
+| 2 | R02 | alta | Pago em atraso sem acréscimos: IPI 11/2024 |
+| 2 | R07 | crítica | Débito que impede a certidão: RFB IPI 11/2024 (multa e juros em aberto no SIEF) |
+| 3 | R04 | alta | ICMS-ST não recolhido com saldo credor de ICMS próprio (evidência: a célula de Tributos e o saldo E110) |
+| 3 | R07 | crítica | Débito que impede a certidão: SEFA_PR ICMS_ST 08/2026 |
+| 4 | R05 | média | Saldo credor de ICMS acumulado (PR) — detectado nesta fase |
+| 5 | R06 | alta | Omissão da EFD-Contribuições 06/2026 (não é previdenciária: não impede a certidão) |
+| 6 | R07 | crítica | Débito que impede a certidão: inscrição 90 3 24 002201-55 |
+| 6 | R09 | alta | Transação com desconto disponível (a mesma inscrição, CAPAG oficial C) |
+| 7 | R08 | alta | Revisão da CAPAG potencialmente vantajosa (oficial C × estimada D) |
+| 8 | R16 | info | Escrituração substituta: ECD 2024 |
+| 9 | R11 | média | Adição indedutível no e-Lalur (multa de ofício de 18.450,00, IRPJ e CSLL) — detectado nesta fase |
+| 10 | R10 | alta | Parcelas acima da parcela sustentável (parcelamento do PR 12/36 e transação da PGFN) |
+| — | R07 | crítica | CDA 2023.0045678-2 (ajuizada) e CDA 2025.0087654-1 (em cobrança): sem parcelamento, impedem a certidão estadual |
+| — | R12 | info | Prejuízo fiscal (IRPJ) e base negativa da CSLL acumulados (Parte B da ECF 2025) |
+
+Não disparam na massa (e o teste garante): R03 (tudo declarado), R13 (sem saldo de créditos por 3 meses), R14 (sem
+saídas de dividendos com débito federal), R15 (ECD e ECF batem). Durante a importação, reavaliações automáticas
+intermediárias podem abrir R03 (DCTFWeb ainda não importada); a reavaliação seguinte as resolve.
+
 ## Limitações — o que validar contra arquivos reais
 
 - **SPED (.txt):** estrutura, campos e contagens seguem os leiautes, mas o arquivo não foi passado no PVA/validador oficial.

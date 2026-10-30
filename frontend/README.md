@@ -92,6 +92,19 @@ Regras que valem para todo o código:
 - **Histórico:** versões, "motor antigo", recalcular e excluir (ADMIN e CONSULTOR). Visão geral: cartão "Melhor
   proposta salva". Relatórios: "Proposta de regularização" escolhendo a simulação salva.
 
+## Aba Pontos de atenção
+
+- Lista priorizada (severidade, valor, data) com filtros por severidade, categoria e estado e busca; severidade com
+  ícone e texto (não só cor). Cada achado expande (`Collapse`) com descrição, fundamento, recomendação e as evidências:
+  o link abre a tela de origem já filtrada (ex.: `tributos?item=…` abre a gaveta da célula) e o valor abre o popover de
+  origem. Mudança de estado com comentário (obrigatório para descartar) e o histórico; "Regras não avaliadas" diz o que
+  falta importar.
+- Visão geral: contagem por severidade e os 3 mais graves (`Stagger`). Painel do escritório: carteira de clientes
+  (críticos, altos, importações pendentes e com erro) e simulações recentes, em `DataTable` ordenável com
+  `AnimatedNumber`. Configurações → Regras (ADMIN): severidade e limites por escritório, com o padrão e a versão.
+- e2e: o contexto emula `prefers-reduced-motion: reduce` (o axe avalia o estado final, sem espera fixa) e cadastro e
+  login esperam a resposta da API.
+
 ## Design system
 
 Referência visual: `npm run dev` e abra `/laboratorio-design` (a rota não existe no build de produção).
