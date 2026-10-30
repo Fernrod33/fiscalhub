@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { Calculator, Landmark, PiggyBank } from 'lucide-react';
 import { Alternador } from '@/components/alternador';
@@ -20,7 +21,7 @@ import { DemonstracaoLucro } from '../components/demonstracao-lucro';
 import { DetalheCelula } from '../components/detalhe-celula';
 import { MatrizTributos } from '../components/matriz-tributos';
 import { SaldosFiscais } from '../components/saldos-fiscais';
-import type { Celula, Periodicidade } from '../matriz';
+import { montarMatriz, type Celula, type Periodicidade } from '../matriz';
 
 /** Qual arquivo traz cada bloco (estado vazio). */
 function ImporteOs({ clienteId, children }: { clienteId: number; children: ReactNode }) {
@@ -40,6 +41,17 @@ export default function TributosPage() {
   const [periodicidade, setPeriodicidade] = useState<Periodicidade>('MENSAL');
   const [status, setStatus] = useState<StatusConciliacao | ''>('');
   const [celula, setCelula] = useState<Celula | null>(null);
+  // link profundo (?item=COFINS-2026-08, de um ponto de atenção): abre a gaveta da célula daquele item
+  const [busca, setBusca] = useSearchParams();
+  const itemLink = busca.get('item');
+  const celulaLink = useMemo<Celula | null>(() => {
+    const alvo = itemLink ? conciliacao.data?.itens.find((i) => i.id === itemLink) : undefined;
+    if (!alvo) return null;
+    const uf = alvo.esfera === 'ESTADUAL' ? (alvo.uf ?? '') : '';
+    const m = montarMatriz([alvo], 'MENSAL');
+    const linha = m.linhas.find((l) => l.chave === `${alvo.tributo}|${uf}`);
+    return linha ? { linha, competencia: m.colunas[0].chave, rotuloCompetencia: m.colunas[0].rotulo, itens: [alvo] } : null;
+  }, [itemLink, conciliacao.data]);
 
   if (apuracoes.isPending || conciliacao.isPending) return <Skeleton className="h-96" />;
   const lista = apuracoes.data ?? [];
@@ -106,7 +118,7 @@ export default function TributosPage() {
         </Cartao>
       )}
 
-      <DetalheCelula clienteId={clienteId} celula={celula} apuracoes={lista} aoFechar={() => setCelula(null)} />
+      <DetalheCelula clienteId={clienteId} celula={celula ?? celulaLink} apuracoes={lista} aoFechar={() => { setCelula(null); if (itemLink) setBusca({}, { replace: true }); }} />
     </Reveal>
   );
 }

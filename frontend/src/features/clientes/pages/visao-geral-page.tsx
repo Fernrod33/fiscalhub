@@ -1,3 +1,4 @@
+import { ResumoPontos } from '@/features/pontos-atencao/components/resumo-pontos';
 import { MelhorProposta } from '@/features/simulacoes/components/melhor-proposta';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -67,6 +68,8 @@ export default function VisaoGeralPage() {
       <ResumoCapacidade clienteId={id} />
 
       <MelhorProposta clienteId={id} />
+
+      <ResumoPontos clienteId={id} />
 
       <EscrituracoesCliente clienteId={id} />
 

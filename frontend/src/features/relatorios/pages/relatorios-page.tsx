@@ -38,9 +38,10 @@ export default function RelatoriosPage() {
   const [ate, setAte] = useState('');
   const [incluirDivergencias, setIncluirDivergencias] = useState(true);
   const [incluirFontes, setIncluirFontes] = useState(true);
+  const [incluirEncerrados, setIncluirEncerrados] = useState(false);
   const anual = tipo === 'CARGA_TRIBUTARIA';
   // retrato atual dos documentos, sem período: situação fiscal, capacidade e dossiê
-  const semPeriodo = tipo === 'SITUACAO_FISCAL' || tipo === 'CAPACIDADE' || tipo === 'DOSSIE_CAPAG' || tipo === 'PROPOSTA_REGULARIZACAO';
+  const semPeriodo = tipo === 'SITUACAO_FISCAL' || tipo === 'CAPACIDADE' || tipo === 'DOSSIE_CAPAG' || tipo === 'PROPOSTA_REGULARIZACAO' || tipo === 'DIAGNOSTICO_FISCAL';
   // proposta: a simulação salva (motor novo) que vira proposta; padrão, a mais recente
   const simulacoes = useSimulacoesSalvas(clienteId).data?.filter((x) => !x.motorAntigo) ?? [];
   const [simulacao, setSimulacao] = useState<number>();
@@ -50,7 +51,7 @@ export default function RelatoriosPage() {
     // carga: o backend usa só o ano
     de: semPeriodo || !de ? undefined : anual ? `${de}-01` : de,
     ate: semPeriodo || !ate ? undefined : anual ? `${ate}-12` : ate,
-    incluirDivergencias, incluirFontes, simulacaoId,
+    incluirDivergencias, incluirFontes, simulacaoId, incluirEncerrados: tipo === 'DIAGNOSTICO_FISCAL' && incluirEncerrados,
   };
   // texto: um objeto novo a cada render reiniciaria a espera para sempre
   const previa = usePrevia(clienteId, JSON.parse(useAtrasado(JSON.stringify(pedido))) as PedidoRelatorio);
@@ -130,6 +131,12 @@ export default function RelatoriosPage() {
                     {simulacoes.map((x) => <option key={x.id} value={x.id}>v{x.versao} · data-base {fmt.data(x.dataBase)} · {x.recomendacao ?? 'sem recomendação'}</option>)}
                   </select>
                 : <span className="text-muted-foreground">Salve uma simulação na aba Simulações.</span>}
+            </label>
+          )}
+          {tipo === 'DIAGNOSTICO_FISCAL' && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={incluirEncerrados} onChange={(e) => setIncluirEncerrados(e.target.checked)} className="accent-(--primary)" />
+              Incluir resolvidos e descartados
             </label>
           )}
           {tipo === 'TRIBUTOS' && (

@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/escritorio/pontos-atencao/regras/{codigo}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["alterarRegra"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/escritorio/parametros-capacidade": {
         parameters: {
             query?: never;
@@ -308,6 +324,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clientes/{clienteId}/pontos-atencao/reavaliar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reavaliar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/clientes/{clienteId}/documentos": {
         parameters: {
             query?: never;
@@ -420,6 +452,22 @@ export interface paths {
         patch: operations["desativar"];
         trace?: never;
     };
+    "/api/clientes/{clienteId}/pontos-atencao/{pid}/estado": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["estado"];
+        trace?: never;
+    };
     "/api/referencial/contas": {
         parameters: {
             query?: never;
@@ -428,6 +476,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["buscar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/escritorio/pontos-atencao/resumo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["painel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/escritorio/pontos-atencao/regras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["regras"];
         put?: never;
         post?: never;
         delete?: never;
@@ -620,6 +700,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/pontos-atencao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_4"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/pontos-atencao/{pid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detalhe_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{clienteId}/pontos-atencao/nao-avaliadas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["naoAvaliadas"];
         put?: never;
         post?: never;
         delete?: never;
@@ -907,7 +1035,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["detalhe_1"];
+        get: operations["detalhe_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -939,7 +1067,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["regras"];
+        get: operations["regras_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -971,7 +1099,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_4"];
+        get: operations["listar_5"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1008,6 +1136,36 @@ export interface components {
         TrocaSenhaDTO: {
             senhaAtual: string;
             novaSenha: string;
+        };
+        AlteracaoRegra: {
+            parametros: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            severidade: "CRITICA" | "ALTA" | "MEDIA" | "INFO";
+        };
+        ConfiguracaoRegra: {
+            codigo: string;
+            titulo: string;
+            /** @enum {string} */
+            categoria: "CONFORMIDADE" | "RISCO" | "OPORTUNIDADE" | "MONITORAMENTO";
+            versao: string;
+            /** @enum {string} */
+            severidadePadrao: "CRITICA" | "ALTA" | "MEDIA" | "INFO";
+            parametrosPadrao: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            severidade: "CRITICA" | "ALTA" | "MEDIA" | "INFO";
+            parametros: {
+                [key: string]: unknown;
+            };
+            fundamento: string;
+            recomendacao: string;
+            conferido: boolean;
+            atualizadoPor: string;
+            /** Format: date-time */
+            atualizadoEm: string;
         };
         ParametrosCapag: {
             faixaA: number;
@@ -1239,6 +1397,11 @@ export interface components {
             selicProjetadaParametro: number;
             pessoaFisica: boolean;
             avisos: string[];
+            porte: string;
+            /** Format: int32 */
+            porteExercicio: number;
+            porteReceitaBruta: number;
+            porteOrigem: components["schemas"]["OrigemValor"];
         };
         OrigemValor: {
             /** Format: int64 */
@@ -1347,23 +1510,25 @@ export interface components {
         };
         PedidoRelatorio: {
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO" | "DIAGNOSTICO_FISCAL";
             de?: string;
             ate?: string;
             incluirDivergencias?: boolean;
             incluirFontes?: boolean;
             /** Format: int64 */
             simulacaoId?: number;
+            incluirEncerrados?: boolean;
         };
         Parametros: {
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO" | "DIAGNOSTICO_FISCAL";
             de: string;
             ate: string;
             incluirDivergencias: boolean;
             incluirFontes: boolean;
             /** Format: int64 */
             simulacaoId: number;
+            incluirEncerrados: boolean;
         };
         RelatorioEmitido: {
             /** Format: int64 */
@@ -1373,7 +1538,7 @@ export interface components {
             /** Format: int64 */
             numero: number;
             /** @enum {string} */
-            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO";
+            tipo: "TRIBUTOS" | "CARGA_TRIBUTARIA" | "SITUACAO_FISCAL" | "CAPACIDADE" | "DOSSIE_CAPAG" | "PROPOSTA_REGULARIZACAO" | "DIAGNOSTICO_FISCAL";
             titulo: string;
             periodo: string;
             parametros: components["schemas"]["Parametros"];
@@ -1385,6 +1550,22 @@ export interface components {
             sha256Xlsx: string;
             versaoTemplate: string;
             versaoNormas: string;
+        };
+        RegraNaoAvaliada: {
+            codigo: string;
+            titulo: string;
+            falta: string;
+        };
+        ResultadoAvaliacao: {
+            /** Format: date-time */
+            avaliadoEm: string;
+            /** Format: int32 */
+            abertos: number;
+            /** Format: int32 */
+            novos: number;
+            /** Format: int32 */
+            resolvidos: number;
+            naoAvaliadas: components["schemas"]["RegraNaoAvaliada"][];
         };
         PedidoSimulacao: {
             quitar: string[];
@@ -1450,9 +1631,86 @@ export interface components {
             /** @enum {string} */
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
         };
+        PedidoEstado: {
+            estado: string;
+            comentario?: string;
+        };
+        Evidencia: {
+            tipo: string;
+            recursoId: string;
+            descricao: string;
+            valor: number;
+            origem: components["schemas"]["OrigemValor"];
+            link: string;
+        };
+        Historico: {
+            de: string;
+            para: string;
+            comentario: string;
+            usuario: string;
+            /** Format: date-time */
+            em: string;
+        };
+        PontoAtencao: {
+            /** Format: int64 */
+            id: number;
+            regra: string;
+            versaoRegra: string;
+            /** @enum {string} */
+            severidade: "CRITICA" | "ALTA" | "MEDIA" | "INFO";
+            /** @enum {string} */
+            categoria: "CONFORMIDADE" | "RISCO" | "OPORTUNIDADE" | "MONITORAMENTO";
+            titulo: string;
+            descricao: string;
+            fundamento: string;
+            recomendacao: string;
+            valor: number;
+            evidencias: components["schemas"]["Evidencia"][];
+            estado: string;
+            /** Format: date-time */
+            detectadoEm: string;
+            /** Format: date-time */
+            confirmadoEm: string;
+            historico: components["schemas"]["Historico"][];
+        };
         ContaReferencial: {
             codigo: string;
             descricao: string;
+        };
+        ClientePainel: {
+            /** Format: int64 */
+            clienteId: number;
+            razaoSocial: string;
+            cnpj: string;
+            /** Format: int32 */
+            criticos: number;
+            /** Format: int32 */
+            altos: number;
+            /** Format: int32 */
+            medios: number;
+            /** Format: int32 */
+            info: number;
+            /** Format: int32 */
+            importacoesPendentes: number;
+            /** Format: int32 */
+            importacoesComErro: number;
+            /** Format: date-time */
+            avaliadoEm: string;
+        };
+        Painel: {
+            clientes: components["schemas"]["ClientePainel"][];
+            simulacoesRecentes: components["schemas"]["SimulacaoRecente"][];
+        };
+        SimulacaoRecente: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            clienteId: number;
+            razaoSocial: string;
+            /** Format: date-time */
+            criadaEm: string;
+            recomendacao: string;
+            custo: number;
         };
         Pageable: {
             /** Format: int32 */
@@ -2065,7 +2323,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR";
+            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -2173,6 +2431,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UsuarioResponseDTO"];
+                };
+            };
+        };
+    };
+    alterarRegra: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                codigo: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlteracaoRegra"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfiguracaoRegra"];
                 };
             };
         };
@@ -2880,6 +3164,28 @@ export interface operations {
             };
         };
     };
+    reavaliar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ResultadoAvaliacao"];
+                };
+            };
+        };
+    };
     listarDocumentos: {
         parameters: {
             query?: never;
@@ -3072,6 +3378,33 @@ export interface operations {
             };
         };
     };
+    estado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                pid: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoEstado"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PontoAtencao"];
+                };
+            };
+        };
+    };
     buscar: {
         parameters: {
             query: {
@@ -3092,6 +3425,46 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ContaReferencial"][];
+                };
+            };
+        };
+    };
+    painel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Painel"];
+                };
+            };
+        };
+    };
+    regras: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfiguracaoRegra"][];
                 };
             };
         };
@@ -3403,6 +3776,77 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StreamingResponseBody"];
+                };
+            };
+        };
+    };
+    listar_4: {
+        parameters: {
+            query?: {
+                severidade?: "CRITICA" | "ALTA" | "MEDIA" | "INFO";
+                categoria?: "CONFORMIDADE" | "RISCO" | "OPORTUNIDADE" | "MONITORAMENTO";
+                estado?: string;
+            };
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PontoAtencao"][];
+                };
+            };
+        };
+    };
+    detalhe_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+                pid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PontoAtencao"];
+                };
+            };
+        };
+    };
+    naoAvaliadas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clienteId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegraNaoAvaliada"][];
                 };
             };
         };
@@ -3800,7 +4244,7 @@ export interface operations {
             };
         };
     };
-    detalhe_1: {
+    detalhe_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3845,7 +4289,7 @@ export interface operations {
             };
         };
     };
-    regras: {
+    regras_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -3885,7 +4329,7 @@ export interface operations {
             };
         };
     };
-    listar_4: {
+    listar_5: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];

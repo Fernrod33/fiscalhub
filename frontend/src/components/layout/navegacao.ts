@@ -1,4 +1,4 @@
-import { Building2, Landmark, LayoutDashboard, ScrollText, Upload, Users, type LucideIcon } from 'lucide-react';
+import { Building2, Landmark, LayoutDashboard, ScrollText, SlidersHorizontal, Upload, Users, type LucideIcon } from 'lucide-react';
 
 export type ItemNavegacao = { rotulo: string; caminho: string; icone: LucideIcon; soAdmin?: boolean };
 
@@ -13,4 +13,5 @@ export const CONFIGURACOES: ItemNavegacao[] = [
   { rotulo: 'Usuários', caminho: '/configuracoes/usuarios', icone: Users, soAdmin: true },
   { rotulo: 'Auditoria', caminho: '/configuracoes/auditoria', icone: ScrollText, soAdmin: true },
   { rotulo: 'Escritório', caminho: '/configuracoes/escritorio', icone: Landmark, soAdmin: true },
+  { rotulo: 'Regras', caminho: '/configuracoes/regras', icone: SlidersHorizontal, soAdmin: true },
 ];

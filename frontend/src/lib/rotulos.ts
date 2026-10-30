@@ -91,6 +91,8 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   RELATORIO_BAIXAR: 'Baixou relatório',
   PARAMETROS_CAPACIDADE_ALTERAR: 'Alterou parâmetros da capacidade',
   DFC_DEPARA_ALTERAR: 'Alterou o de-para da DFC',
+  PONTO_ATENCAO_ESTADO: 'Mudou o estado de um ponto de atenção',
+  PARAMETROS_PONTOS_ALTERAR: 'Alterou parâmetros das regras',
 };
 
 export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado']>, { rotulo: string; tom: Tom }> = {
@@ -101,7 +103,7 @@ export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado
 /** Tipo de recurso gravado na trilha (AcaoAuditoria.recurso no backend). */
 export const RECURSOS_AUDITORIA: Record<string, string> = {
   USUARIO: 'Usuário', CLIENTE: 'Cliente', DOCUMENTO: 'Documento', SIMULACAO: 'Simulação', ESCRITORIO: 'Escritório',
-  RELATORIO: 'Relatório',
+  RELATORIO: 'Relatório', PONTO_ATENCAO: 'Ponto de atenção',
 };
 
 export const TIPOS_RELATORIO: Record<TipoRelatorio, { rotulo: string; descricao: string }> = {
@@ -110,6 +112,7 @@ export const TIPOS_RELATORIO: Record<TipoRelatorio, { rotulo: string; descricao:
   SITUACAO_FISCAL: { rotulo: 'Situação fiscal resumida', descricao: 'Débitos, parcelamentos, pendências, CAPAG e o que impede a certidão.' },
   CAPACIDADE: { rotulo: 'Capacidade de pagamento', descricao: 'CAPAG oficial × estimada, classificação do PR e análise gerencial, com critérios e parâmetros.' },
   PROPOSTA_REGULARIZACAO: { rotulo: 'Proposta de regularização', descricao: 'Simulação salva: recomendação por órgão, comparação, cronograma, memória, riscos e fontes normativas.' },
+  DIAGNOSTICO_FISCAL: { rotulo: 'Diagnóstico fiscal', descricao: 'Pontos de atenção por severidade, com fundamento, recomendação e evidências.' },
   DOSSIE_CAPAG: { rotulo: 'Dossiê da revisão da CAPAG', descricao: 'BP e DRE referenciais, DFC direta, memória de cálculo e irrecuperáveis, para assinatura.' },
 };
 

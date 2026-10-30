@@ -14,13 +14,40 @@ import { useSessao } from '@/features/auth/sessao';
 import { useClientes } from '@/features/clientes/api';
 import { useDocumentosDoEscritorio, useResumoDocumentos } from '@/features/documentos/api';
 import { StatusDocumento } from '@/features/documentos/components/status-documento';
+import { DataTable, type ColumnDef } from '@/components/data-table';
+import type { ClientePainel, SimulacaoRecente } from '@/lib/api/tipos';
+import { usePainel } from '@/features/pontos-atencao/api';
 
-/** Painel do escritório: totais e últimos documentos importados. */
+const NUM = 'text-right whitespace-nowrap';
+const numero = (n: number, perigo = false) => <AnimatedNumber valor={n} className={cn('num', perigo && n > 0 && 'font-semibold text-danger')} />;
+
+const COLUNAS_CARTEIRA: ColumnDef<ClientePainel>[] = [
+  { accessorKey: 'razaoSocial', header: 'Cliente', cell: ({ row }) => (
+    <Link viewTransition to={`/clientes/${row.original.clienteId}/pontos-de-atencao`} className="text-primary underline-offset-4 hover:underline">
+      {row.original.razaoSocial}</Link>) },
+  { accessorKey: 'criticos', header: 'Críticos', cell: ({ getValue }) => numero(getValue<number>(), true), meta: { classe: NUM } },
+  { accessorKey: 'altos', header: 'Altos', cell: ({ getValue }) => numero(getValue<number>()), meta: { classe: NUM } },
+  { accessorKey: 'importacoesPendentes', header: 'Importações pendentes', cell: ({ getValue }) => numero(getValue<number>()), meta: { classe: NUM } },
+  { accessorKey: 'importacoesComErro', header: 'Com erro', cell: ({ getValue }) => numero(getValue<number>(), true), meta: { classe: NUM } },
+  { accessorKey: 'avaliadoEm', header: 'Avaliado em', cell: ({ getValue }) => fmt.dataHora(getValue<string>()), meta: { classe: 'whitespace-nowrap' } },
+];
+
+const COLUNAS_SIMULACOES: ColumnDef<SimulacaoRecente>[] = [
+  { accessorKey: 'razaoSocial', header: 'Cliente', cell: ({ row }) => (
+    <Link viewTransition to={`/clientes/${row.original.clienteId}/simulacoes`} className="text-primary underline-offset-4 hover:underline">
+      {row.original.razaoSocial}</Link>) },
+  { accessorKey: 'criadaEm', header: 'Salva em', cell: ({ getValue }) => fmt.dataHora(getValue<string>()), meta: { classe: 'whitespace-nowrap' } },
+  { accessorKey: 'recomendacao', header: 'Recomendação', cell: ({ getValue }) => getValue<string>() ?? 'motor antigo' },
+  { accessorKey: 'custo', header: 'Custo', cell: ({ getValue }) => fmt.moeda(getValue<number>()), meta: { classe: NUM } },
+];
+
+/** Painel do escritório: totais, carteira com os achados críticos e altos, simulações recentes e últimas importações. */
 export default function PainelPage() {
   const nome = useSessao()?.nome?.split(' ')[0];
   const clientes = useClientes();
   const resumo = useResumoDocumentos();
   const ultimos = useDocumentosDoEscritorio({ pagina: 0, tamanho: 8 });
+  const painel = usePainel();
   const carregando = clientes.isPending || resumo.isPending;
   const porStatus = Object.entries(resumo.data ?? {});
   const conta = (f: (s: string) => boolean) => porStatus.filter(([s]) => f(s)).reduce((total, [, n]) => total + (n ?? 0), 0);
@@ -47,7 +74,17 @@ export default function PainelPage() {
             ))}
           </Stagger>
         )}
-      <Reveal>
+      <Reveal className="grid gap-5">
+        <Cartao aria-labelledby="titulo-carteira">
+          <CartaoTitulo id="titulo-carteira">Carteira de clientes</CartaoTitulo>
+          <DataTable rotulo="Carteira de clientes" colunas={COLUNAS_CARTEIRA} dados={painel.data?.clientes} carregando={painel.isPending}
+                     vazio={<EstadoVazio icone={Inbox} titulo="Nenhum cliente" descricao="Cadastre um cliente e importe os documentos dele." />} />
+        </Cartao>
+        <Cartao aria-labelledby="titulo-simulacoes-recentes">
+          <CartaoTitulo id="titulo-simulacoes-recentes">Simulações recentes</CartaoTitulo>
+          <DataTable rotulo="Simulações recentes" colunas={COLUNAS_SIMULACOES} dados={painel.data?.simulacoesRecentes} carregando={painel.isPending}
+                     vazio={<EstadoVazio icone={Inbox} titulo="Nenhuma simulação salva" descricao="Salve uma simulação na aba Simulações de um cliente." />} />
+        </Cartao>
         <Cartao aria-labelledby="titulo-ultimos">
           <CartaoTitulo id="titulo-ultimos">Últimas importações</CartaoTitulo>
           {ultimos.isPending

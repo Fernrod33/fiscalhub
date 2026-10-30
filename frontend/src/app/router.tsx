@@ -16,7 +16,6 @@ const pagina = (importar: () => Promise<ComponentType>, trilha?: HandleRota['tri
 });
 
 const padrao = <T extends { default: ComponentType }>(p: Promise<T>) => p.then((m) => m.default);
-const futuras = () => import('@/features/clientes/pages/abas-futuras');
 
 const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType>> = {
   'visao-geral': () => padrao(import('@/features/clientes/pages/visao-geral-page')),
@@ -26,7 +25,7 @@ const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType
   'situacao-fiscal': () => padrao(import('@/features/situacao-fiscal/pages/situacao-fiscal-page')),
   capacidade: () => padrao(import('@/features/capacidade/pages/capacidade-page')),
   simulacoes: () => padrao(import('@/features/simulacoes/pages/simulacoes-page')),
-  'pontos-de-atencao': () => futuras().then((m) => m.PontosAtencaoPage),
+  'pontos-de-atencao': () => padrao(import('@/features/pontos-atencao/pages/pontos-atencao-page')),
   relatorios: () => padrao(import('@/features/relatorios/pages/relatorios-page')),
 };
 
@@ -72,6 +71,7 @@ export const router = createBrowserRouter([
               { path: 'usuarios', ...pagina(() => padrao(import('@/features/usuarios/pages/usuarios-page')), 'Usuários') },
               { path: 'auditoria', ...pagina(() => padrao(import('@/features/auditoria/pages/auditoria-page')), 'Auditoria') },
               { path: 'escritorio', ...pagina(() => padrao(import('@/features/escritorio/pages/identidade-page')), 'Escritório') },
+              { path: 'regras', ...pagina(() => padrao(import('@/features/pontos-atencao/pages/regras-page')), 'Regras') },
             ],
           },
           { path: '*', element: <NaoEncontrado /> },
