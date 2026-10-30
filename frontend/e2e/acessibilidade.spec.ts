@@ -3,6 +3,10 @@ import { expect, test, type Page } from '@playwright/test';
 import path from 'node:path';
 import { criarCliente, criarEscritorioEEntrar } from './apoio';
 
+// 8 recargas com axe por teste (claro e escuro em 4 telas): na rodada fria, com o Vite compilando e as massas importando em
+// paralelo, passa dos 60 s padrão — orçamento próprio, sem espera fixa
+test.describe.configure({ timeout: 180_000 });
+
 const amostra = (nome: string) => path.resolve(process.cwd(), '..', 'backend', 'src', 'test', 'resources', 'amostras', nome);
 
 /** Violações sérias ou críticas de WCAG 2.x A/AA na tela atual, nos temas claro e escuro. */

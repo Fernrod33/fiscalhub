@@ -38,9 +38,9 @@ test('massa → painel com críticos → Pontos de atenção → R04 → evidên
   await page.keyboard.press('Escape');
 
   await secoes.getByRole('link', { name: 'Pontos de atenção', exact: true }).click();
-  await page.getByRole('list', { name: 'Pontos de atenção' }).getByRole('button', { name: /Escrituração substituta/ }).click();
+  await page.getByRole('list', { name: 'Pontos de atenção' }).getByRole('button', { name: /ICMS-ST não recolhido com saldo credor/ }).click();
   await page.getByLabel('Novo estado').selectOption('DESCARTADO');
-  await page.getByLabel(/Comentário/).fill('substituta conferida com o contador');
+  await page.getByLabel(/Comentário/).fill('ST recolhido em guia avulsa, aguardando baixa');
   await page.getByRole('button', { name: 'Salvar' }).click();
   await expect(page.getByText('Ponto marcado como descartado.')).toBeVisible();
 
@@ -48,7 +48,7 @@ test('massa → painel com críticos → Pontos de atenção → R04 → evidên
   await page.getByRole('radio', { name: /^Diagnóstico fiscal/ }).check();
   await page.getByLabel('Incluir resolvidos e descartados').check();
   const previa = page.frameLocator('iframe[title="Prévia do relatório"]');
-  await expect(previa.getByText('substituta conferida com o contador', { exact: false })).toBeVisible({ timeout: 30_000 });
+  await expect(previa.getByText('ST recolhido em guia avulsa', { exact: false })).toBeVisible({ timeout: 30_000 });
   const emitido = page.waitForResponse((r) => r.url().endsWith('/relatorios') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Emitir' }).click();
   const registro = await (await emitido).json();

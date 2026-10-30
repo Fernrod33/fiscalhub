@@ -33,7 +33,8 @@ export const useConfiguracaoRegras = () => useQuery({
 
 function useInvalidar<T, R>(fn: (v: T) => Promise<R>, chave: string) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: [chave] }) });
+  // sem aguardar o refetch: o onSuccess de quem chamou (aviso) roda antes de a lista mudar e desmontar o componente
+  return useMutation({ mutationFn: fn, onSuccess: () => { void qc.invalidateQueries({ queryKey: [chave] }); } });
 }
 
 export const useReavaliar = (clienteId: number) =>

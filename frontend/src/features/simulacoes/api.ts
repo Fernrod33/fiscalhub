@@ -29,7 +29,8 @@ export const useMelhorSimulacao = (clienteId: number) => useQuery({
 
 function useAlterar<T>(fn: (v: T) => Promise<unknown>) {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSuccess: () => qc.invalidateQueries({ queryKey: ['documentos'] }) });
+  // sem aguardar o refetch: o onSuccess de quem chamou (aviso) roda antes de a lista mudar e desmontar o componente
+  return useMutation({ mutationFn: fn, onSuccess: () => { void qc.invalidateQueries({ queryKey: ['documentos'] }); } });
 }
 
 export const useSalvarSimulacao = (clienteId: number) =>

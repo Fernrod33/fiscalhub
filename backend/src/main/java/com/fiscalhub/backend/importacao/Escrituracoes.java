@@ -55,6 +55,11 @@ public class Escrituracoes {
      */
     public void retificar(ContextoProcessamento contexto, long escrituracaoId, String finalidade, String nome, String registro,
                           Long linha) {
+        // duas versões do mesmo período processadas em paralelo: uma de cada vez (a segunda já vê a primeira gravada);
+        // sem isso, as duas consultavam antes de qualquer uma gravar e ficavam ambas VIGENTE
+        jdbc.query("""
+                SELECT pg_advisory_xact_lock(hashtext(cliente_id || '|' || origem || '|' || coalesce(cnpj, '') || '|' || data_inicio || '|' || data_fim))
+                FROM escrituracao_contabil WHERE id = ?""", (org.springframework.jdbc.core.RowCallbackHandler) rs -> { }, escrituracaoId);
         List<Vigente> anteriores = jdbc.query("""
                         SELECT a.id, a.documento_id, a.finalidade FROM escrituracao_contabil a
                         JOIN escrituracao_contabil e ON e.id = ?
