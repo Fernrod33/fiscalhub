@@ -1,0 +1,19 @@
+# Achados do gitleaks aceitos, com a justificativa. Uma linha por fingerprint (commit:arquivo:regra:linha).
+#
+# JWT_SECRET antigo, fixo no application.properties do commit inicial da v2 (ba09117, 15/07/2026); o README do mesmo
+# commit só tinha o marcador "<your-secret-key>".
+# Foi TROCADO em 13/10/2026 (28fe880: o segredo passou a vir só da variável JWT_SECRET, que o app exige com 256 bits
+# ou mais) e não vale em nenhum ambiente; o histórico não é reescrito (o repositório já foi publicado).
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/src/main/resources/application.properties:fiscalhub-jwt-secret-literal:17
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/README.md:fiscalhub-jwt-secret-literal:193
+#
+# Exemplos de documentação no mesmo commit: tokens truncados ("eyJhbGciOiJIUzI1NiIs...") e o JWT de exemplo público
+# do jwt.io (sub 1234567890), sem validade em nenhum ambiente.
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/README.md:generic-api-key:151
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/Entedendo-o-projeto.md:generic-api-key:174
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/Entedendo-o-projeto.md:generic-api-key:403
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/Entedendo-o-projeto.md:jwt:331
+ba09117265f13cddf8fae262e1e2f58cc90477c1:backend/Entedendo-o-projeto.md:curl-auth-header:478
+#
+# Falso positivo: asserção de teste sobre os atributos do cookie ("Max-Age=86400"), não é segredo.
+4b64f3ee74b13a5b8700ccc2dd11d0a5efe8eb8b:backend/src/test/java/com/fiscalhub/backend/integracao/SessaoCookieCsrfTest.java:generic-api-key:53

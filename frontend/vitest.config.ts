@@ -7,5 +7,7 @@ export default mergeConfig(viteConfig, defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
     css: false,
+    // telas inteiras no jsdom com a suíte em paralelo (e no runner do CI) passam de 5 s às vezes
+    testTimeout: 15_000,
   },
 }));

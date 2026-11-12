@@ -1,0 +1,115 @@
+# CI de PR e push: backend (mvn verify com Testcontainers), frontend (lint, tipos, Vitest, build), e2e (Playwright contra
+# o compose de desenvolvimento) e segredos (gitleaks, histórico inteiro). Os jobs rodam em paralelo: alvo < 15 min.
+name: CI
+
+on:
+  push:
+    branches: [main, v2]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      # Testcontainers usa o Docker do runner; os testes de desempenho só rodam com -Ddesempenho=true
+      - run: mvn -B -ntp verify
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npx tsc -b
+      - run: npm test
+      - run: npx vite build
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      # segredos descartáveis só deste job (nenhum segredo real no CI)
+      - name: .env do compose de desenvolvimento
+        run: |
+          r() { openssl rand -base64 "$1" | tr -d '\n/+='; }
+          {
+            echo "DOMINIO=localhost"; echo "ACME_EMAIL=ci@localhost"; echo "UPLOAD_MAX_SIZE_MB=500"
+            echo "DB_PASSWORD=$(r 24)"; echo "JWT_SECRET=$(r 48)"
+            echo "MINIO_ROOT_USER=fiscalhub-admin"; echo "MINIO_ROOT_PASSWORD=$(r 24)"
+            echo "S3_ACCESS_KEY=fiscalhub-app"; echo "S3_SECRET_KEY=$(r 24)"
+            echo "MINIO_KMS_SECRET_KEY=fiscalhub-sse:$(openssl rand -base64 32)"
+          } > .env
+      - name: Subir o ambiente (imagens de produção, perfil dev, sem TLS)
+        run: docker compose -f compose.yaml -f compose.dev.yaml up -d --build --wait --wait-timeout 300
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - name: Playwright contra o proxy (http://localhost, com a CSP e os cabeçalhos de produção)
+        run: npx playwright test
+        working-directory: frontend
+        env:
+          E2E_URL: http://localhost
+      - name: Logs do compose
+        if: failure()
+        run: docker compose -f compose.yaml -f compose.dev.yaml logs --no-color > compose.log
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-falha
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+            compose.log
+          retention-days: 7
+
+  segredos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # imagem oficial (sem a action, que pede licença em organizações); achados aceitos em .gitleaksignore
+      - run: >
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:v8.28.0
+          git /repo --redact --no-banner -c /repo/.gitleaks.toml --gitleaks-ignore-path /repo/.gitleaksignore
+
+  npm-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      # só alta e crítica quebram o build; as dependências de desenvolvimento não vão para a imagem
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
