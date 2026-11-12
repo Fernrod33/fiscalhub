@@ -72,7 +72,7 @@ pelas chaves estrangeiras), máscara de CPF, CNPJ e valores nos logs (`operacao/
   caminho para virar fixture de um adaptador novo sem expor o cliente.
 - **Layout não reconhecido:** a mensagem orienta o envio da versão anonimizada; o documento guarda uma assinatura (o
   começo do texto sem dígitos, `assinatura_layout`, V30).
-- **ADMIN do sistema** (`ADMIN_SISTEMA`, e-mails de login): `GET /api/sistema/alertas` (edital com adesão terminando em
+- **ADMIN do sistema** (`ADMIN_SISTEMA`, ids de usuário — não e-mail, porque o cadastro é aberto): `GET /api/sistema/alertas` (edital com adesão terminando em
   até 30 dias, SELIC ou UPF/PR do mês não importada; também no log, todo dia às 7h) e
   `GET /api/sistema/layouts-nao-reconhecidos` (contagem por assinatura em todos os escritórios); cartão no Painel.
   Rotina normativa: `docs/normativas/atualizacao.md`.

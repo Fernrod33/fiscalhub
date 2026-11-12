@@ -15,12 +15,11 @@ import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Avisos para quem mantém o sistema (o "ADMIN do sistema": os e-mails de fiscalhub.admin-sistema, não o ADMIN de um
+ * Avisos para quem mantém o sistema (o "ADMIN do sistema": os ids de usuário de fiscalhub.admin-sistema, não o ADMIN de um
  * escritório): edital com adesão terminando em até 30 dias, índice do mês ainda não importado e os layouts que caíram
  * sem leitura em todos os escritórios (só a assinatura e a contagem, sem dado do cliente). Também vão para o log, todo dia.
  */
@@ -38,16 +37,20 @@ public class AlertasSistema {
 
     private final RegrasParcelamento regras;
     private final JdbcTemplate jdbc;
-    private final Set<String> admins;
+    /**
+     * Ids, não e-mails: o cadastro é aberto e o e-mail não é verificado, então quem se cadastrasse com um e-mail da lista
+     * ainda não usado viraria ADMIN do sistema. O id só existe depois que a conta do mantenedor foi criada.
+     */
+    private final Set<Long> admins;
 
     public AlertasSistema(RegrasParcelamento regras, JdbcTemplate jdbc, @Value("${fiscalhub.admin-sistema:}") List<String> admins) {
         this.regras = regras;
         this.jdbc = jdbc;
-        this.admins = admins.stream().map(e -> e.trim().toLowerCase(Locale.ROOT)).filter(e -> !e.isEmpty()).collect(Collectors.toSet());
+        this.admins = admins.stream().map(String::trim).filter(e -> !e.isEmpty()).map(Long::valueOf).collect(Collectors.toSet());
     }
 
     public boolean adminSistema(UsuarioAutenticado ua) {
-        return ua != null && admins.contains(ua.email().toLowerCase(Locale.ROOT));
+        return ua != null && admins.contains(ua.id());
     }
 
     public List<AlertaSistema> alertas(LocalDate hoje) {

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Só para o ADMIN do sistema (fiscalhub.admin-sistema); os demais recebem 403. */
+/** Só para o ADMIN do sistema (fiscalhub.admin-sistema, ids de usuário); os demais recebem 403. */
 @RestController
 @RequestMapping("/api/sistema")
 public class SistemaController {

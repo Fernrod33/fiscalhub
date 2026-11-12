@@ -18,7 +18,11 @@ public class ProcessadorSemLeitura implements ProcessadorDocumento {
     public void processar(DocumentoFiscal documento, ContextoProcessamento contexto) {
         try (var in = contexto.abrir()) {
             String inicio = new String(in.readNBytes(120), java.nio.charset.StandardCharsets.ISO_8859_1).split("[\\r\\n]")[0];
-            documento.setAssinaturaLayout(AguardandoUsuario.assinatura(documento.getTipo() + " " + inicio));
+            // só o registro e o tipo (ex.: |0000|LXYZ|): o resto da linha pode ter o nome da empresa, e a métrica é vista
+            // pelo ADMIN do sistema, de fora do escritório
+            String[] campos = inicio.split("\\|", -1);
+            String cabeca = inicio.startsWith("|") && campos.length > 2 ? "|" + campos[1] + "|" + campos[2] + "|" : "(não é SPED)";
+            documento.setAssinaturaLayout(AguardandoUsuario.assinatura(documento.getTipo() + " " + cabeca));
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException(e);
         }

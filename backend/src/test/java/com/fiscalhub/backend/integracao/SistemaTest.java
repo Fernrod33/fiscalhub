@@ -40,7 +40,9 @@ class SistemaTest {
     void pdfComLayoutDesconhecidoOrientaOEnvioAnonimizadoEEntraNaMetricaSemDigitos() throws Exception {
         Escritorio e = dados.escritorio("Layouts " + System.nanoTime());
         RequestPostProcessor admin = dados.sessao(dados.usuario(e, "layout-" + System.nanoTime() + "@test.com", Papel.ADMIN));
-        RequestPostProcessor sistema = dados.sessao(dados.usuario(e, "sistema@test.com", Papel.CONSULTOR));
+        var mantenedor = dados.usuario(e, "sistema-" + System.nanoTime() + "@test.com", Papel.CONSULTOR);
+        RequestPostProcessor sistema = dados.sessao(mantenedor);
+        org.springframework.test.util.ReflectionTestUtils.setField(alertas, "admins", java.util.Set.of(mantenedor.getId()));
 
         String resposta = mvc.perform(multipart("/api/documentos").file(new MockMultipartFile("arquivo", "extrato.pdf", "application/pdf",
                 pdf("EXTRATO DE DEBITOS DO MUNICIPIO 11.222.333/0001-81 EM 10/11/2026")))
