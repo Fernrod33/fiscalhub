@@ -93,3 +93,6 @@ amostras-locais/
 
 # Python
 __pycache__/
+
+# saídas locais do Claude
+Claude outputs/
