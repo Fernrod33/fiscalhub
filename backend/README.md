@@ -65,7 +65,14 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 |---|---|---|
 | padrão | `application.properties` | log `INFO`, sem SQL no log, sem DEBUG do Spring Security |
 | `dev` | `application-dev.properties` | `show-sql`, `format_sql`, log `DEBUG`; aplica também `db/dev` (seed **aproximado** da UFPR) |
-| `test` | `src/test/resources/application-test.properties` | testes de integração; banco do Testcontainers; sem importação da SELIC |
+| `test` | `src/test/resources/application-test.properties` | testes de integração; banco do Testcontainers; sem importação de índices |
+| `prod` | `application-prod.properties` | produção no `compose.yaml` (raiz): cookie `Secure`, `X-Forwarded-*` do proxy, logs em JSON com o id de correlação, sem OpenAPI, Flyway na subida sem baseline automático, `ddl-auto=validate`, pool de 15 conexões, storage S3 (MinIO) e actuator na porta 8081 (só a rede interna). Variáveis no `.env.example` da raiz |
+
+**Saúde:** `GET /actuator/health/liveness` e `/actuator/health/readiness` (banco e storage: `operacao/SaudeArmazenamento`), sem
+detalhes. No perfil `prod` ficam na porta de gerência 8081, que o proxy não publica; o healthcheck da imagem usa a liveness.
+
+**Correlação:** cada requisição ganha um id (o `X-Request-Id` do proxy, se válido, ou um UUID: `operacao/Correlacao`), que vai
+para o MDC (todo log da requisição), para o cabeçalho da resposta e para o `correlacao` do ProblemDetail do erro 500.
 
 Nenhum perfil cria usuário: cadastre-se por `POST /api/auth/signup`.
 

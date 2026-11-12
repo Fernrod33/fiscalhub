@@ -1,0 +1,117 @@
+# Produção: um servidor com Docker Compose. Só o proxy (Caddy, TLS automático) publica portas (80 e 443).
+# Segredos e o que muda por servidor ficam no .env (copie do .env.example); nada de segredo neste arquivo nem nas imagens.
+# Subir: docker compose up -d --build   |   Runbook: docs/operacao/
+name: fiscalhub
+
+x-padrao: &padrao
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+x-minio: &imagem-minio
+  # as imagens oficiais minio/minio saíram dos registros públicos; a da Chainguard é o mesmo binário (com o mc), fixada por digest
+  image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+
+services:
+  postgres:
+    <<: *padrao
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: fiscalhub
+      POSTGRES_USER: fiscalhub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "fiscalhub", "-d", "fiscalhub"]
+      interval: 10s
+      retries: 10
+    mem_limit: 1g
+
+  minio:
+    <<: [*padrao, *imagem-minio]
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+      # chave da criptografia no lado do servidor (SSE-S3): nome:base64 de 32 bytes
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:?defina MINIO_KMS_SECRET_KEY no .env}
+      MC_HOST_local: http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@127.0.0.1:9000
+    volumes:
+      - minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      retries: 10
+    mem_limit: 1g
+
+  # uma vez por subida (idempotente): bucket com versionamento e SSE, usuário da aplicação só com acesso ao bucket
+  minio-init:
+    <<: *imagem-minio
+    restart: "no"
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MC_HOST_local: http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@minio:9000
+      S3_BUCKET: ${S3_BUCKET:-fiscalhub-documentos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?defina S3_ACCESS_KEY no .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?defina S3_SECRET_KEY no .env}
+    entrypoint: ["sh", "/init/minio-init.sh"]
+    volumes:
+      - ./deploy/minio-init.sh:/init/minio-init.sh:ro
+
+  backend:
+    <<: *padrao
+    build: ./backend
+    image: fiscalhub-backend:${VERSAO:-local}
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/fiscalhub
+      DB_USERNAME: fiscalhub
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      ORIGEM_PUBLICA: https://${DOMINIO:?defina DOMINIO no .env}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-fiscalhub-documentos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE_MB:-500}MB
+      MANAGEMENT_SERVER_PORT: "8081"
+    mem_limit: ${BACKEND_MEMORIA:-2g}
+
+  frontend:
+    <<: *padrao
+    build:
+      context: ./frontend
+      args:
+        UPLOAD_MAX_SIZE_MB: ${UPLOAD_MAX_SIZE_MB:-500}
+    image: fiscalhub-frontend:${VERSAO:-local}
+    mem_limit: 128m
+
+  proxy:
+    <<: *padrao
+    image: caddy:2-alpine
+    depends_on: [backend, frontend]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMINIO: ${DOMINIO}
+      ACME_EMAIL: ${ACME_EMAIL:?defina ACME_EMAIL no .env (avisos do Let's Encrypt)}
+      UPLOAD_MAX_SIZE_MB: ${UPLOAD_MAX_SIZE_MB:-500}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 256m
+
+volumes:
+  postgres:
+  minio:
+  caddy_data:
+  caddy_config:

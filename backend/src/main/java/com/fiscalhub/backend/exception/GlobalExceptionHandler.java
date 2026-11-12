@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -79,7 +78,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     /** Nunca devolve a mensagem interna: registra com um id de correlação e devolve só o id. */
     @ExceptionHandler(Exception.class)
     ProblemDetail inesperado(Exception ex) {
-        String correlacao = UUID.randomUUID().toString();
+        String correlacao = com.fiscalhub.backend.operacao.Correlacao.atual();
         log.error("Erro inesperado [correlacao={}]", correlacao, ex);
         ProblemDetail pd = problema(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno. Informe o código " + correlacao + " ao suporte.");
         pd.setProperty("correlacao", correlacao);

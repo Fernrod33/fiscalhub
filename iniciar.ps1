@@ -26,10 +26,16 @@
 .PARAMETER NaoAbrirNavegador
     Não abre o navegador no fim.
 
+.PARAMETER Docker
+    Sobe o ambiente completo (PostgreSQL, MinIO, backend, frontend e proxy) pelo compose de desenvolvimento
+    (compose.yaml + compose.dev.yaml) em http://localhost. Na primeira vez gera o .env da raiz com segredos aleatórios.
+    Não precisa de Java, Maven nem Node na máquina, só do Docker.
+
 .EXAMPLE
     .\iniciar.ps1
     .\iniciar.ps1 -SemFrontend
     .\iniciar.ps1 -Perfil padrao -NaoAbrirNavegador
+    .\iniciar.ps1 -Docker
 #>
 [CmdletBinding()]
 param(
@@ -37,7 +43,8 @@ param(
     [string]$Perfil = 'dev',
     [switch]$SemFrontend,
     [switch]$PularInstalacao,
-    [switch]$NaoAbrirNavegador
+    [switch]$NaoAbrirNavegador,
+    [switch]$Docker
 )
 
 $ErrorActionPreference = 'Stop'
@@ -158,6 +165,38 @@ function Find-Psql {
 function Start-Janela([string]$Titulo, [string]$Pasta, [string]$Comando) {
     $script = "`$Host.UI.RawUI.WindowTitle = '$Titulo'; Set-Location -LiteralPath '$Pasta'; $Comando"
     Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoExit', '-NoProfile', '-Command', $script) | Out-Null
+}
+
+# ── Modo Docker: tudo pelo compose de desenvolvimento ─────────────────────────
+if ($Docker) {
+    Write-Etapa 'Subindo pelo Docker Compose (compose.yaml + compose.dev.yaml)'
+    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { Stop-ComErro 'Docker não encontrado. Instale o Docker Desktop.' }
+    if ((Invoke-Externo 'docker' @('info')).Codigo -ne 0) { Stop-ComErro 'O Docker não está rodando. Abra o Docker Desktop e tente de novo.' }
+    $envRaiz = Join-Path $Raiz '.env'
+    if (-not (Test-Path -LiteralPath $envRaiz)) {
+        $kms = New-Object byte[] 32
+        [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($kms)
+        $linhas = @(
+            'DOMINIO=localhost', 'ACME_EMAIL=dev@localhost', 'UPLOAD_MAX_SIZE_MB=500',
+            "DB_PASSWORD=$((New-SegredoJwt) -replace '[/+=]', '')", "JWT_SECRET=$(New-SegredoJwt)",
+            'MINIO_ROOT_USER=fiscalhub-admin', "MINIO_ROOT_PASSWORD=$((New-SegredoJwt) -replace '[/+=]', '')",
+            'S3_ACCESS_KEY=fiscalhub-app', "S3_SECRET_KEY=$((New-SegredoJwt) -replace '[/+=]', '')",
+            "MINIO_KMS_SECRET_KEY=fiscalhub-sse:$([Convert]::ToBase64String($kms))")
+        [System.IO.File]::WriteAllLines($envRaiz, $linhas, (New-Object System.Text.UTF8Encoding($false)))
+        Write-Ok '.env da raiz criado com segredos aleatórios (só para desenvolvimento)'
+    }
+    Push-Location -LiteralPath $Raiz
+    try {
+        & docker compose -f compose.yaml -f compose.dev.yaml up -d --build
+        if ($LASTEXITCODE -ne 0) { Stop-ComErro 'docker compose up falhou (veja a saída acima).' }
+    } finally { Pop-Location }
+    Write-Host '  Aguardando o proxy' -NoNewline
+    Wait-Porta 80 300 'proxy (docker compose logs proxy backend)'
+    Write-Host ''
+    Write-Ok 'FiscalHub no ar em http://localhost (API também em http://localhost:8080 para o npm run dev)'
+    if (-not $NaoAbrirNavegador) { Start-Process 'http://localhost' }
+    Write-Host '  Para parar: docker compose -f compose.yaml -f compose.dev.yaml down (os dados ficam nos volumes)'
+    exit 0
 }
 
 # ── 1. Pré-requisitos ────────────────────────────────────────────────────────

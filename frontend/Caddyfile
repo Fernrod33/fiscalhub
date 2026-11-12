@@ -1,0 +1,19 @@
+# Servidor estático do frontend (atrás do proxy com TLS). Sem admin API, sem TLS próprio.
+{
+	admin off
+	auto_https off
+	persist_config off
+}
+
+:8080 {
+	root * /srv
+	encode zstd gzip
+	# assets do Vite têm hash no nome: cache de 1 ano; o index.html nunca fica em cache
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	@resto not path /assets/*
+	header @resto Cache-Control "no-cache"
+	# SPA: rota desconhecida cai no index.html
+	try_files {path} /index.html
+	file_server
+}

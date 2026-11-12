@@ -1,0 +1,17 @@
+# Desenvolvimento e e2e do CI: o mesmo compose.yaml, sem TLS, em http://localhost.
+#   docker compose -f compose.yaml -f compose.dev.yaml up -d --build      (ou .\iniciar.ps1 -Docker)
+# O backend roda no perfil dev (cookie sem Secure, seed de desenvolvimento) e publica a 8080 para o Vite (npm run dev).
+services:
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      STORAGE_TIPO: s3
+      ORIGEM_PUBLICA: http://localhost
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    ports:
+      - "127.0.0.1:8080:8080"
+  proxy:
+    environment:
+      DOMINIO: http://localhost
+    ports: !override
+      - "127.0.0.1:80:80"

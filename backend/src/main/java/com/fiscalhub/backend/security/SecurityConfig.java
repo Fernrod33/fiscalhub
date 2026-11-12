@@ -81,6 +81,8 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs/**").permitAll() // só existe no perfil dev (springdoc)
+                // health sem detalhes; no perfil prod fica na porta de gerência, que o proxy não publica
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .anyRequest().authenticated()
             );
 
