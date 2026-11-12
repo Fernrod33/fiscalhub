@@ -106,13 +106,17 @@ public class ProcessadorSituacao implements ProcessadorDocumento {
             return reconhecem.getFirst();
         }
         String mensagem = reconhecem.isEmpty()
-                ? "O layout deste PDF não é reconhecido. O arquivo fica guardado e será lido ao reprocessar quando houver "
-                + "um adaptador para ele. Confira se é um dos documentos suportados (situação fiscal, Regularize, CAPAG, "
-                + "DCTF, DCTFWeb, DARF, pagamentos, conta corrente e RTI do PR, GR-PR) gerado pelo próprio sistema."
+                ? "Este layout ainda não é suportado. O arquivo fica guardado e será lido ao reprocessar quando houver um "
+                + "adaptador para ele. Confira se é um dos documentos suportados (situação fiscal, Regularize, CAPAG, DCTF, "
+                + "DCTFWeb, DARF, pagamentos, conta corrente e RTI do PR, GR-PR) gerado pelo próprio sistema. Se for, gere "
+                + "uma versão anonimizada com a ferramenta de anonimização (anonimizar.ps1, na pasta do FiscalHub) e envie-a "
+                + "ao suporte: nenhum dado real sai do escritório."
                 : "Mais de um layout reconhece este PDF (" + String.join(", ", reconhecem.stream()
                 .map(a -> a.tipo() + " " + a.versao()).toList()) + "). Nenhum é usado: reporte o caso ao suporte.";
         contexto.registrar(Severidade.ALERTA, null, null, "LAYOUT_NAO_RECONHECIDO", mensagem);
-        throw new AguardandoUsuario(DocumentoStatus.LAYOUT_NAO_RECONHECIDO, mensagem, null, null);
+        String inicio = String.join(" ", pdf.linhas().stream().limit(3).map(DocumentoPdf.Linha::texto).toList());
+        throw new AguardandoUsuario(DocumentoStatus.LAYOUT_NAO_RECONHECIDO, mensagem, null, null,
+                AguardandoUsuario.assinatura(reconhecem.isEmpty() ? inicio : "AMBIGUO: " + inicio));
     }
 
     private static byte[] ler(ContextoProcessamento contexto) {

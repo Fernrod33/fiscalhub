@@ -66,6 +66,10 @@ public class DocumentoFiscal {
     @Column(name = "nome_empresa_arquivo", length = 255)
     private String nomeEmpresaArquivo;
 
+    /** Layout sem leitura: o início do documento sem dígitos (métrica para o suporte, sem dado do cliente). */
+    @Column(name = "assinatura_layout", length = 200)
+    private String assinaturaLayout;
+
     @NotNull
     @Size(max = 255)
     @Column(name = "nome_original_arquivo", nullable = false, length = 255)

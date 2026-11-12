@@ -612,6 +612,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sistema/layouts-nao-reconhecidos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["layouts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sistema/alertas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["alertas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/referencial/contas": {
         parameters: {
             query?: never;
@@ -1211,7 +1243,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["alertas"];
+        get: operations["alertas_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1896,6 +1928,20 @@ export interface components {
             dispositivo: string;
             atual: boolean;
         };
+        LayoutNaoReconhecido: {
+            tipo: string;
+            assinatura: string;
+            /** Format: int64 */
+            quantidade: number;
+            /** Format: date-time */
+            ultimo: string;
+        };
+        AlertaSistema: {
+            tipo: string;
+            mensagem: string;
+            /** Format: date */
+            prazo: string;
+        };
         ContaReferencial: {
             codigo: string;
             descricao: string;
@@ -2536,8 +2582,8 @@ export interface components {
         };
         CsrfToken: {
             token: string;
-            headerName: string;
             parameterName: string;
+            headerName: string;
         };
         AuditoriaEventoDTO: {
             /** Format: int64 */
@@ -3876,6 +3922,46 @@ export interface operations {
             };
         };
     };
+    layouts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["LayoutNaoReconhecido"][];
+                };
+            };
+        };
+    };
+    alertas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AlertaSistema"][];
+                };
+            };
+        };
+    };
     buscar: {
         parameters: {
             query: {
@@ -4760,7 +4846,7 @@ export interface operations {
             };
         };
     };
-    alertas: {
+    alertas_1: {
         parameters: {
             query?: never;
             header?: never;

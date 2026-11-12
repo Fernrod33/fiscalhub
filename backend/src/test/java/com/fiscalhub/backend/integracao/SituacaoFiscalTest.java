@@ -136,7 +136,8 @@ class SituacaoFiscalTest {
         assertThat(documentoRepository.findById(desconhecido).orElseThrow().getStatus()).isEqualTo(DocumentoStatus.LAYOUT_NAO_RECONHECIDO);
         assertThat(regras(desconhecido)).containsExactly("LAYOUT_NAO_RECONHECIDO");
         mvc.perform(get("/api/documentos/{d}/status", desconhecido).with(sessao))
-                .andExpect(jsonPath("$.mensagem").value(containsString("layout deste PDF não é reconhecido")));
+                .andExpect(jsonPath("$.mensagem").value(containsString("Este layout ainda não é suportado")));
+        assertThat(documentoRepository.findById(desconhecido).orElseThrow().getAssinaturaLayout()).isEqualTo("RELATÓRIO QUALQUER DE OUTRO SISTEMA");
         long imagem = importar("scan.pdf", pdf(null));
         assertThat(documentoRepository.findById(imagem).orElseThrow().getStatus()).isEqualTo(DocumentoStatus.ERRO);
         assertThat(regras(imagem)).containsExactly("PDF_SEM_TEXTO");

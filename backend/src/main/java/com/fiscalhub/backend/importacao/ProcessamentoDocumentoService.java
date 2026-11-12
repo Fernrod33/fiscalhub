@@ -183,6 +183,7 @@ public class ProcessamentoDocumentoService {
         if (pendencia != null) {
             documento.setCnpjArquivo(pendencia.cnpj());
             documento.setNomeEmpresaArquivo(pendencia.nome());
+            documento.setAssinaturaLayout(pendencia.assinaturaLayout());
         }
         gravarInconsistencias(documento, contexto);
         JobProcessamento job = jobRepository.findById(jobId).orElseThrow();

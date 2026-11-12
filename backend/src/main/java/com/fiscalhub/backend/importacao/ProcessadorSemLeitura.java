@@ -16,6 +16,12 @@ public class ProcessadorSemLeitura implements ProcessadorDocumento {
 
     @Override
     public void processar(DocumentoFiscal documento, ContextoProcessamento contexto) {
+        try (var in = contexto.abrir()) {
+            String inicio = new String(in.readNBytes(120), java.nio.charset.StandardCharsets.ISO_8859_1).split("[\\r\\n]")[0];
+            documento.setAssinaturaLayout(AguardandoUsuario.assinatura(documento.getTipo() + " " + inicio));
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
         contexto.registrar(Severidade.ALERTA, null, null, "TIPO_SEM_LEITURA",
                 "A leitura deste tipo de arquivo ainda não está disponível. O arquivo fica guardado e poderá ser reprocessado.");
     }

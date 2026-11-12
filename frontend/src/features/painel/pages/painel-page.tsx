@@ -17,6 +17,7 @@ import { StatusDocumento } from '@/features/documentos/components/status-documen
 import { DataTable, type ColumnDef } from '@/components/data-table';
 import type { ClientePainel, SimulacaoRecente } from '@/lib/api/tipos';
 import { usePainel } from '@/features/pontos-atencao/api';
+import { AlertasSistema } from '../components/alertas-sistema';
 
 const NUM = 'text-right whitespace-nowrap';
 const numero = (n: number, perigo = false) => <AnimatedNumber valor={n} className={cn('num', perigo && n > 0 && 'font-semibold text-danger')} />;
@@ -62,6 +63,7 @@ export default function PainelPage() {
   return (
     <div className="grid gap-5">
       <CabecalhoPagina titulo={nome ? `Olá, ${nome}` : 'Painel'} subtitulo="Visão do escritório" />
+      <AlertasSistema />
       {carregando
         ? <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">{kpis.map((k) => <Skeleton key={k.rotulo} className="h-20" />)}</div>
         : (

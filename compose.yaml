@@ -82,6 +82,7 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE_MB:-500}MB
       MANAGEMENT_SERVER_PORT: "8081"
+      ADMIN_SISTEMA: ${ADMIN_SISTEMA:-}
     mem_limit: ${BACKEND_MEMORIA:-2g}
 
   frontend:

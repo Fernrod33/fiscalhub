@@ -35,7 +35,7 @@ function renderizar(caminho: string, elemento: React.ReactNode, rota: string) {
             criticos: 2, altos: 3, medios: 1, info: 0, importacoesPendentes: 1, importacoesComErro: 0, avaliadoEm: '2026-10-30T10:00:00' }],
             simulacoesRecentes: [{ id: 1, clienteId: 7, razaoSocial: 'Metalúrgica', criadaEm: '2026-10-30T10:00:00', recomendacao: 'PGFN: Transação', custo: 60873.36 }] }
             : url.includes('/api/documentos') ? (url.includes('resumo') ? {} : { content: [] })
-              : url.endsWith('/api/clientes') ? [] : null) as never));
+              : url.endsWith('/api/clientes') || url.startsWith('/api/sistema') ? [] : null) as never));
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter initialEntries={[caminho]}><Routes><Route path={rota} element={elemento} /></Routes></MemoryRouter>
