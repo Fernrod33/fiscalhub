@@ -67,6 +67,8 @@ class DebitosESimulacaoTest {
     @Test
     void salvaSimulacaoComCadaDebitoEOsVersionamentosERecalculaComoNovaVersao() throws Exception {
         dados.selic(YearMonth.of(2024, 1), YearMonth.of(2024, 12), "1.00");
+        // o último mês com SELIC no banco (outras classes, como o aceite da massa, gravam meses depois deste)
+        Integer selic = jdbc.queryForObject("SELECT max(ano * 100 + mes) FROM indice_monetario WHERE tipo = 'SELIC'", Integer.class);
 
         String resposta = mvc.perform(post("/api/clientes/{c}/simulacoes", cliente.getId()).with(token)
                         .contentType(APPLICATION_JSON).content(simulacao()))
@@ -74,7 +76,7 @@ class DebitosESimulacaoTest {
                 .andExpect(jsonPath("$.versao").value(1))
                 .andExpect(jsonPath("$.dataBase").value("2024-04-05"))
                 .andExpect(jsonPath("$.versaoRegras").value("2026-10-30"))
-                .andExpect(jsonPath("$.versaoIndices").value("SELIC até 2024-12; UPF/PR até 2026-10"))
+                .andExpect(jsonPath("$.versaoIndices").value("SELIC até " + YearMonth.of(selic / 100, selic % 100) + "; UPF/PR até 2026-10"))
                 .andExpect(jsonPath("$.modalidades[?(@.chave == 'RFB_ORDINARIO')].debitos[*].vencimento")
                         .value(org.hamcrest.Matchers.containsInAnyOrder("2024-02-20", "2024-03-20")))
                 .andExpect(jsonPath("$.recomendacao[0].orgao").value("RFB"))
