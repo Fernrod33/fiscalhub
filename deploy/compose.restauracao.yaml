@@ -1,0 +1,8 @@
+# Só para o deploy/teste-restauracao.sh: o compose de desenvolvimento num projeto separado, em http://localhost:8088,
+# sem publicar o backend (não disputa portas com o ambiente de desenvolvimento).
+services:
+  backend:
+    ports: !reset []
+  proxy:
+    ports: !override
+      - "127.0.0.1:8088:80"

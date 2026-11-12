@@ -61,7 +61,8 @@ export const ARQUIVOS_MASSA_COMPLETA = [
   'ecd/ECD_2024_11222333000181_SUBSTITUTA.txt', 'ecd/ECD_2025_11222333000181_ORIGINAL.txt', 'ecf/ECF_2025_LUCRO_REAL_11222333000181.txt',
   'parana/RTI_9012345663.pdf', 'parana/GR-PR_Parcelamento_parcela_12-36.pdf',
   ...Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).flatMap((m) => [
-    `efd-icms-ipi/EFD_ICMS_IPI_${m}2025_11222333000181.txt`, `efd-contribuicoes/EFD_CONTRIBUICOES_${m}2025_11222333000181.txt`]),
+    `efd-icms-ipi/EFD_ICMS_IPI_${m}2025_11222333000181.txt`, `efd-contribuicoes/EFD_CONTRIBUICOES_${m}2025_11222333000181.txt`,
+    `dctfweb/DCTFWeb_${m}2025_MIT_11222333000181.pdf`]),
   ...Array.from({ length: 7 }, (_, i) => `efd-icms-ipi/EFD_ICMS_IPI_0${i + 1}2026_11222333000181.txt`),
 ];
 
