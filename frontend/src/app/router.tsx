@@ -40,6 +40,7 @@ export const router = createBrowserRouter([
     HydrateFallback: CarregandoPagina,
     children: [
       { path: '/trocar-senha', ...pagina(() => padrao(import('@/features/auth/pages/trocar-senha-page'))) },
+      { path: '/aceitar-termos', ...pagina(() => padrao(import('@/features/termos/aceitar-termos-page'))) },
       { path: '/ativar-segundo-fator', ...pagina(() => padrao(import('@/features/seguranca/pages/ativar-segundo-fator-page'))) },
       {
         element: <AppShell />,

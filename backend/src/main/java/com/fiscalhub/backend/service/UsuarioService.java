@@ -100,6 +100,13 @@ public class UsuarioService {
         return usuario;
     }
 
+    public Usuario aceitarTermos(UsuarioAutenticado ua) {
+        Usuario usuario = findById(ua.id());
+        usuario.setTermosVersao(com.fiscalhub.backend.lgpd.Termos.VERSAO);
+        usuario.setTermosAceitosEm(java.time.LocalDateTime.now());
+        return usuario;
+    }
+
     /** Troca a senha e invalida os tokens anteriores; quem chama emite um token novo. */
     public Usuario trocarSenha(UsuarioAutenticado ua, TrocaSenhaDTO dto) {
         Usuario usuario = findById(ua.id());

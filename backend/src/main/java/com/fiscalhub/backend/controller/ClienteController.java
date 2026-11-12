@@ -1,5 +1,12 @@
 package com.fiscalhub.backend.controller;
 
+import com.fiscalhub.backend.lgpd.LgpdService;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
+
 import com.fiscalhub.backend.dto.ClienteRequestDTO;
 import com.fiscalhub.backend.dto.ClienteResponseDTO;
 import com.fiscalhub.backend.service.ClienteService;
@@ -19,9 +26,11 @@ import java.util.List;
 public class ClienteController {
 
     private final ClienteService clienteService;
+    private final LgpdService lgpd;
 
-    ClienteController(ClienteService clienteService) {
+    ClienteController(ClienteService clienteService, LgpdService lgpd) {
         this.clienteService = clienteService;
+        this.lgpd = lgpd;
     }
 
     @GetMapping
@@ -52,11 +61,36 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.update(id, dto, ua));
     }
 
-    @DeleteMapping("/{id}")
-    @ConsultorOuAdmin
-    @Auditavel(value = AcaoAuditoria.CLIENTE_EXCLUIR, idParam = "id")
-    public ResponseEntity<Void> deleteCliente(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
-        clienteService.delete(id, ua);
-        return ResponseEntity.noContent().build();
+    public record PedidoExclusao(String confirmacao) {
+    }
+
+    /**
+     * Exclusão (LGPD): só ADMIN, com a segunda confirmação (o CNPJ digitado). Os dados ficam até o fim do prazo de
+     * arrependimento (fiscalhub.lgpd.prazo-exclusao-dias); depois o job remove tudo, inclusive os arquivos.
+     */
+    @PostMapping("/{id}/exclusao")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(value = AcaoAuditoria.CLIENTE_EXCLUSAO_SOLICITAR, idParam = "id")
+    public ClienteResponseDTO solicitarExclusao(@PathVariable Long id, @RequestBody PedidoExclusao pedido,
+                                                @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ClienteResponseDTO.fromEntity(lgpd.solicitarExclusao(id, pedido.confirmacao(), ua));
+    }
+
+    @DeleteMapping("/{id}/exclusao")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(value = AcaoAuditoria.CLIENTE_EXCLUSAO_CANCELAR, idParam = "id")
+    public ClienteResponseDTO cancelarExclusao(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ClienteResponseDTO.fromEntity(lgpd.cancelarExclusao(id, ua));
+    }
+
+    /** Portabilidade: ZIP com os arquivos originais, os relatórios emitidos e os dados em JSON. Só ADMIN. */
+    @GetMapping("/{id}/exportacao")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(value = AcaoAuditoria.CLIENTE_EXPORTAR, idParam = "id")
+    public ResponseEntity<StreamingResponseBody> exportar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        String nome = lgpd.nomeExportacao(id, ua);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType("application/zip"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(nome).build().toString())
+                .body(saida -> lgpd.exportar(id, ua, saida));
     }
 }

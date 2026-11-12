@@ -62,10 +62,6 @@ public class ClienteService {
         return ClienteResponseDTO.fromEntity(clienteRepository.save(cliente));
     }
 
-    public void delete(Long id, UsuarioAutenticado ua) {
-        clienteRepository.delete(acessoRecursoService.cliente(id, ua));
-    }
-
     private void validarCamposCliente(ClienteRequestDTO dto) {
         if (dto.getCep() != null && !dto.getCep().isBlank()) {
             String cep = dto.getCep().replaceAll("\\D", "");

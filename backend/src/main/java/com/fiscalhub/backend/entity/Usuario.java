@@ -82,6 +82,13 @@ public class Usuario {
     @Column(name = "totp_ultimo_passo")
     private Long totpUltimoPasso;
 
+    /** Versão dos termos aceita (nula até o primeiro aceite). */
+    @Column(name = "termos_versao", length = 30)
+    private String termosVersao;
+
+    @Column(name = "termos_aceitos_em")
+    private LocalDateTime termosAceitosEm;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

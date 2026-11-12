@@ -68,6 +68,16 @@ public class Cliente {
     @Column(nullable = false)
     private Boolean ativa = true;
 
+    /** Exclusão pedida (LGPD): o job a conclui em exclusaoPrevistaPara; até lá dá para cancelar. */
+    @Column(name = "exclusao_solicitada_em")
+    private LocalDateTime exclusaoSolicitadaEm;
+
+    @Column(name = "exclusao_solicitada_por")
+    private Long exclusaoSolicitadaPor;
+
+    @Column(name = "exclusao_prevista_para")
+    private LocalDateTime exclusaoPrevistaPara;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

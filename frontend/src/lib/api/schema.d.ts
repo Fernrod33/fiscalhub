@@ -142,7 +142,7 @@ export interface paths {
         get: operations["getClienteById"];
         put: operations["updateCliente"];
         post?: never;
-        delete: operations["deleteCliente"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -158,6 +158,22 @@ export interface paths {
         get: operations["listar"];
         put?: never;
         post: operations["criar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/me/termos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["aceitarTermos"];
         delete?: never;
         options?: never;
         head?: never;
@@ -319,6 +335,22 @@ export interface paths {
         put?: never;
         post: operations["createCliente"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{id}/exclusao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["solicitarExclusao"];
+        delete: operations["cancelarExclusao"];
         options?: never;
         head?: never;
         patch?: never;
@@ -716,6 +748,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["resumo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/clientes/{id}/exportacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportar"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1262,6 +1310,7 @@ export interface components {
             dataCriacao: string;
             segundoFatorAtivo: boolean;
             segundoFatorPendente: boolean;
+            termosPendentes: boolean;
         };
         TrocaSenhaDTO: {
             senhaAtual: string;
@@ -1269,6 +1318,9 @@ export interface components {
         };
         ConfiguracaoSeguranca: {
             exigirSegundoFator: boolean;
+            encarregadoNome?: string;
+            /** Format: email */
+            encarregadoEmail?: string;
         };
         AlteracaoRegra: {
             parametros: {
@@ -1385,6 +1437,8 @@ export interface components {
             dataCriacao: string;
             /** Format: date-time */
             dataAtualizacao: string;
+            /** Format: date-time */
+            exclusaoPrevistaPara: string;
         };
         NovoUsuarioDTO: {
             nome: string;
@@ -1475,6 +1529,9 @@ export interface components {
         ConfirmacaoCliente: {
             /** Format: int64 */
             clienteId: number;
+        };
+        PedidoExclusao: {
+            confirmacao: string;
         };
         PedidoParcelamento: {
             debitoIds: number[];
@@ -2479,8 +2536,8 @@ export interface components {
         };
         CsrfToken: {
             token: string;
-            parameterName: string;
             headerName: string;
+            parameterName: string;
         };
         AuditoriaEventoDTO: {
             /** Format: int64 */
@@ -2489,7 +2546,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
+            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "TERMOS_ACEITAR" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "CLIENTE_EXCLUSAO_SOLICITAR" | "CLIENTE_EXCLUSAO_CANCELAR" | "CLIENTE_EXPORTAR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -2923,26 +2980,6 @@ export interface operations {
             };
         };
     };
-    deleteCliente: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     listar: {
         parameters: {
             query?: never;
@@ -2975,6 +3012,26 @@ export interface operations {
                 "application/json": components["schemas"]["NovoUsuarioDTO"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UsuarioResponseDTO"];
+                };
+            };
+        };
+    };
+    aceitarTermos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -3281,6 +3338,54 @@ export interface operations {
                 "application/json": components["schemas"]["ClienteRequestDTO"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClienteResponseDTO"];
+                };
+            };
+        };
+    };
+    solicitarExclusao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoExclusao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClienteResponseDTO"];
+                };
+            };
+        };
+    };
+    cancelarExclusao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -3985,6 +4090,28 @@ export interface operations {
                     "*/*": {
                         [key: string]: number;
                     };
+                };
+            };
+        };
+    };
+    exportar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StreamingResponseBody"];
                 };
             };
         };

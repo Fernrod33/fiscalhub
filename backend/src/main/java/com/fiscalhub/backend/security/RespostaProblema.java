@@ -9,6 +9,7 @@ final class RespostaProblema {
 
     static final String SENHA_TROCA_OBRIGATORIA = "/problemas/senha-troca-obrigatoria";
     static final String SEGUNDO_FATOR_OBRIGATORIO = "/problemas/segundo-fator-obrigatorio";
+    static final String TERMOS_PENDENTES = "/problemas/termos-pendentes";
 
     private RespostaProblema() {
     }

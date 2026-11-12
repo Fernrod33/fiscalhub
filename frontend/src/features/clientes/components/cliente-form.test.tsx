@@ -49,7 +49,7 @@ describe('ClienteForm', () => {
   it('na edição, preenche os dados do cliente e muda o rótulo do botão', () => {
     render(<ClienteForm aoSalvar={vi.fn()} cliente={{
       id: 1, razaoSocial: 'Existente SA', nomeFantasia: '', cnpj: '11222333000181', inscricaoEstadual: '', inscricaoMunicipal: '',
-      endereco: '', cidade: 'Curitiba', estado: 'PR', cep: '', telefone: '', ativa: true, dataCriacao: '', dataAtualizacao: '',
+      endereco: '', cidade: 'Curitiba', estado: 'PR', cep: '', telefone: '', ativa: true, dataCriacao: '', dataAtualizacao: '', exclusaoPrevistaPara: '',
     }} />);
     expect(screen.getByLabelText('Razão social')).toHaveValue('Existente SA');
     expect(screen.getByRole('button', { name: 'Salvar alterações' })).toBeInTheDocument();

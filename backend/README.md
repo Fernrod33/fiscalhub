@@ -57,6 +57,13 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
   mudança de papel derrubam todas (versão do token).
 - Checklist OWASP ASVS nível 2: `docs/seguranca/asvs.md`.
 
+## LGPD
+
+Aceite dos termos no primeiro acesso (`lgpd/Termos`), encarregado do escritório, exportação do cliente em ZIP e
+exclusão com prazo de arrependimento (`lgpd/LgpdService`, sobre o `lgpd/GrafoCliente`: as tabelas do cliente achadas
+pelas chaves estrangeiras), máscara de CPF, CNPJ e valores nos logs (`operacao/MascaraLog`). Detalhes e inventário em
+`docs/lgpd/`.
+
 ## Configuração (variáveis de ambiente)
 
 Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na inicialização (`spring.config.import`) e não é versionado; variáveis de ambiente reais têm precedência.

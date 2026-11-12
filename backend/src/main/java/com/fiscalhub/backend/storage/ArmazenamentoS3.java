@@ -56,6 +56,15 @@ public class ArmazenamentoS3 implements ArmazenamentoArquivos {
     }
 
     @Override
+    public void excluirTodasVersoes(String chave) {
+        var versoes = s3.listObjectVersionsPaginator(r -> r.bucket(bucket).prefix(chave));
+        versoes.versions().stream().filter(v -> v.key().equals(chave))
+                .forEach(v -> s3.deleteObject(r -> r.bucket(bucket).key(chave).versionId(v.versionId())));
+        versoes.deleteMarkers().stream().filter(m -> m.key().equals(chave))
+                .forEach(m -> s3.deleteObject(r -> r.bucket(bucket).key(chave).versionId(m.versionId())));
+    }
+
+    @Override
     public boolean existe(String chave) {
         try {
             s3.headObject(r -> r.bucket(bucket).key(chave));

@@ -26,10 +26,29 @@ export function useSalvarCliente() {
   });
 }
 
-export function useExcluirCliente() {
+/** Exclusão (LGPD, só ADMIN): pede o CNPJ como segunda confirmação; os dados somem depois do prazo de arrependimento. */
+export function useSolicitarExclusao() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => http.delete(`/api/clientes/${id}`),
+    mutationFn: ({ id, confirmacao }: { id: number; confirmacao: string }) =>
+      http.post<Cliente>(`/api/clientes/${id}/exclusao`, { confirmacao }),
     onSuccess: () => qc.invalidateQueries({ queryKey: chavesClientes.todos }),
   });
+}
+
+export function useCancelarExclusao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => http.delete(`/api/clientes/${id}/exclusao`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: chavesClientes.todos }),
+  });
+}
+
+/** Portabilidade (só ADMIN): ZIP com os arquivos originais, os relatórios emitidos e os dados em JSON. */
+export async function exportarCliente(id: number) {
+  const { blob, nome } = await http.baixar(`/api/clientes/${id}/exportacao`);
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: nome });
+  a.click();
+  URL.revokeObjectURL(url);
 }

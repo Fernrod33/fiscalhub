@@ -8,9 +8,10 @@ export function RotaProtegida() {
   const { pathname, search } = useLocation();
   if (!sessao) return <Navigate to="/login" replace state={{ voltar: pathname + search }} />;
   if (sessao.trocarSenhaNoProximoLogin && pathname !== '/trocar-senha') return <Navigate to="/trocar-senha" replace />;
-  if (!sessao.trocarSenhaNoProximoLogin && sessao.segundoFatorPendente && pathname !== '/ativar-segundo-fator') {
-    return <Navigate to="/ativar-segundo-fator" replace />;
-  }
+  // a mesma ordem do filtro do backend: senha provisória (acima), 2º fator exigido, aceite dos termos
+  const pendencia = sessao.trocarSenhaNoProximoLogin ? null
+    : sessao.segundoFatorPendente ? '/ativar-segundo-fator' : sessao.termosPendentes ? '/aceitar-termos' : null;
+  if (pendencia && pathname !== pendencia) return <Navigate to={pendencia} replace />;
   return <Outlet />;
 }
 

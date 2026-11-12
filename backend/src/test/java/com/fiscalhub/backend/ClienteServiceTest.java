@@ -155,15 +155,6 @@ class ClienteServiceTest {
         assertThat(result.razaoSocial()).isEqualTo("Cliente A Atualizada");
     }
 
-    @Test
-    void delete_removeClienteDoProprioUsuario() {
-        when(acessoRecursoService.cliente(10L, UA)).thenReturn(clienteA);
-
-        clienteService.delete(10L, UA);
-
-        verify(clienteRepository).delete(clienteA);
-    }
-
     private ClienteRequestDTO buildRequestDTO(String cnpj) {
         ClienteRequestDTO dto = new ClienteRequestDTO();
         dto.setRazaoSocial("Cliente Teste");

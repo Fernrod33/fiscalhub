@@ -84,6 +84,7 @@ public class DadosTeste {
         u.setSenha(senhaCodificada);
         u.setPapel(papel);
         u.setEscritorio(escritorio);
+        u.setTermosVersao(com.fiscalhub.backend.lgpd.Termos.VERSAO); // o aceite tem teste próprio (LgpdTest)
         return usuarioRepository.save(u);
     }
 

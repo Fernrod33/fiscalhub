@@ -186,17 +186,25 @@ public class SegurancaContaService {
 
     // ---- escritório
 
-    public boolean exigeSegundoFator(UsuarioAutenticado ua) {
-        return escritorios.findById(ua.escritorioId()).map(Escritorio::getExigirSegundoFator).orElse(false);
+    public com.fiscalhub.backend.controller.SegurancaController.ConfiguracaoSeguranca configuracao(UsuarioAutenticado ua) {
+        Escritorio e = escritorios.findById(ua.escritorioId()).orElseThrow();
+        return new com.fiscalhub.backend.controller.SegurancaController.ConfiguracaoSeguranca(e.getExigirSegundoFator(),
+                e.getEncarregadoNome(), e.getEncarregadoEmail());
     }
 
-    /** ADMIN liga ou desliga para o escritório inteiro; quem ainda não ativou é levado a ativar na próxima requisição. */
-    public void exigirSegundoFator(UsuarioAutenticado ua, boolean exigir) {
+    /** ADMIN: exigência do 2º fator (só depois de ativar o dele; quem não ativou é levado a ativar) e o encarregado. */
+    public void alterarConfiguracao(UsuarioAutenticado ua, com.fiscalhub.backend.controller.SegurancaController.ConfiguracaoSeguranca c) {
         Escritorio e = escritorios.findById(ua.escritorioId()).orElseThrow();
-        if (exigir && !usuario(ua).getTotpAtivo()) {
+        if (c.exigirSegundoFator() && !usuario(ua).getTotpAtivo()) {
             throw new BusinessRuleException("Ative o seu segundo fator antes de exigi-lo do escritório.");
         }
-        e.setExigirSegundoFator(exigir);
+        e.setExigirSegundoFator(c.exigirSegundoFator());
+        e.setEncarregadoNome(vazioNulo(c.encarregadoNome()));
+        e.setEncarregadoEmail(vazioNulo(c.encarregadoEmail()));
+    }
+
+    private static String vazioNulo(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private CodigosRecuperacao novosCodigos(Usuario u) {

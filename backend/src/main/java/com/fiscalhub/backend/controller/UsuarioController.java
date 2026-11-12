@@ -58,6 +58,13 @@ public class UsuarioController {
         return UsuarioResponseDTO.fromEntity(usuario);
     }
 
+    /** Aceite dos Termos de Uso e da Política de Privacidade na versão vigente (primeiro acesso ou versão nova). */
+    @PostMapping("/me/termos")
+    @Auditavel(AcaoAuditoria.TERMOS_ACEITAR)
+    public UsuarioResponseDTO aceitarTermos(@AuthenticationPrincipal UsuarioAutenticado ua) {
+        return UsuarioResponseDTO.fromEntity(usuarioService.aceitarTermos(ua));
+    }
+
     /** Saída do próprio usuário: desativação (o último ADMIN ativo não pode sair). */
     @DeleteMapping("/me")
     @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)

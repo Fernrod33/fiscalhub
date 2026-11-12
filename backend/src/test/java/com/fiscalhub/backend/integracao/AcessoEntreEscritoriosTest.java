@@ -116,7 +116,9 @@ class AcessoEntreEscritoriosTest {
         RequestPostProcessor assistente = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "assist-b@test.com", Papel.ASSISTENTE));
         Long c = clienteB.getId();
 
-        mvc.perform(delete("/api/clientes/{id}", c).with(assistente)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/clientes/{id}/exclusao", c).with(assistente).contentType(APPLICATION_JSON)
+                .content("{\"confirmacao\":\"" + clienteB.getCnpj() + "\"}")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/clientes/{id}/exportacao", c).with(assistente)).andExpect(status().isForbidden());
         mvc.perform(put("/api/clientes/{id}", c).with(assistente)
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isForbidden());
         mvc.perform(post("/api/clientes").with(assistente)
@@ -182,7 +184,9 @@ class AcessoEntreEscritoriosTest {
         return Map.ofEntries(
                 Map.entry("GET cliente", get("/api/clientes/{id}", c)),
                 Map.entry("PUT cliente", put("/api/clientes/{id}", c).contentType(APPLICATION_JSON).content(CLIENTE_JSON)),
-                Map.entry("DELETE cliente", delete("/api/clientes/{id}", c)),
+                Map.entry("POST exclusao do cliente", post("/api/clientes/{id}/exclusao", c).contentType(APPLICATION_JSON).content("{\"confirmacao\":\"x\"}")),
+                Map.entry("DELETE exclusao do cliente", delete("/api/clientes/{id}/exclusao", c)),
+                Map.entry("GET exportacao do cliente", get("/api/clientes/{id}/exportacao", c)),
                 Map.entry("GET debitos do cliente", get("/api/clientes/{id}/debitos", c)),
                 Map.entry("GET debitos filtrados", get("/api/clientes/{id}/debitos?orgao=RFB&situacao=EM_ABERTO", c)),
                 Map.entry("GET parcelamentos", get("/api/clientes/{id}/parcelamentos", c)),

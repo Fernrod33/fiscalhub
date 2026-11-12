@@ -1,25 +1,22 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Building2, Pencil, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Confirmar } from '@/components/confirmar';
 import { DataTable, type ColumnDef } from '@/components/data-table';
 import { EstadoVazio } from '@/components/estado-vazio';
 import { Reveal } from '@/components/motion';
 import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import type { Cliente } from '@/lib/api/tipos';
 import * as fmt from '@/lib/formatadores';
-import { mensagemErro } from '@/lib/http';
 import { usePermissoes } from '@/features/auth/permissoes';
-import { useClientes, useExcluirCliente } from '../api';
+import { useClientes } from '../api';
 import { ClienteDialog } from '../components/cliente-dialog';
+import { ExclusaoClienteDialog } from '../components/exclusao-cliente-dialog';
 
 export default function ClientesPage() {
   const clientes = useClientes();
-  const excluir = useExcluirCliente();
-  const { alterar } = usePermissoes();
+  const { alterar, admin } = usePermissoes();
   const [busca, setBusca] = useSearchParams();
   const [editando, setEditando] = useState<Cliente | null>(null);
   const [excluindo, setExcluindo] = useState<Cliente | null>(null);
@@ -33,14 +30,16 @@ export default function ClientesPage() {
       </Link>) },
     { accessorKey: 'cnpj', header: 'CNPJ', cell: ({ getValue }) => fmt.cnpj(getValue<string>()), meta: { classe: 'whitespace-nowrap' } },
     { id: 'local', header: 'Cidade/UF', accessorFn: (c) => [c.cidade, c.estado].filter(Boolean).join('/') || '—' },
-    { accessorKey: 'ativa', header: 'Situação', cell: ({ getValue }) => getValue<boolean>()
-      ? <Badge variant="outline">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>, meta: { classe: 'whitespace-nowrap' } },
+    { accessorKey: 'ativa', header: 'Situação', cell: ({ row }) => row.original.exclusaoPrevistaPara
+      ? <Badge className="bg-danger-bg text-danger">Exclusão em {fmt.data(row.original.exclusaoPrevistaPara)}</Badge>
+      : row.original.ativa ? <Badge variant="outline">Ativo</Badge> : <Badge variant="secondary">Inativo</Badge>, meta: { classe: 'whitespace-nowrap' } },
     ...(alterar ? [{
       id: 'acoes', header: () => <span className="sr-only">Ações</span>, enableSorting: false,
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button variant="ghost" size="icon" aria-label={`Editar ${row.original.razaoSocial}`} onClick={() => setEditando(row.original)}><Pencil aria-hidden /></Button>
-          <Button variant="ghost" size="icon" aria-label={`Excluir ${row.original.razaoSocial}`} onClick={() => setExcluindo(row.original)}><Trash2 aria-hidden /></Button>
+          {admin && !row.original.exclusaoPrevistaPara && (
+            <Button variant="ghost" size="icon" aria-label={`Excluir ${row.original.razaoSocial}`} onClick={() => setExcluindo(row.original)}><Trash2 aria-hidden /></Button>)}
         </div>),
     } satisfies ColumnDef<Cliente>] : []),
   ];
@@ -56,13 +55,7 @@ export default function ClientesPage() {
 
       <ClienteDialog aberto={novo} aoMudar={(a) => !a && fecharNovo()} />
       <ClienteDialog cliente={editando ?? undefined} aberto={!!editando} aoMudar={(a) => !a && setEditando(null)} />
-      <Confirmar aberto={!!excluindo} aoMudar={(a) => !a && setExcluindo(null)} titulo="Excluir cliente"
-                 descricao={<>Excluir <strong>{excluindo?.razaoSocial}</strong>? Esta ação não pode ser desfeita.</>}
-                 rotuloAcao="Excluir" ocupado={excluir.isPending}
-                 aoConfirmar={() => excluindo && excluir.mutate(excluindo.id, {
-                   onSuccess: () => { toast.success('Cliente excluído.'); setExcluindo(null); },
-                   onError: (e) => toast.error(mensagemErro(e, 'Não foi possível excluir.')),
-                 })} />
+      <ExclusaoClienteDialog cliente={excluindo} aoFechar={() => setExcluindo(null)} />
     </Reveal>
   );
 }

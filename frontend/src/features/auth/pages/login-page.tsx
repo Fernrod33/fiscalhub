@@ -27,7 +27,8 @@ export default function LoginPage() {
   const [desafio, setDesafio] = useState<string | null>(null);
   const form = useForm<z.infer<typeof esquema>>({ resolver: zodResolver(esquema), defaultValues: { email: '', senha: '' } });
 
-  const destino = (u: Usuario) => (u.trocarSenhaNoProximoLogin ? '/trocar-senha' : u.segundoFatorPendente ? '/ativar-segundo-fator' : voltar);
+  const destino = (u: Usuario) => (u.trocarSenhaNoProximoLogin ? '/trocar-senha' : u.segundoFatorPendente ? '/ativar-segundo-fator'
+    : u.termosPendentes ? '/aceitar-termos' : voltar);
   if (sessao && !login.isPending) return <Navigate to={destino(sessao)} replace />;
   if (desafio) return <PassoCodigo desafio={desafio} aoEntrar={(u) => navigate(destino(u), { replace: true })} aoVoltar={() => setDesafio(null)} />;
 

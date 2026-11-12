@@ -24,6 +24,10 @@ export async function criarEscritorioEEntrar(page: Page) {
   const login = page.waitForResponse((r) => r.url().includes('/api/auth/') && r.request().method() === 'POST', { timeout: 60_000 });
   await page.getByRole('button', { name: 'Entrar' }).click();
   expect((await login).ok(), 'login').toBe(true);
+  // primeiro acesso: aceite dos Termos de Uso e da Política de Privacidade
+  await expect(page.getByRole('heading', { level: 1, name: 'Termos de Uso e Política de Privacidade' })).toBeVisible();
+  await page.getByLabel('Li e aceito os Termos de Uso e a Política de Privacidade.').check();
+  await page.getByRole('button', { name: 'Aceitar e continuar' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Olá, Pessoa' })).toBeVisible();
   return { email, senha };
 }

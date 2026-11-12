@@ -16,5 +16,13 @@ public interface ArmazenamentoArquivos {
 
     void excluir(String chave);
 
+    /**
+     * Exclusão definitiva (LGPD): no bucket versionado, todas as versões e marcas de exclusão da chave; o excluir comum
+     * só cria uma marca e a versão anterior continua recuperável até a regra de expiração do bucket.
+     */
+    default void excluirTodasVersoes(String chave) {
+        excluir(chave);
+    }
+
     boolean existe(String chave);
 }

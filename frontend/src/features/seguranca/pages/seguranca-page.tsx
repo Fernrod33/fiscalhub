@@ -10,7 +10,7 @@ import { Cartao, CartaoTitulo } from '@/components/cartao';
 import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import { dataHora } from '@/lib/formatadores';
 import { mensagemErro } from '@/lib/http';
-import type { SessaoDispositivo } from '@/lib/api/tipos';
+import type { ConfiguracaoSeguranca, SessaoDispositivo } from '@/lib/api/tipos';
 import { useSessao } from '@/features/auth/sessao';
 import {
   useAlterarConfiguracaoSeguranca, useConfiguracaoSeguranca, useDesativarSegundoFator, useEncerrarSessao, useNovosCodigos, useSessoes,
@@ -25,7 +25,7 @@ export default function SegurancaPage() {
       <CabecalhoPagina titulo="Segurança" subtitulo="Verificação em duas etapas e dispositivos conectados à sua conta" />
       <SegundoFator ativo={!!sessao?.segundoFatorAtivo} />
       <Sessoes />
-      {sessao?.papel === 'ADMIN' && <ExigenciaEscritorio ativoNoAdmin={!!sessao.segundoFatorAtivo} />}
+      {sessao?.papel === 'ADMIN' ? <ExigenciaEscritorio ativoNoAdmin={!!sessao.segundoFatorAtivo} /> : <Encarregado />}
     </div>
   );
 }
@@ -141,7 +141,7 @@ function ExigenciaEscritorio({ ativoNoAdmin }: { ativoNoAdmin: boolean }) {
       <div className="grid gap-3">
         <div className="flex items-start gap-3">
           <input id="exigir-segundo-fator" type="checkbox" aria-describedby="exigir-segundo-fator-dica" className="mt-1 size-4 accent-primary" checked={exige} disabled={config.isPending || alterar.isPending || (!exige && !ativoNoAdmin)}
-                 onChange={(e) => alterar.mutate({ exigirSegundoFator: e.target.checked }, {
+                 onChange={(e) => alterar.mutate({ ...config.data, exigirSegundoFator: e.target.checked }, {
                    onSuccess: (c) => toast.success(c.exigirSegundoFator ? 'Verificação em duas etapas exigida de todos.' : 'Exigência removida.'),
                  })} />
           <div>
@@ -153,7 +153,43 @@ function ExigenciaEscritorio({ ativoNoAdmin }: { ativoNoAdmin: boolean }) {
           </div>
         </div>
         {alterar.isError && <p role="alert" className="text-sm text-danger">{mensagemErro(alterar.error, 'Não foi possível salvar.')}</p>}
+        {config.data && <FormEncarregado inicial={config.data} />}
       </div>
+    </Cartao>
+  );
+}
+
+/** Contato do encarregado (DPO) do escritório, que é o controlador dos dados dos clientes (LGPD art. 41). */
+function FormEncarregado({ inicial }: { inicial: ConfiguracaoSeguranca }) {
+  const alterar = useAlterarConfiguracaoSeguranca();
+  const [nome, setNome] = useState(inicial.encarregadoNome ?? '');
+  const [email, setEmail] = useState(inicial.encarregadoEmail ?? '');
+  const salvar = (e: React.FormEvent) => {
+    e.preventDefault();
+    alterar.mutate({ ...inicial, encarregadoNome: nome, encarregadoEmail: email }, { onSuccess: () => toast.success('Encarregado salvo.') });
+  };
+  return (
+    <form onSubmit={salvar} className="grid gap-3 border-t pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <p className="text-sm text-muted-foreground sm:col-span-3">Encarregado pelo tratamento de dados pessoais (DPO) do escritório: aparece para todos os usuários.</p>
+      <div className="grid gap-1.5"><Label htmlFor="dpo-nome">Nome</Label><Input id="dpo-nome" value={nome} maxLength={150} onChange={(e) => setNome(e.target.value)} /></div>
+      <div className="grid gap-1.5"><Label htmlFor="dpo-email">E-mail</Label><Input id="dpo-email" type="email" value={email} maxLength={150} onChange={(e) => setEmail(e.target.value)} /></div>
+      <Button type="submit" variant="outline" disabled={alterar.isPending}>Salvar</Button>
+      {alterar.isError && <p role="alert" className="text-sm text-danger sm:col-span-3">{mensagemErro(alterar.error, 'Não foi possível salvar.')}</p>}
+    </form>
+  );
+}
+
+function Encarregado() {
+  const config = useConfiguracaoSeguranca().data;
+  return (
+    <Cartao aria-labelledby="titulo-encarregado">
+      <CartaoTitulo id="titulo-encarregado">Privacidade</CartaoTitulo>
+      <p className="text-sm">
+        Encarregado pelo tratamento de dados pessoais do escritório:{' '}
+        {config?.encarregadoNome || config?.encarregadoEmail
+          ? <strong>{[config.encarregadoNome, config.encarregadoEmail].filter(Boolean).join(' · ')}</strong>
+          : <span className="text-muted-foreground">não informado (fale com o administrador do escritório)</span>}
+      </p>
     </Cartao>
   );
 }

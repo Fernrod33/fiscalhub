@@ -42,14 +42,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Optional<UsuarioRepository.EstadoToken> estado = usuarioRepository.estadoToken(u.id(), u.sessaoId())
                     .filter(e -> e.getAtivo() && e.getVersaoToken() == u.versaoToken() && e.getSessaoAberta());
             if (estado.isPresent()) {
-                if (estado.get().getTrocarSenhaNoProximoLogin() && !liberada(request, "/api/usuarios/me/senha")) {
-                    RespostaProblema.escrever(response, HttpServletResponse.SC_FORBIDDEN, RespostaProblema.SENHA_TROCA_OBRIGATORIA,
-                            "Troca de senha obrigatória", "Troque a senha provisória antes de continuar.");
-                    return;
-                }
-                if (estado.get().getSegundoFatorPendente() && !liberada(request, "/api/usuarios/me/segundo-fator")) {
-                    RespostaProblema.escrever(response, HttpServletResponse.SC_FORBIDDEN, RespostaProblema.SEGUNDO_FATOR_OBRIGATORIO,
-                            "Segundo fator obrigatório", "O escritório exige o segundo fator: ative-o antes de continuar.");
+                // uma pendência por vez, nesta ordem (a mesma do guarda do frontend): só a rota dela fica liberada
+                UsuarioRepository.EstadoToken e = estado.get();
+                String[] pendencia = e.getTrocarSenhaNoProximoLogin()
+                        ? new String[]{"/api/usuarios/me/senha", RespostaProblema.SENHA_TROCA_OBRIGATORIA, "Troca de senha obrigatória",
+                                "Troque a senha provisória antes de continuar."}
+                        : e.getSegundoFatorPendente()
+                        ? new String[]{"/api/usuarios/me/segundo-fator", RespostaProblema.SEGUNDO_FATOR_OBRIGATORIO, "Segundo fator obrigatório",
+                                "O escritório exige o segundo fator: ative-o antes de continuar."}
+                        : !com.fiscalhub.backend.lgpd.Termos.VERSAO.equals(e.getTermosVersao())
+                        ? new String[]{"/api/usuarios/me/termos", RespostaProblema.TERMOS_PENDENTES, "Aceite dos termos pendente",
+                                "Leia e aceite os Termos de Uso e a Política de Privacidade para continuar."}
+                        : null;
+                if (pendencia != null && !liberada(request, pendencia[0])) {
+                    RespostaProblema.escrever(response, HttpServletResponse.SC_FORBIDDEN, pendencia[1], pendencia[2], pendencia[3]);
                     return;
                 }
                 seguranca.registrarUso(u.sessaoId());

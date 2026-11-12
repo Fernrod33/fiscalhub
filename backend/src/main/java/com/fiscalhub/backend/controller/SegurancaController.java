@@ -30,7 +30,9 @@ public class SegurancaController {
     public record Senha(@NotBlank @Size(max = 200) String senha) {
     }
 
-    public record ConfiguracaoSeguranca(@NotNull Boolean exigirSegundoFator) {
+    /** Segurança e privacidade do escritório: exigência do 2º fator e o contato do encarregado (DPO). */
+    public record ConfiguracaoSeguranca(@NotNull Boolean exigirSegundoFator, @Size(max = 150) String encarregadoNome,
+                                        @jakarta.validation.constraints.Email @Size(max = 150) String encarregadoEmail) {
     }
 
     private final SegurancaContaService seguranca;
@@ -84,14 +86,14 @@ public class SegurancaController {
 
     @GetMapping("/api/escritorio/seguranca")
     public ConfiguracaoSeguranca configuracao(@AuthenticationPrincipal UsuarioAutenticado ua) {
-        return new ConfiguracaoSeguranca(seguranca.exigeSegundoFator(ua));
+        return seguranca.configuracao(ua);
     }
 
     @PutMapping("/api/escritorio/seguranca")
     @PreAuthorize("hasRole('ADMIN')")
     @Auditavel(AcaoAuditoria.ESCRITORIO_SEGURANCA)
     public ConfiguracaoSeguranca alterar(@Valid @RequestBody ConfiguracaoSeguranca corpo, @AuthenticationPrincipal UsuarioAutenticado ua) {
-        seguranca.exigirSegundoFator(ua, corpo.exigirSegundoFator());
-        return new ConfiguracaoSeguranca(seguranca.exigeSegundoFator(ua));
+        seguranca.alterarConfiguracao(ua, corpo);
+        return seguranca.configuracao(ua);
     }
 }

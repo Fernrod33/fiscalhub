@@ -52,6 +52,13 @@ public class Escritorio {
     @Column(name = "exigir_segundo_fator", nullable = false)
     private Boolean exigirSegundoFator = false;
 
+    /** Encarregado pelo tratamento de dados pessoais (DPO) do escritório, controlador dos dados dos clientes. */
+    @Column(name = "encarregado_nome", length = 150)
+    private String encarregadoNome;
+
+    @Column(name = "encarregado_email", length = 150)
+    private String encarregadoEmail;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
