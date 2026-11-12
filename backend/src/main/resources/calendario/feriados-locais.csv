@@ -2,3 +2,8 @@
 # data: MM-dd (todo ano) ou yyyy-MM-dd (só aquele ano); municipio vazio = o estado inteiro.
 # Os nacionais (fixos e móveis) estão no CalendarioDiasUteis.
 uf;municipio;data;nome;fonte
+# PR (conferido em 11/11/2026): não há feriado estadual civil. O 19/12 (Emancipação Política, Lei 4.658/1962) foi
+# revogado pela Lei 18.384/2014, que mantém a data comemorativa "não se constituindo em feriado civil" (ponto facultativo).
+# Cascavel/PR: só o aniversário da cidade. Os religiosos de Cascavel (Lei federal 9.093/1995, art. 2º) não foram
+# encontrados em fonte oficial; Sexta-feira Santa e Corpus Christi já estão no CalendarioDiasUteis.
+PR;Cascavel;11-14;Aniversário de Cascavel;Lei Municipal 5.689/2010 (Cascavel), citada pelo TJPR como a que institui o feriado; o TJPR o trata como feriado cívico fora da Lei 9.093/1995 (não impede o comércio)

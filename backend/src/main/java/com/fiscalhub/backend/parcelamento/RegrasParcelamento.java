@@ -6,24 +6,19 @@ import com.fiscalhub.backend.entity.enums.TipoTributo;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Regras de acréscimos, parcelamento e transação como dado: {@code resources/parcelamento/regras.json} (vigência, artigos
- * e fonte de cada versão) e a UPF/PR oficial em {@code resources/parcelamento/upf-pr.csv}. Versionadas no git: a
+ * e fonte de cada versão) (a UPF/PR oficial está em {@code indice_monetario}, importada da SEFA-PR). Versionadas no git: a
  * simulação grava a versão do arquivo e a vigência da regra usada. Nada de percentual, prazo ou limite no código.
  */
 @Component
@@ -71,9 +66,6 @@ public class RegrasParcelamento {
 
     public enum PrimeiraParcela { MES_SEGUINTE, MES_DA_CONSOLIDACAO, DATA_BASE }
 
-    public record Upf(YearMonth mes, BigDecimal valor, String norma, String url, String sha256) {
-    }
-
     /** Limites de receita bruta anual da LC 123/2006, art. 3º. */
     public record Porte(BigDecimal me, BigDecimal epp, String fundamento, List<String> fontes) {
         /** ME, EPP ou DEMAIS pela receita bruta do ano. */
@@ -87,19 +79,10 @@ public class RegrasParcelamento {
     }
 
     private final Arquivo arquivo;
-    private final Map<YearMonth, Upf> upf = new LinkedHashMap<>();
 
     public RegrasParcelamento() {
         try (InputStream in = recurso("parcelamento/regras.json")) {
             arquivo = new ObjectMapper().findAndRegisterModules().readValue(in, Arquivo.class);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-        try (BufferedReader r = new BufferedReader(new InputStreamReader(recurso("parcelamento/upf-pr.csv"), StandardCharsets.UTF_8))) {
-            r.lines().filter(l -> !l.isBlank() && !l.startsWith("#") && !l.startsWith("mes;")).map(l -> l.split(";")).forEach(c -> {
-                YearMonth mes = YearMonth.parse(c[0]);
-                upf.put(mes, new Upf(mes, new BigDecimal(c[1]), c[2], c[3], c[4]));
-            });
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -139,14 +122,5 @@ public class RegrasParcelamento {
                 .sorted(Comparator.comparing(RegraParcelamento::vigenciaInicio))
                 .forEach(m -> porChave.merge(m.chave(), m, (antiga, nova) -> antiga.vigente(data) ? antiga : nova));
         return List.copyOf(porChave.values());
-    }
-
-    public Optional<Upf> upf(YearMonth mes) {
-        return Optional.ofNullable(upf.get(mes));
-    }
-
-    /** Último mês com UPF/PR oficial importada (versão dos índices). */
-    public Optional<YearMonth> ultimaUpf() {
-        return upf.keySet().stream().max(Comparator.naturalOrder());
     }
 }

@@ -37,4 +37,11 @@ class CalendarioDiasUteisTest {
         assertThat(curitiba.em(LocalDate.of(2026, 9, 8), "PR", "Londrina")).isFalse();
         assertThat(new CalendarioDiasUteis.FeriadoLocal("PR", null, "2026-12-19", "teste", "teste").em(LocalDate.of(2026, 12, 19), "PR", "Londrina")).isTrue();
     }
+
+    @Test
+    void cascavelTemOAniversarioEOParanaNaoTemFeriadoEstadual() {
+        assertThat(cal.feriado(LocalDate.of(2025, 11, 14), "PR", "Cascavel")).isTrue();
+        assertThat(cal.feriado(LocalDate.of(2025, 11, 14), "PR", "Curitiba")).isFalse();
+        assertThat(cal.feriado(LocalDate.of(2025, 12, 19), "PR", "Cascavel")).as("19/12 revogado pela Lei 18.384/2014").isFalse();
+    }
 }

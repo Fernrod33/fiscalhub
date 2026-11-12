@@ -72,7 +72,7 @@ class MotorParcelamentoParanaTest {
             ResultadoModalidade r = CenarioParcelamento.estadualPR().diasDeAtraso(45).calcularPR(); // fev/2024: sem UPF/PR importada
 
             assertThat(r.elegivel()).isFalse();
-            assertThat(r.bloqueio()).contains("UPF/PR de 2024-02").contains("upf-pr.csv");
+            assertThat(r.bloqueio()).contains("UPF/PR de 2024-02").contains("Indicadores Econômicos");
             assertThat(r.cronograma()).isNotEmpty(); // os valores aparecem, mas não valem como proposta
         }
 

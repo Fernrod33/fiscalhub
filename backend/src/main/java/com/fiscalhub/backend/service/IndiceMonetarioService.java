@@ -68,6 +68,11 @@ public class IndiceMonetarioService {
         return taxas;
     }
 
+    /** Valor do índice no mês, se importado (ex.: UPF/PR do mês do pedido). */
+    public java.util.Optional<BigDecimal> valor(TipoIndice tipo, YearMonth mes) {
+        return indiceMonetarioRepository.findByTipoAndAnoAndMes(tipo, mes.getYear(), mes.getMonthValue()).map(IndiceMonetario::getValor);
+    }
+
     public static BusinessRuleException indiceAusente(TipoIndice tipo, YearMonth mes) {
         return new BusinessRuleException("Índice " + tipo + " ausente para " + mes + ".");
     }

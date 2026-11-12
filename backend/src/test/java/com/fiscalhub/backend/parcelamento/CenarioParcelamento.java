@@ -79,9 +79,16 @@ final class CenarioParcelamento {
         return new CenarioParcelamento(OrgaoCredor.RFB, TipoTributo.IRPJ);
     }
 
-    /** ICMS declarado na EFD (SEFA-PR) com UFPR 100,00 (jan/24), 101,00 (fev/24), 110,00 (fev/25) e SELIC 1,00% a.m. */
+    /**
+     * ICMS declarado na EFD (SEFA-PR) com UFPR 100,00 (jan/24), 101,00 (fev/24), 110,00 (fev/25), UPF/PR oficial de
+     * jan a abr/2025 (140,89, 141,62, 141,85 e 143,71) e SELIC 1,00% a.m.
+     */
     static CenarioParcelamento estadualPR() {
         return new CenarioParcelamento(OrgaoCredor.SEFA_PR, TipoTributo.ICMS)
+                .indice(TipoIndice.UPF_PR, YearMonth.of(2025, 1), "140.89")
+                .indice(TipoIndice.UPF_PR, YearMonth.of(2025, 2), "141.62")
+                .indice(TipoIndice.UPF_PR, YearMonth.of(2025, 3), "141.85")
+                .indice(TipoIndice.UPF_PR, YearMonth.of(2025, 4), "143.71")
                 .ufpr(YearMonth.of(2024, 1), "100.00")
                 .ufpr(YearMonth.of(2024, 2), "101.00")
                 .ufpr(YearMonth.of(2025, 2), "110.00")

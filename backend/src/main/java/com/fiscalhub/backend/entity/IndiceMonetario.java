@@ -57,6 +57,10 @@ public class IndiceMonetario {
     @Column(name = "data_coleta")
     private LocalDateTime dataColeta;
 
+    /** Norma e endereço de onde o valor foi lido (ex.: Resolução SEFA 360/2025 + página de Indicadores Econômicos). */
+    @Column(length = 500)
+    private String fonte;
+
     public YearMonth getYearMonth() {
         return YearMonth.of(ano, mes);
     }

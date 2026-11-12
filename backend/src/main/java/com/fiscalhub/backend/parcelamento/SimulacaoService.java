@@ -298,9 +298,12 @@ public class SimulacaoService {
     }
 
     private String versaoIndices() {
-        Integer selic = jdbc.queryForObject("SELECT max(ano * 100 + mes) FROM indice_monetario WHERE tipo = 'SELIC'", Integer.class);
-        return "SELIC até " + (selic == null ? "—" : YearMonth.of(selic / 100, selic % 100)) + "; UPF/PR até "
-                + motor.regras().ultimaUpf().map(YearMonth::toString).orElse("—");
+        return "SELIC até " + ultimo("SELIC") + "; UPF/PR até " + ultimo("UPF_PR");
+    }
+
+    private String ultimo(String tipo) {
+        Integer mes = jdbc.queryForObject("SELECT max(ano * 100 + mes) FROM indice_monetario WHERE tipo = ?", Integer.class, tipo);
+        return mes == null ? "—" : YearMonth.of(mes / 100, mes % 100).toString();
     }
 
     private static String motorAntigo(String modalidade, BigDecimal valor, Integer parcelas) {

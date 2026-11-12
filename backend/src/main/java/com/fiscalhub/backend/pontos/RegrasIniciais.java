@@ -1,7 +1,9 @@
 package com.fiscalhub.backend.pontos;
 
 import com.fiscalhub.backend.capacidade.DfcDiretaService;
+import com.fiscalhub.backend.capacidade.MetodologiaCapacidade;
 import com.fiscalhub.backend.entity.enums.OrgaoCredor;
+import com.fiscalhub.backend.entity.enums.SituacaoDebito;
 import com.fiscalhub.backend.entity.enums.TipoTributo;
 import com.fiscalhub.backend.fiscal.ApuracaoService.Apuracao;
 import com.fiscalhub.backend.fiscal.ApuracaoService.SaldoFiscal;
@@ -397,15 +399,22 @@ final class RegrasIniciais {
             int ano = anos.stream().max(Integer::compare).orElseThrow();
             DfcDiretaService.Dfc dfc = ctx.servicos().dfc().dfc(ctx.clienteId(), ano, ctx.usuario());
             BigDecimal distribuido = soma(dfc.linhas().stream().filter(l -> "CAPITAL_DIVIDENDOS".equals(l.categoria())).map(l -> l.total()));
-            List<DebitoConsolidado> federais = ctx.debitos().stream().filter(d -> (d.orgaoCredor() == OrgaoCredor.RFB || d.orgaoCredor() == OrgaoCredor.PGFN)
-                    && d.impedeCertidao()).toList();
-            if (distribuido.signum() >= 0 || federais.isEmpty()) return Avaliacao.de(List.of());
+            if (distribuido.signum() >= 0) return Avaliacao.de(List.of());
+            // ADI 5.161 (STF, 30/09/2026): só inscrição em dívida ativa da União, exigível (CTN, art. 151) e sem garantia (LEF, art. 9º)
+            var detalhes = ctx.servicos().capacidade().insumos(ctx.clienteId(), ctx.usuario(), MetodologiaCapacidade.Simulacao.NENHUMA).detalhes();
+            List<DebitoConsolidado> federais = ctx.debitos().stream().filter(d -> d.orgaoCredor() == OrgaoCredor.PGFN
+                    && d.situacao() == SituacaoDebito.INSCRITO_DIVIDA_ATIVA && semGarantiaNemSuspensao(detalhes.get(d.numeroInscricao()))).toList();
+            if (federais.isEmpty()) return Avaliacao.de(List.of());
             List<Evidencia> ev = new ArrayList<>(List.of(new Evidencia("DFC", String.valueOf(ano), "Saídas de capital e dividendos (DFC direta " + ano + ")",
                     distribuido.negate(), origem(dfc.documentoId(), dfc.arquivo(), "I200/I250", null), "demonstracoes?dfc=" + ano)));
             federais.forEach(d -> ev.add(evidencia(d)));
             return Avaliacao.de(List.of(new Achado(String.valueOf(ano), null, "Distribuição de lucros com débito federal não garantido",
                     "Saídas de capital e dividendos de " + moeda(distribuido.negate()) + " na DFC direta de " + ano + " com " + federais.size()
-                            + " débito(s) federal(is) sem garantia nem negociação.", distribuido.negate(), ev)));
+                            + " inscrição(ões) em dívida ativa da União exigível(is) e sem garantia.", distribuido.negate(), ev)));
+        }
+
+        private static boolean semGarantiaNemSuspensao(MetodologiaCapacidade.Detalhe d) {
+            return d == null || ((d.garantia() == null || d.garantia().isBlank()) && d.suspensaoDesde() == null);
         }
     }
 

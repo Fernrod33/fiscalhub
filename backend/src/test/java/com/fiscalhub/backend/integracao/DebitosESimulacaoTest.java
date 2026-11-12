@@ -74,7 +74,7 @@ class DebitosESimulacaoTest {
                 .andExpect(jsonPath("$.versao").value(1))
                 .andExpect(jsonPath("$.dataBase").value("2024-04-05"))
                 .andExpect(jsonPath("$.versaoRegras").value("2026-10-30"))
-                .andExpect(jsonPath("$.versaoIndices").value("SELIC até 2024-12; UPF/PR até 2025-04"))
+                .andExpect(jsonPath("$.versaoIndices").value("SELIC até 2024-12; UPF/PR até 2026-10"))
                 .andExpect(jsonPath("$.modalidades[?(@.chave == 'RFB_ORDINARIO')].debitos[*].vencimento")
                         .value(org.hamcrest.Matchers.containsInAnyOrder("2024-02-20", "2024-03-20")))
                 .andExpect(jsonPath("$.recomendacao[0].orgao").value("RFB"))

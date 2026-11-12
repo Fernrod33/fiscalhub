@@ -149,9 +149,14 @@ diz outra coisa; **fonte secundária**, que o oficial não pôde ser baixado e f
   (art. 84, com a revogação do inciso I pelo Decreto 14.766/2026); reparcelamento só depois de rescisão e inscrição,
   com 6 parcelas na assinatura entre 37 e 60 (art. 84, §3º).
 - Confirmado: multa de 20% reduzida a 0,33% ao dia até o 30º dia e a 50% (10%) do 31º dia até a inscrição (art. 80).
-- **UPF/PR:** a SEFA-PR publica o valor mês a mês por resolução; foram baixadas as de fevereiro a abril de 2025 (R$ 141,62,
-  141,85 e 143,71). Os valores de 2026 não foram encontrados em fonte oficial: as regras do PR que dependem da UPF ficam
-  bloqueadas com aviso até a resolução do mês entrar em `upf-pr.csv`.
+- **UPF/PR:** até abril/2025, uma resolução da SEFA-PR por mês (jan a abr/2025 baixadas: R$ 140,89, 141,62, 141,85 e
+  143,71). Desde 1º/05/2025, a **Resolução SEFA 360/2025, art. 1º, I** (DOE 11.890, de 25/04/2025; PDF em
+  sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500360.pdf, SHA-256 `cdab0c68…24c6c`) manda publicar a UPF/PR, a SELIC e
+  o FCA **só na página de Indicadores Econômicos da SEFA-PR**: por isso não há resolução de 2026 com a UPF. A página abre
+  um ASP com GET simples (`arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR&eMesini=AAAAMM&eMesfim=AAAAMM`),
+  lido pelo `ImportacaoUpfPrService` todo dia (com a SELIC, `INDICES_AGENDAMENTO`). Os valores ficam em
+  `indice_monetario` (tipo `UPF_PR`) com origem, fonte (norma + URL) e data da coleta; a V27 carrega jan/2025 a out/2026
+  (coleta de 11/11/2026). Mês sem UPF/PR continua bloqueando a regra com aviso.
 - Regulariza Paraná (Decreto 12.099/2025): encerrado em 31/03/2026, registrado como histórico.
 
 **Portaria PGFN 6.757/2022 e Portaria Conjunta 1.751/2014:** nova tentativa no DOU em 29/10/2026 respondeu 404; mantida a

@@ -55,7 +55,7 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | `S3_REGIAO` | não | `us-east-1` | região |
 | `S3_BUCKET` | não | `fiscalhub-documentos` | bucket (precisa existir) |
 | `S3_ACCESS_KEY` / `S3_SECRET_KEY` | não | — | vazias = cadeia padrão de credenciais da AWS |
-| `SELIC_AGENDAMENTO` | não | `true` | importação automática da SELIC do Banco Central |
+| `INDICES_AGENDAMENTO` | não | `true` | importação diária da SELIC (Banco Central) e da UPF/PR (Indicadores Econômicos da SEFA-PR) |
 | `FORWARD_HEADERS_STRATEGY` | não | `none` | atrás de proxy ou load balancer use `native` ou `framework`, para que a auditoria grave o IP real do `X-Forwarded-For`. Só ative se o proxy for confiável: senão o cliente forja o IP |
 | `SPRING_PROFILES_ACTIVE` | não | — | `dev` para desenvolvimento (ver Perfis) |
 
@@ -484,12 +484,15 @@ dados com cache por avaliação. Faltou um número? O método novo vai no servi�
 | R11 | despesa indedutível (multa) adicionada no e-Lalur | ECF Parte A | monitoramento / média |
 | R12 | prejuízo fiscal e base negativa acumulados (trava de [30]%) | ECF Parte B | oportunidade / info |
 | R13 | créditos de PIS/COFINS com saldo por [3] meses | EFD-Contribuições 1100/1500 | oportunidade / média |
-| R14 | saídas de capital e dividendos (DFC) com débito federal sem garantia | DFC + débitos | risco / crítica |
+| R14 | saídas de capital e dividendos (DFC) com inscrição em dívida ativa da União exigível e sem garantia (ADI 5.161) | DFC + débitos + `divida_detalhe` | risco / crítica |
 | R15 | divergência ECD × ECF acima de [R$ 1,00] | `ConferenciaEcdEcf` | conformidade / média |
 | R16 | escrituração substituta importada | escriturações | monitoramento / info |
 
-Fundamentos com `conferido: false` em `pontos/regras.json` (R03, R05, R11, R12, R13, R14) citam a norma sem o texto vigente
-baixado; o relatório e a tela de regras marcam isso.
+Todos os fundamentos estão conferidos com o texto vigente (11/11/2026, versão `2026-11-11` do `regras.json`). A R14 mudou
+com a conferência: o STF (ADI 5.161, julgada em 30/09/2026) deu interpretação conforme ao art. 32 da Lei 4.357/1964 — a
+multa só cabe com o crédito inscrito em dívida ativa da União, exigível (CTN, art. 151) e sem garantia (LEF, art. 9º); a
+regra deixou de considerar débito da RFB não inscrito e passou a descartar a inscrição com garantia ou suspensão no
+extrato. Fundamento novo entra com `conferido: false` até a leitura do texto; o relatório e a tela de regras marcam isso.
 
 **Escrever uma regra nova:** (1) a entrada em `resources/pontos/regras.json` (código, título, categoria, severidade
 padrão, fundamento, recomendação, `parametros` com os limites, `conferido`) e `versao` nova; (2) a classe em

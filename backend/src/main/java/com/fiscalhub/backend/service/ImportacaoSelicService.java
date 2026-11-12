@@ -60,21 +60,29 @@ public class ImportacaoSelicService {
             if (mes.isAfter(ultimoMesFechado)) {
                 continue;
             }
-            BigDecimal valor = new BigDecimal(ponto.valor());
-            IndiceMonetario indice = repository.findByTipoAndAnoAndMes(TipoIndice.SELIC, mes.getYear(), mes.getMonthValue())
-                    .orElseGet(IndiceMonetario::new);
-            if (ORIGEM.equals(indice.getOrigem()) && indice.getValor().compareTo(valor) == 0) {
-                continue;
+            if (gravar(repository, TipoIndice.SELIC, mes, new BigDecimal(ponto.valor()), ORIGEM, null, agora)) {
+                gravados++;
             }
-            indice.setTipo(TipoIndice.SELIC);
-            indice.setAno(mes.getYear());
-            indice.setMes(mes.getMonthValue());
-            indice.setValor(valor);
-            indice.setOrigem(ORIGEM);
-            indice.setDataColeta(agora);
-            repository.save(indice);
-            gravados++;
         }
         return gravados;
+    }
+
+    /** Upsert idempotente de um mês (a regra de todos os importadores de índice): insere, corrige ou ignora se já igual. */
+    static boolean gravar(IndiceMonetarioRepository repository, TipoIndice tipo, YearMonth mes, BigDecimal valor, String origem,
+                          String fonte, LocalDateTime coleta) {
+        IndiceMonetario indice = repository.findByTipoAndAnoAndMes(tipo, mes.getYear(), mes.getMonthValue())
+                .orElseGet(IndiceMonetario::new);
+        if (origem.equals(indice.getOrigem()) && indice.getValor().compareTo(valor) == 0) {
+            return false;
+        }
+        indice.setTipo(tipo);
+        indice.setAno(mes.getYear());
+        indice.setMes(mes.getMonthValue());
+        indice.setValor(valor);
+        indice.setOrigem(origem);
+        indice.setFonte(fonte);
+        indice.setDataColeta(coleta);
+        repository.save(indice);
+        return true;
     }
 }

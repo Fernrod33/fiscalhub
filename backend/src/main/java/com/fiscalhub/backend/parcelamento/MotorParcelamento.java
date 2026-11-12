@@ -228,11 +228,11 @@ public class MotorParcelamento {
         }
         BigDecimal upf = null;
         if (r.parcelaMinimaUpf() != null || r.valorMinimoUpf() != null || r.garantiaAcimaUpf() != null) {
-            upf = regras.upf(mesBase).map(RegrasParcelamento.Upf::valor).orElse(null);
+            upf = indices.valor(TipoIndice.UPF_PR, mesBase).orElse(null);
             if (upf == null) {
                 bloqueio = "UPF/PR de " + mesBase + " sem valor oficial importado: parcela mínima (" + texto(r.parcelaMinimaUpf())
                         + " UPF/PR), valor mínimo (" + texto(r.valorMinimoUpf()) + " UPF/PR) e garantia (" + texto(r.garantiaAcimaUpf())
-                        + " UPF/PR) não verificados (RICMS/PR, arts. 82, §7º, e 83, §1º). Inclua a resolução da SEFA-PR do mês em parcelamento/upf-pr.csv.";
+                        + " UPF/PR) não verificados (RICMS/PR, arts. 82, §7º, e 83, §1º). A UPF/PR é importada diariamente da página de Indicadores Econômicos da SEFA-PR (Resolução SEFA 360/2025).";
             }
         }
 

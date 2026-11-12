@@ -643,13 +643,13 @@ class MassaFicticiaAceiteTest {
         }
 
         @Test
-        void parcelamentoOrdinarioSefaPrDoIcmsStBloqueadoSemUpf() throws Exception {
+        void parcelamentoOrdinarioSefaPrDoIcmsStComAUpfImportada() throws Exception {
             JsonNode m = modalidade(simular(debito(d -> "SEFA_PR".equals(d.get("orgaoCredor").asText()) && "ICMS_ST".equals(d.get("tributo").asText()))),
                     "SEFA_PR_ORDINARIO", "OFICIAL");
             conferir(m, "sefa_pr_icms_st");
             assertThat(m.at("/debitos/0/percentualMulta").decimalValue()).isEqualByComparingTo("10");
-            assertThat(m.get("elegivel").asBoolean()).isFalse();
-            assertThat(m.get("bloqueio").asText()).contains("UPF/PR de 2026-10");
+            // UPF/PR de out/2026 (152,25, carga da V27): parcela mínima de 6 UPF/PR = 913,50, abaixo da parcela de 24
+            assertThat(m.get("bloqueio").isNull()).as("bloqueio: %s", m.get("bloqueio")).isTrue();
         }
 
         @Test
