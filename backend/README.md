@@ -36,6 +36,27 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
 - O JWT carrega `uid`, `escritorioId`, `papel` e `tv` (versão do token). A cada requisição o filtro lê o usuário pela chave primária e confere se ele segue ativo e com a mesma versão. Troca de senha, desativação e mudança de papel incrementam a versão e invalidam na hora os tokens anteriores.
 - **Senha provisória**: enquanto `trocarSenhaNoProximoLogin` for verdadeiro, toda rota autenticada responde 403 com `type` `/problemas/senha-troca-obrigatoria`, exceto `GET /api/usuarios/me` e `PUT /api/usuarios/me/senha`. A troca emite um cookie de sessão novo.
 
+## Segurança da conta
+
+- **Senha** (`security/SenhaForte`): 12 a 64 caracteres (até 72 bytes, o limite do BCrypt), fora da lista local de
+  ~30 mil senhas vazadas comuns (`resources/seguranca/senhas-vazadas.txt`, SecLists/MIT); sem regra de composição.
+- **Bloqueio progressivo** (`security/BloqueioLogin`): 5 falhas seguidas na conta ou 20 no IP abrem uma espera que
+  dobra a cada nova falha (1 min até 1 h); 429 com `Retry-After`. A tentativa bloqueada é auditada (`LOGIN`, motivo
+  `BLOQUEADO`). Limite global de 30 requisições/min por IP em `/api/auth/**` (`security/LimiteAutenticacao`).
+  `fiscalhub.login.*` ajusta os números. Em memória: vale por instância.
+- **Segundo fator (TOTP)**: `POST /api/usuarios/me/segundo-fator/iniciar` (segredo e QR em SVG, gerado no servidor com
+  o `qrcodegen`), `/ativar` (primeiro código; devolve 10 códigos de recuperação, uma vez), `/desativar` e `/codigos`
+  (pedem a senha). Segredo cifrado com AES-256-GCM (`CHAVE_DADOS`), código não reaproveitável, códigos de recuperação
+  como SHA-256 e de uso único. Com o 2º fator ativo, `POST /api/auth/login` devolve só `desafio` (5 min) e a sessão
+  abre em `POST /api/auth/login/segundo-fator`. O ADMIN exige de todo o escritório em `PUT /api/escritorio/seguranca`
+  (só depois de ativar o dele); quem não ativou recebe 403 `/problemas/segundo-fator-obrigatorio` em tudo, menos
+  `/api/usuarios/me`, o logout e as rotas do 2º fator.
+- **Sessões por dispositivo** (`sessao`, V28): o JWT leva o id da sessão (`sid`), conferido a cada requisição junto
+  com o usuário. `GET /api/usuarios/me/sessoes` lista (IP, navegador, criação, último uso), `DELETE .../{id}` encerra
+  uma, `DELETE /api/usuarios/me/sessoes` encerra as outras; o logout encerra só a atual. Troca de senha, desativação e
+  mudança de papel derrubam todas (versão do token).
+- Checklist OWASP ASVS nível 2: `docs/seguranca/asvs.md`.
+
 ## Configuração (variáveis de ambiente)
 
 Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na inicialização (`spring.config.import`) e não é versionado; variáveis de ambiente reais têm precedência.
@@ -45,6 +66,7 @@ Copie `backend/.env.example` para `backend/.env` e preencha. O `.env` é lido na
 | `DB_PASSWORD` | sim | — | senha do PostgreSQL |
 | `COOKIE_SECURE` | não | `true` | flag `Secure` do cookie da sessão; o perfil `dev` desliga (http local) |
 | `JWT_SECRET` | sim | — | segredo HMAC do JWT, mínimo 32 bytes (`openssl rand -base64 48`). O app não sobe sem ele ou com menos de 256 bits |
+| `CHAVE_DADOS` | sim | — | cifra AES-256 do segredo do segundo fator: 32 bytes em Base64 (`openssl rand -base64 32`); trocá-la invalida os segundos fatores ativos |
 | `DB_URL` | não | `jdbc:postgresql://localhost:5432/fiscalhub` | URL JDBC |
 | `DB_USERNAME` | não | `postgres` | usuário do banco |
 | `CORS_ALLOWED_ORIGINS` | não | `http://localhost:5173` | origens permitidas, separadas por vírgula |

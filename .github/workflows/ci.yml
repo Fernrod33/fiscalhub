@@ -59,7 +59,7 @@ jobs:
           r() { openssl rand -base64 "$1" | tr -d '\n/+='; }
           {
             echo "DOMINIO=localhost"; echo "ACME_EMAIL=ci@localhost"; echo "UPLOAD_MAX_SIZE_MB=500"
-            echo "DB_PASSWORD=$(r 24)"; echo "JWT_SECRET=$(r 48)"
+            echo "DB_PASSWORD=$(r 24)"; echo "JWT_SECRET=$(r 48)"; echo "CHAVE_DADOS=$(openssl rand -base64 32)"
             echo "MINIO_ROOT_USER=fiscalhub-admin"; echo "MINIO_ROOT_PASSWORD=$(r 24)"
             echo "S3_ACCESS_KEY=fiscalhub-app"; echo "S3_SECRET_KEY=$(r 24)"
             echo "MINIO_KMS_SECRET_KEY=fiscalhub-sse:$(openssl rand -base64 32)"

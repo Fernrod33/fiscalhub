@@ -154,6 +154,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- QR code do segundo fator (otpauth://), gerado no servidor: uma classe só, sem dependências (MIT, ~50 KB);
+             o ZXing faria o mesmo com ~550 KB e leitura de imagem que não usamos -->
+        <dependency>
+            <groupId>io.nayuki</groupId>
+            <artifactId>qrcodegen</artifactId>
+            <version>1.8.0</version>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

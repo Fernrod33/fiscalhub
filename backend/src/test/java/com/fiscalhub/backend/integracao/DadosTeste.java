@@ -49,13 +49,14 @@ public class DadosTeste {
     private final IndiceMonetarioRepository indiceRepository;
     private final DebitoRepository debitoRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtils jwtUtils;
+    private final com.fiscalhub.backend.security.SegurancaContaService seguranca;
     private String senhaCodificada;
 
     public DadosTeste(EscritorioRepository escritorioRepository, UsuarioRepository usuarioRepository,
                       ClienteRepository clienteRepository, DocumentoFiscalRepository documentoRepository,
                       JdbcTemplate jdbc, IndiceMonetarioRepository indiceRepository,
-                      DebitoRepository debitoRepository, PasswordEncoder passwordEncoder, JwtUtils jwtUtils) {
+                      DebitoRepository debitoRepository, PasswordEncoder passwordEncoder,
+                      com.fiscalhub.backend.security.SegurancaContaService seguranca) {
         this.escritorioRepository = escritorioRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
@@ -64,7 +65,7 @@ public class DadosTeste {
         this.indiceRepository = indiceRepository;
         this.debitoRepository = debitoRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtUtils = jwtUtils;
+        this.seguranca = seguranca;
     }
 
     public Escritorio escritorio(String nome) {
@@ -96,9 +97,14 @@ public class DadosTeste {
         return req;
     };
 
+    /** JWT de uma sessão aberta no banco (como o login faria) para o usuário. */
+    public String token(Usuario usuario) {
+        return seguranca.abrirSessao(usuario, "127.0.0.1", "teste");
+    }
+
     /** Sessão do navegador: cookie com o JWT e token CSRF válido. */
     public RequestPostProcessor sessao(Usuario usuario) {
-        Cookie jwt = new Cookie(CookieSessao.NOME, jwtUtils.gerarToken(usuario));
+        Cookie jwt = new Cookie(CookieSessao.NOME, token(usuario));
         return req -> {
             adicionarCookie(req, jwt);
             return CSRF.postProcessRequest(req);

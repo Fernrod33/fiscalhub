@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/escritorio/seguranca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["configuracao"];
+        put: operations["alterar"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/escritorio/pontos-atencao/regras/{codigo}": {
         parameters: {
             query?: never;
@@ -76,7 +92,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["consultar"];
-        put: operations["alterar"];
+        put: operations["alterar_1"];
         post?: never;
         delete?: never;
         options?: never;
@@ -142,6 +158,70 @@ export interface paths {
         get: operations["listar"];
         put?: never;
         post: operations["criar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/me/segundo-fator/iniciar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["iniciar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/me/segundo-fator/desativar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["desativar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/me/segundo-fator/codigos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["regenerarCodigos"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/me/segundo-fator/ativar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ativar"];
         delete?: never;
         options?: never;
         head?: never;
@@ -420,6 +500,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login/segundo-fator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["segundoFator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuarios/{id}/papel": {
         parameters: {
             query?: never;
@@ -449,7 +545,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["desativar"];
+        patch: operations["desativar_1"];
         trace?: never;
     };
     "/api/clientes/{clienteId}/pontos-atencao/{pid}/estado": {
@@ -466,6 +562,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["estado"];
+        trace?: never;
+    };
+    "/api/usuarios/me/sessoes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sessoes"];
+        put?: never;
+        post?: never;
+        delete: operations["encerrarOutras"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/referencial/contas": {
@@ -1108,6 +1220,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios/me/sessoes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["encerrar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1132,10 +1260,15 @@ export interface components {
             escritorioId: number;
             /** Format: date-time */
             dataCriacao: string;
+            segundoFatorAtivo: boolean;
+            segundoFatorPendente: boolean;
         };
         TrocaSenhaDTO: {
             senhaAtual: string;
-            novaSenha: string;
+            novaSenha?: string;
+        };
+        ConfiguracaoSeguranca: {
+            exigirSegundoFator: boolean;
         };
         AlteracaoRegra: {
             parametros: {
@@ -1259,7 +1392,21 @@ export interface components {
             email: string;
             /** @enum {string} */
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
-            senhaProvisoria: string;
+            senhaProvisoria?: string;
+        };
+        Ativacao: {
+            segredo: string;
+            uri: string;
+            qrSvg: string;
+        };
+        Senha: {
+            senha: string;
+        };
+        CodigosRecuperacao: {
+            codigos: string[];
+        };
+        Codigo: {
+            codigo: string;
         };
         DocumentoFiscalRequestDTO: {
             /** @enum {string} */
@@ -1613,7 +1760,7 @@ export interface components {
             nome: string;
             /** Format: email */
             email: string;
-            senha: string;
+            senha?: string;
             cpf?: string;
             telefone?: string;
             nomeEscritorio: string;
@@ -1626,6 +1773,14 @@ export interface components {
             /** Format: email */
             email: string;
             senha: string;
+        };
+        RespostaLogin: {
+            usuario: components["schemas"]["UsuarioResponseDTO"];
+            desafio: string;
+        };
+        SegundoFatorLogin: {
+            desafio: string;
+            codigo: string;
         };
         AlteracaoPapelDTO: {
             /** @enum {string} */
@@ -1672,6 +1827,17 @@ export interface components {
             /** Format: date-time */
             confirmadoEm: string;
             historico: components["schemas"]["Historico"][];
+        };
+        Sessao: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            criadaEm: string;
+            /** Format: date-time */
+            ultimoUso: string;
+            ip: string;
+            dispositivo: string;
+            atual: boolean;
         };
         ContaReferencial: {
             codigo: string;
@@ -2312,8 +2478,8 @@ export interface components {
             observacao: string;
         };
         CsrfToken: {
-            parameterName: string;
             token: string;
+            parameterName: string;
             headerName: string;
         };
         AuditoriaEventoDTO: {
@@ -2323,7 +2489,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
+            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -2435,6 +2601,50 @@ export interface operations {
             };
         };
     };
+    configuracao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfiguracaoSeguranca"];
+                };
+            };
+        };
+    };
+    alterar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfiguracaoSeguranca"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfiguracaoSeguranca"];
+                };
+            };
+        };
+    };
     alterarRegra: {
         parameters: {
             query?: never;
@@ -2525,7 +2735,7 @@ export interface operations {
             };
         };
     };
-    alterar: {
+    alterar_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -2773,6 +2983,96 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UsuarioResponseDTO"];
+                };
+            };
+        };
+    };
+    iniciar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Ativacao"];
+                };
+            };
+        };
+    };
+    desativar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Senha"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    regenerarCodigos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Senha"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CodigosRecuperacao"];
+                };
+            };
+        };
+    };
+    ativar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Codigo"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CodigosRecuperacao"];
                 };
             };
         };
@@ -3325,7 +3625,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["UsuarioResponseDTO"];
+                    "*/*": components["schemas"]["RespostaLogin"];
+                };
+            };
+        };
+    };
+    segundoFator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SegundoFatorLogin"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RespostaLogin"];
                 };
             };
         };
@@ -3356,7 +3680,7 @@ export interface operations {
             };
         };
     };
-    desativar: {
+    desativar_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -3401,6 +3725,48 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PontoAtencao"];
+                };
+            };
+        };
+    };
+    sessoes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Sessao"][];
+                };
+            };
+        };
+    };
+    encerrarOutras: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -4348,6 +4714,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["PagedModelAuditoriaEventoDTO"];
                 };
+            };
+        };
+    };
+    encerrar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

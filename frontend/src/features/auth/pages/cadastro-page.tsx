@@ -11,7 +11,7 @@ import { CampoTexto } from '@/components/campo';
 import { cnpjValido, somenteDigitos } from '@/lib/cnpj';
 import { mensagemErro } from '@/lib/http';
 import { LayoutAuth } from '../components/layout-auth';
-import { useSignup } from '../api';
+import { DICA_SENHA, SENHA_MAXIMA, SENHA_MINIMA, useSignup } from '../api';
 
 const esquema = z.object({
   nomeEscritorio: z.string().trim().min(1, 'Informe o nome do escritório.').max(150),
@@ -19,7 +19,7 @@ const esquema = z.object({
     .refine((v) => !v || somenteDigitos(v).length === 11 || cnpjValido(v), 'Informe um CNPJ válido ou um CPF com 11 dígitos.'),
   nome: z.string().trim().min(1, 'Informe seu nome.').max(100),
   email: z.string().email('Informe um e-mail válido.'),
-  senha: z.string().min(6, 'Mínimo de 6 caracteres.').max(40),
+  senha: z.string().min(SENHA_MINIMA, `Mínimo de ${SENHA_MINIMA} caracteres.`).max(SENHA_MAXIMA, `Máximo de ${SENHA_MAXIMA} caracteres.`),
 });
 
 export default function CadastroPage() {
@@ -50,7 +50,7 @@ export default function CadastroPage() {
           <CampoTexto control={form.control} name="documentoEscritorio" rotulo="CNPJ ou CPF do escritório (opcional)" />
           <CampoTexto control={form.control} name="nome" rotulo="Seu nome" autoComplete="name" />
           <CampoTexto control={form.control} name="email" rotulo="E-mail" type="email" autoComplete="email" />
-          <CampoTexto control={form.control} name="senha" rotulo="Senha" type="password" autoComplete="new-password" />
+          <CampoTexto control={form.control} name="senha" rotulo="Senha" type="password" autoComplete="new-password" descricao={DICA_SENHA} />
           <Button type="submit" disabled={signup.isPending}>{signup.isPending ? 'Cadastrando…' : 'Cadastrar'}</Button>
         </form>
       </Form>

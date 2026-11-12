@@ -28,7 +28,6 @@ class SessaoCookieCsrfTest {
 
     @Autowired MockMvc mvc;
     @Autowired DadosTeste dados;
-    @Autowired JwtUtils jwtUtils;
 
     private Usuario admin;
     private Cookie sessao;
@@ -36,7 +35,7 @@ class SessaoCookieCsrfTest {
     @BeforeEach
     void setUp() {
         admin = dados.usuario(dados.escritorio("Cookies"), "admin-cookie@test.com", Papel.ADMIN);
-        sessao = new Cookie(CookieSessao.NOME, jwtUtils.gerarToken(admin));
+        sessao = new Cookie(CookieSessao.NOME, dados.token(admin));
     }
 
     @Test
@@ -44,7 +43,7 @@ class SessaoCookieCsrfTest {
         var resposta = mvc.perform(post("/api/auth/login").with(DadosTeste.CSRF).contentType(APPLICATION_JSON)
                         .content("{\"email\":\"admin-cookie@test.com\",\"senha\":\"" + DadosTeste.SENHA + "\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.email").value("admin-cookie@test.com"))
+                .andExpect(jsonPath("$.usuario.email").value("admin-cookie@test.com"))
                 .andExpect(jsonPath("$.token").doesNotExist())
                 .andReturn().getResponse();
 

@@ -3,6 +3,12 @@ package com.fiscalhub.backend.auditoria;
 /** Ações auditadas e o tipo de recurso de cada uma. */
 public enum AcaoAuditoria {
     LOGIN("USUARIO"),
+    LOGIN_SEGUNDO_FATOR("USUARIO"),
+    SESSAO_ENCERRAR("USUARIO"),
+    SEGUNDO_FATOR_ATIVAR("USUARIO"),
+    SEGUNDO_FATOR_DESATIVAR("USUARIO"),
+    SEGUNDO_FATOR_CODIGOS("USUARIO"),
+    ESCRITORIO_SEGURANCA("ESCRITORIO"),
     DOCUMENTO_IMPORTAR("DOCUMENTO"),
     DOCUMENTO_BAIXAR("DOCUMENTO"),
     DOCUMENTO_EXCLUIR("DOCUMENTO"),

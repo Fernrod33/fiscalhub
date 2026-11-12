@@ -70,6 +70,18 @@ public class Usuario {
     @Column(name = "versao_token", nullable = false)
     private Integer versaoToken = 0;
 
+    /** Segredo do TOTP cifrado (CifraDados); preenchido na ativação, vale só com totpAtivo. */
+    @JsonIgnore
+    @Column(name = "totp_segredo", length = 200)
+    private String totpSegredo;
+
+    @Column(name = "totp_ativo", nullable = false)
+    private Boolean totpAtivo = false;
+
+    @JsonIgnore
+    @Column(name = "totp_ultimo_passo")
+    private Long totpUltimoPasso;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

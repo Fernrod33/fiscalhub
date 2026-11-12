@@ -10,12 +10,12 @@ import { Form } from '@/components/ui/form';
 import { CampoTexto } from '@/components/campo';
 import { mensagemErro } from '@/lib/http';
 import { LayoutAuth } from '../components/layout-auth';
-import { useTrocarSenha } from '../api';
+import { DICA_SENHA, SENHA_MAXIMA, SENHA_MINIMA, useTrocarSenha } from '../api';
 import { sair, useSessao } from '../sessao';
 
 const esquemaTrocaSenha = z.object({
   senhaAtual: z.string().min(1, 'Informe a senha atual.'),
-  novaSenha: z.string().min(6, 'Mínimo de 6 caracteres.').max(40),
+  novaSenha: z.string().min(SENHA_MINIMA, `Mínimo de ${SENHA_MINIMA} caracteres.`).max(SENHA_MAXIMA, `Máximo de ${SENHA_MAXIMA} caracteres.`),
   confirmacao: z.string(),
 }).refine((d) => d.novaSenha === d.confirmacao, { message: 'As senhas não conferem.', path: ['confirmacao'] })
   .refine((d) => d.novaSenha !== d.senhaAtual, { message: 'A nova senha deve ser diferente da atual.', path: ['novaSenha'] });
@@ -47,7 +47,7 @@ export default function TrocarSenhaPage() {
             </Alert>
           )}
           <CampoTexto control={form.control} name="senhaAtual" rotulo={obrigatoria ? 'Senha provisória' : 'Senha atual'} type="password" autoComplete="current-password" />
-          <CampoTexto control={form.control} name="novaSenha" rotulo="Nova senha" type="password" autoComplete="new-password" />
+          <CampoTexto control={form.control} name="novaSenha" rotulo="Nova senha" type="password" autoComplete="new-password" descricao={DICA_SENHA} />
           <CampoTexto control={form.control} name="confirmacao" rotulo="Confirme a nova senha" type="password" autoComplete="new-password" />
           <div className="flex gap-2">
             {!obrigatoria && <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>}

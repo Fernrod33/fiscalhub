@@ -52,7 +52,7 @@ class SenhaETokensTest {
 
         Cookie novaSessao = mvc.perform(put("/api/usuarios/me/senha").with(provisorio)
                         .contentType(APPLICATION_JSON)
-                        .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva1\"}"))
+                        .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getCookie(CookieSessao.NOME);
 
@@ -64,7 +64,7 @@ class SenhaETokensTest {
     void trocaDeSenhaInvalidaTokensAnteriores() throws Exception {
         RequestPostProcessor antigo = dados.sessao(admin);
         mvc.perform(put("/api/usuarios/me/senha").with(antigo).contentType(APPLICATION_JSON)
-                        .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva1\"}"))
+                        .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk());
 
         mvc.perform(get("/api/usuarios/me").with(antigo)).andExpect(status().isUnauthorized());

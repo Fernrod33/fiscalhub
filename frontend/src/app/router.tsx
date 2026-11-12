@@ -40,6 +40,7 @@ export const router = createBrowserRouter([
     HydrateFallback: CarregandoPagina,
     children: [
       { path: '/trocar-senha', ...pagina(() => padrao(import('@/features/auth/pages/trocar-senha-page'))) },
+      { path: '/ativar-segundo-fator', ...pagina(() => padrao(import('@/features/seguranca/pages/ativar-segundo-fator-page'))) },
       {
         element: <AppShell />,
         ErrorBoundary: ErroRota,
@@ -61,6 +62,7 @@ export const router = createBrowserRouter([
             ],
           },
           { path: 'importacoes', ...pagina(() => padrao(import('@/features/documentos/pages/importacoes-page')), 'Importações') },
+          { path: 'seguranca', ...pagina(() => padrao(import('@/features/seguranca/pages/seguranca-page')), 'Segurança') },
           { path: 'importacoes/:documentoId/planilha', ...pagina(() => padrao(import('@/features/planilha/pages/assistente-planilha-page')), 'Mapear balancete') },
           {
             path: 'configuracoes',

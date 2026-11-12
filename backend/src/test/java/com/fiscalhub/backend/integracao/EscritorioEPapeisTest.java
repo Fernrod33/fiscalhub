@@ -40,7 +40,7 @@ class EscritorioEPapeisTest {
     @Test
     void signupCriaEscritorioEPrimeiroUsuarioComoAdmin() throws Exception {
         mvc.perform(post("/api/auth/signup").with(DadosTeste.CSRF).contentType(APPLICATION_JSON).content("""
-                        {"nome":"Ana","email":"ana@novo.com","senha":"segredo1",
+                        {"nome":"Ana","email":"ana@novo.com","senha":"segredo-forte-1",
                          "nomeEscritorio":"Ana Advocacia","documentoEscritorio":"11.222.333/0001-81"}"""))
                 .andExpect(status().isOk());
 
@@ -50,16 +50,16 @@ class EscritorioEPapeisTest {
         assertThat(ana.getEscritorio().getDocumento()).isEqualTo("11222333000181");
 
         mvc.perform(post("/api/auth/login").with(DadosTeste.CSRF).contentType(APPLICATION_JSON)
-                        .content("{\"email\":\"ana@novo.com\",\"senha\":\"segredo1\"}"))
+                        .content("{\"email\":\"ana@novo.com\",\"senha\":\"segredo-forte-1\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.papel").value("ADMIN"))
-                .andExpect(jsonPath("$.escritorioId").value(ana.getEscritorio().getId().intValue()));
+                .andExpect(jsonPath("$.usuario.papel").value("ADMIN"))
+                .andExpect(jsonPath("$.usuario.escritorioId").value(ana.getEscritorio().getId().intValue()));
     }
 
     @Test
     void signupComDocumentoInvalidoNaoCriaNada() throws Exception {
         mvc.perform(post("/api/auth/signup").with(DadosTeste.CSRF).contentType(APPLICATION_JSON).content("""
-                        {"nome":"Bia","email":"bia@novo.com","senha":"segredo1",
+                        {"nome":"Bia","email":"bia@novo.com","senha":"segredo-forte-1",
                          "nomeEscritorio":"X","documentoEscritorio":"123.456.789-00"}"""))
                 .andExpect(status().isBadRequest());
         assertThat(usuarioRepository.findByEmail("bia@novo.com")).isEmpty();
@@ -68,20 +68,20 @@ class EscritorioEPapeisTest {
     @Test
     void adminCriaUsuarioComSenhaProvisoriaQueDeveSerTrocada() throws Exception {
         mvc.perform(post("/api/usuarios").with(dados.sessao(admin)).contentType(APPLICATION_JSON)
-                        .content("{\"nome\":\"Caio\",\"email\":\"caio@test.com\",\"papel\":\"CONSULTOR\",\"senhaProvisoria\":\"provisoria1\"}"))
+                        .content("{\"nome\":\"Caio\",\"email\":\"caio@test.com\",\"papel\":\"CONSULTOR\",\"senhaProvisoria\":\"provisoria-forte-1\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.papel").value("CONSULTOR"))
                 .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(true))
                 .andExpect(jsonPath("$.senha").doesNotExist());
 
         mvc.perform(post("/api/auth/login").with(DadosTeste.CSRF).contentType(APPLICATION_JSON)
-                        .content("{\"email\":\"caio@test.com\",\"senha\":\"provisoria1\"}"))
+                        .content("{\"email\":\"caio@test.com\",\"senha\":\"provisoria-forte-1\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(true));
+                .andExpect(jsonPath("$.usuario.trocarSenhaNoProximoLogin").value(true));
 
         Usuario caio = usuarioRepository.findByEmail("caio@test.com").orElseThrow();
         mvc.perform(put("/api/usuarios/me/senha").with(dados.sessao(caio)).contentType(APPLICATION_JSON)
-                        .content("{\"senhaAtual\":\"provisoria1\",\"novaSenha\":\"definitiva1\"}"))
+                        .content("{\"senhaAtual\":\"provisoria-forte-1\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(cookie().httpOnly(CookieSessao.NOME, true)) // sessão nova: a troca invalidou a anterior
                 .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(false));
@@ -94,7 +94,7 @@ class EscritorioEPapeisTest {
             RequestPostProcessor token = dados.sessao(dados.usuario(escritorio, papel + "@test.com", papel));
             mvc.perform(get("/api/usuarios").with(token)).andExpect(status().isForbidden());
             mvc.perform(post("/api/usuarios").with(token).contentType(APPLICATION_JSON)
-                            .content("{\"nome\":\"X\",\"email\":\"x@test.com\",\"papel\":\"ADMIN\",\"senhaProvisoria\":\"provisoria1\"}"))
+                            .content("{\"nome\":\"X\",\"email\":\"x@test.com\",\"papel\":\"ADMIN\",\"senhaProvisoria\":\"provisoria-forte-1\"}"))
                     .andExpect(status().isForbidden());
             mvc.perform(patch("/api/usuarios/{id}/desativar", admin.getId()).with(token))
                     .andExpect(status().isForbidden());

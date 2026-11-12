@@ -6,7 +6,7 @@ import { expect, type Page } from '@playwright/test';
 export async function criarEscritorioEEntrar(page: Page) {
   const sufixo = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
   const email = `e2e-${sufixo}@teste.com`;
-  const senha = 'senha-e2e-1';
+  const senha = 'senha-e2e-forte-1';
 
   await page.goto('/cadastro');
   await page.getByLabel('Nome do escritório').fill(`Escritório E2E ${sufixo}`);

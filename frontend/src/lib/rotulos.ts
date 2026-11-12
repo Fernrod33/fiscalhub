@@ -69,6 +69,12 @@ export const PLANOS_REFERENCIAIS: Record<string, string> = { 1: 'PJ em geral —
 
 export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   LOGIN: 'Login',
+  LOGIN_SEGUNDO_FATOR: 'Login (código da verificação em duas etapas)',
+  SESSAO_ENCERRAR: 'Encerrou sessão',
+  SEGUNDO_FATOR_ATIVAR: 'Ativou a verificação em duas etapas',
+  SEGUNDO_FATOR_DESATIVAR: 'Desativou a verificação em duas etapas',
+  SEGUNDO_FATOR_CODIGOS: 'Gerou códigos de recuperação',
+  ESCRITORIO_SEGURANCA: 'Alterou a segurança do escritório',
   DOCUMENTO_IMPORTAR: 'Importou documento',
   DOCUMENTO_BAIXAR: 'Baixou documento',
   DOCUMENTO_EXCLUIR: 'Excluiu documento',

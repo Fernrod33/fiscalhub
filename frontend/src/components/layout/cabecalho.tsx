@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Check, ChevronsUpDown, KeyRound, LogOut, Monitor, Moon, Search, Sun } from 'lucide-react';
+import { Check, ChevronsUpDown, KeyRound, LogOut, Monitor, Moon, Search, ShieldCheck, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
@@ -105,6 +105,7 @@ function MenuUsuario() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate('/trocar-senha')}><KeyRound aria-hidden /> Trocar senha</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => navigate('/seguranca')}><ShieldCheck aria-hidden /> Segurança</DropdownMenuItem>
         <DropdownMenuItem onSelect={sair}><LogOut aria-hidden /> Sair</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -29,8 +29,12 @@ class JwtUtilsTest {
         usuario.setPapel(Papel.CONSULTOR);
         usuario.setEscritorio(escritorio);
 
-        assertThat(jwtUtils.autenticar(jwtUtils.gerarToken(usuario)))
-                .contains(new UsuarioAutenticado(3L, "a@a.com", 7L, Papel.CONSULTOR, 0));
+        java.util.UUID sessao = java.util.UUID.randomUUID();
+        assertThat(jwtUtils.autenticar(jwtUtils.gerarToken(usuario, sessao)))
+                .contains(new UsuarioAutenticado(3L, "a@a.com", 7L, Papel.CONSULTOR, 0, sessao));
+        // o desafio do segundo fator não serve de sessão
+        assertThat(jwtUtils.autenticar(jwtUtils.gerarDesafio(usuario))).isEmpty();
+        assertThat(jwtUtils.lerDesafio(jwtUtils.gerarDesafio(usuario))).hasValueSatisfying(d -> assertThat(d[0]).isEqualTo(3L));
     }
 
     @Test
@@ -41,7 +45,7 @@ class JwtUtilsTest {
         usuario.setEmail("a@a.com");
         usuario.setPapel(Papel.ADMIN);
         usuario.setEscritorio(new Escritorio());
-        String deOutraChave = new JwtUtils("y".repeat(32), 60_000).gerarToken(usuario);
+        String deOutraChave = new JwtUtils("y".repeat(32), 60_000).gerarToken(usuario, java.util.UUID.randomUUID());
         assertThat(jwtUtils.autenticar(deOutraChave)).isEmpty();
     }
 }

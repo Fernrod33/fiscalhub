@@ -146,6 +146,13 @@ function New-SegredoJwt {
     return [Convert]::ToBase64String($bytes)
 }
 
+function New-Chave32 {
+    $bytes = New-Object byte[] 32
+    $gerador = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try { $gerador.GetBytes($bytes) } finally { $gerador.Dispose() }
+    return [Convert]::ToBase64String($bytes)
+}
+
 function Read-SenhaOculta([string]$Pergunta) {
     $segura = Read-Host -Prompt $Pergunta -AsSecureString
     $ponteiro = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($segura)
@@ -174,14 +181,12 @@ if ($Docker) {
     if ((Invoke-Externo 'docker' @('info')).Codigo -ne 0) { Stop-ComErro 'O Docker não está rodando. Abra o Docker Desktop e tente de novo.' }
     $envRaiz = Join-Path $Raiz '.env'
     if (-not (Test-Path -LiteralPath $envRaiz)) {
-        $kms = New-Object byte[] 32
-        [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($kms)
         $linhas = @(
             'DOMINIO=localhost', 'ACME_EMAIL=dev@localhost', 'UPLOAD_MAX_SIZE_MB=500',
             "DB_PASSWORD=$((New-SegredoJwt) -replace '[/+=]', '')", "JWT_SECRET=$(New-SegredoJwt)",
             'MINIO_ROOT_USER=fiscalhub-admin', "MINIO_ROOT_PASSWORD=$((New-SegredoJwt) -replace '[/+=]', '')",
             'S3_ACCESS_KEY=fiscalhub-app', "S3_SECRET_KEY=$((New-SegredoJwt) -replace '[/+=]', '')",
-            "MINIO_KMS_SECRET_KEY=fiscalhub-sse:$([Convert]::ToBase64String($kms))")
+            "MINIO_KMS_SECRET_KEY=fiscalhub-sse:$(New-Chave32)", "CHAVE_DADOS=$(New-Chave32)")
         [System.IO.File]::WriteAllLines($envRaiz, $linhas, (New-Object System.Text.UTF8Encoding($false)))
         Write-Ok '.env da raiz criado com segredos aleatórios (só para desenvolvimento)'
     }
@@ -245,6 +250,10 @@ if (-not $config['DB_PASSWORD']) {
 if (-not $config['JWT_SECRET'] -or $config['JWT_SECRET'].Length -lt 44) {
     Set-ValorEnv $ArquivoEnv 'JWT_SECRET' (New-SegredoJwt)
     Write-Ok 'JWT_SECRET novo gerado (tokens antigos deixam de valer)'
+}
+if (-not $config['CHAVE_DADOS']) {
+    Set-ValorEnv $ArquivoEnv 'CHAVE_DADOS' (New-Chave32)
+    Write-Ok 'CHAVE_DADOS gerada (cifra do segredo do segundo fator)'
 }
 $config = Read-ArquivoEnv $ArquivoEnv
 Write-Ok 'Variáveis obrigatórias presentes'

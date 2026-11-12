@@ -7,7 +7,8 @@ import com.fiscalhub.backend.dto.UsuarioResponseDTO;
 import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.security.CookieSessao;
-import com.fiscalhub.backend.security.JwtUtils;
+import com.fiscalhub.backend.security.SegurancaContaService;
+import jakarta.servlet.http.HttpServletRequest;
 import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.service.UsuarioService;
 import com.fiscalhub.backend.auditoria.AcaoAuditoria;
@@ -28,12 +29,12 @@ import java.util.List;
 public class UsuarioController {
 
     private final UsuarioService usuarioService;
-    private final JwtUtils jwtUtils;
+    private final SegurancaContaService seguranca;
     private final CookieSessao cookieSessao;
 
-    UsuarioController(UsuarioService usuarioService, JwtUtils jwtUtils, CookieSessao cookieSessao) {
+    UsuarioController(UsuarioService usuarioService, SegurancaContaService seguranca, CookieSessao cookieSessao) {
         this.usuarioService = usuarioService;
-        this.jwtUtils = jwtUtils;
+        this.seguranca = seguranca;
         this.cookieSessao = cookieSessao;
     }
 
@@ -50,9 +51,10 @@ public class UsuarioController {
     /** A troca invalida o token atual: a resposta traz um token novo. */
     @PutMapping("/me/senha")
     public UsuarioResponseDTO trocarSenha(@Valid @RequestBody TrocaSenhaDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua,
-                                          HttpServletResponse response) {
+                                          HttpServletRequest request, HttpServletResponse response) {
         Usuario usuario = usuarioService.trocarSenha(ua, dto);
-        cookieSessao.emitir(response, jwtUtils.gerarToken(usuario)); // a troca invalidou o token anterior
+        seguranca.encerrarAtual(ua); // a troca invalidou todos os tokens; este dispositivo ganha uma sessão nova
+        cookieSessao.emitir(response, seguranca.abrirSessao(usuario, request));
         return UsuarioResponseDTO.fromEntity(usuario);
     }
 

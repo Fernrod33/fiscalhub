@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Limite de frequência por usuário e operação, em janela deslizante de 1 minuto, em memória. Estourou: 429 em
+ * Limite de frequência por usuário (ou IP) e operação, em janela deslizante de 1 minuto, em memória. Estourou: 429 em
  * ProblemDetail (GlobalExceptionHandler), com Retry-After.
  * ponytail: memória local; com mais de uma instância do backend o limite vale por instância — mover para o banco ou um
  * Redis quando houver mais de uma instância.
@@ -17,11 +17,15 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class LimiteFrequencia {
 
-    public static final class Excedido extends RuntimeException {
+    public static class Excedido extends RuntimeException {
         private final long segundos;
 
         Excedido(String operacao, int limite, long segundos) {
-            super("Limite de " + limite + " " + operacao + " por minuto atingido. Tente de novo em " + segundos + " s.");
+            this("Limite de " + limite + " " + operacao + " por minuto atingido. Tente de novo em " + segundos + " s.", segundos);
+        }
+
+        public Excedido(String mensagem, long segundos) {
+            super(mensagem);
             this.segundos = segundos;
         }
 
@@ -42,10 +46,10 @@ public class LimiteFrequencia {
         this.relogio = relogio;
     }
 
-    /** Registra a chamada ou lança Excedido. operacao: texto da mensagem ("emissões", "prévias"). */
-    public void verificar(String operacao, long usuarioId, int limitePorMinuto) {
+    /** Registra a chamada ou lança Excedido. operacao: texto da mensagem ("emissões", "prévias"); chave: usuário ou IP. */
+    public void verificar(String operacao, Object chave, int limitePorMinuto) {
         long agora = relogio.millis();
-        Deque<Long> fila = chamadas.computeIfAbsent(operacao + ":" + usuarioId, k -> new ArrayDeque<>());
+        Deque<Long> fila = chamadas.computeIfAbsent(operacao + ":" + chave, k -> new ArrayDeque<>());
         synchronized (fila) {
             while (!fila.isEmpty() && fila.peekFirst() <= agora - JANELA_MS) {
                 fila.pollFirst();
@@ -55,5 +59,16 @@ public class LimiteFrequencia {
             }
             fila.addLast(agora);
         }
+    }
+
+    /** Descarta as janelas vazias (IP ou usuário que parou de chamar), para o mapa não crescer sem limite. */
+    @org.springframework.scheduling.annotation.Scheduled(fixedDelay = 600_000)
+    void limpar() {
+        long limite = relogio.millis() - JANELA_MS;
+        chamadas.values().removeIf(f -> {
+            synchronized (f) {
+                return f.isEmpty() || f.peekLast() <= limite;
+            }
+        });
     }
 }

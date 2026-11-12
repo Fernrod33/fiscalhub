@@ -1,7 +1,8 @@
 package com.fiscalhub.backend.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import com.fiscalhub.backend.security.SenhaForte;
 
-public record TrocaSenhaDTO(@NotBlank String senhaAtual, @NotBlank @Size(min = 6, max = 40) String novaSenha) {
+import jakarta.validation.constraints.NotBlank;
+
+public record TrocaSenhaDTO(@NotBlank String senhaAtual, @SenhaForte String novaSenha) {
 }

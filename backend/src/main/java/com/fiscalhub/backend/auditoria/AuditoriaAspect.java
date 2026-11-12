@@ -66,6 +66,9 @@ public class AuditoriaAspect {
             if (corpo(resultado) instanceof Map<?, ?> resumo) { // resumo devolvido pela operação (ex.: contas alteradas)
                 resumo.forEach((k, v) -> detalhes.put(String.valueOf(k), v));
             }
+            if (falha instanceof DetalheAuditoria d) {
+                detalhes.putAll(d.detalhesAuditoria());
+            }
             identificarQuem(evento, resultado, args, detalhes);
             evento.setDetalhes(detalhes);
             repository.save(evento);
@@ -80,6 +83,14 @@ public class AuditoriaAspect {
         if (auth != null && auth.getPrincipal() instanceof UsuarioAutenticado ua) {
             evento.setUsuarioId(ua.id());
             evento.setEscritorioId(ua.escritorioId());
+        } else if (detalhes.remove("usuarioId") instanceof Long id) {
+            // falha do segundo fator: a exceção diz de quem era o desafio
+            evento.setUsuarioId(id);
+            usuarioRepository.findById(id).ifPresent(u -> evento.setEscritorioId(u.getEscritorio().getId()));
+        } else if (corpo(resultado) instanceof com.fiscalhub.backend.dto.RespostaLogin r && r.usuario() != null) {
+            evento.setUsuarioId(r.usuario().id());
+            evento.setEscritorioId(r.usuario().escritorioId());
+            evento.setRecursoId(r.usuario().id());
         } else {
             // login (ainda sem principal): identifica pelo e-mail; na falha, guarda só o e-mail tentado
             args.values().stream().filter(LoginRequest.class::isInstance).map(LoginRequest.class::cast).findFirst()

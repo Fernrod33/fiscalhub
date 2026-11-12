@@ -48,6 +48,10 @@ public class Escritorio {
     @Column(name = "responsavel_registro", length = 60)
     private String responsavelRegistro;
 
+    /** Todos os usuários precisam do segundo fator (TOTP) para usar o sistema. */
+    @Column(name = "exigir_segundo_fator", nullable = false)
+    private Boolean exigirSegundoFator = false;
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

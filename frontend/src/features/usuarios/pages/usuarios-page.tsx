@@ -19,6 +19,7 @@ import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import type { NovoUsuario, Papel, Usuario } from '@/lib/api/tipos';
 import { http, mensagemErro } from '@/lib/http';
 import { PAPEIS } from '@/lib/rotulos';
+import { DICA_SENHA, SENHA_MAXIMA, SENHA_MINIMA } from '@/features/auth/api';
 import { useSessao } from '@/features/auth/sessao';
 
 const CHAVE = ['usuarios'];
@@ -37,7 +38,7 @@ const esquema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome.').max(100),
   email: z.string().email('Informe um e-mail válido.'),
   papel: z.enum(PAPEIS_LISTA as [Papel, ...Papel[]]),
-  senhaProvisoria: z.string().min(6, 'Mínimo de 6 caracteres.').max(40),
+  senhaProvisoria: z.string().min(SENHA_MINIMA, `Mínimo de ${SENHA_MINIMA} caracteres.`).max(SENHA_MAXIMA, `Máximo de ${SENHA_MAXIMA} caracteres.`),
 });
 
 /** Usuários do escritório (só ADMIN): criar com senha provisória, mudar papel, desativar. */
@@ -102,7 +103,7 @@ export default function UsuariosPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <CampoTexto control={form.control} name="senhaProvisoria" rotulo="Senha provisória" type="password" autoComplete="new-password" />
+              <CampoTexto control={form.control} name="senhaProvisoria" rotulo="Senha provisória" type="password" autoComplete="new-password" descricao={DICA_SENHA} />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setNovo(false)}>Cancelar</Button>
                 <Button type="submit" disabled={criar.isPending}>{criar.isPending ? 'Criando…' : 'Criar usuário'}</Button>

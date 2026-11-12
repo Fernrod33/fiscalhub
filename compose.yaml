@@ -74,6 +74,7 @@ services:
       DB_USERNAME: fiscalhub
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      CHAVE_DADOS: ${CHAVE_DADOS:?defina CHAVE_DADOS no .env}
       ORIGEM_PUBLICA: https://${DOMINIO:?defina DOMINIO no .env}
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: ${S3_BUCKET:-fiscalhub-documentos}

@@ -8,6 +8,7 @@ import java.io.IOException;
 final class RespostaProblema {
 
     static final String SENHA_TROCA_OBRIGATORIA = "/problemas/senha-troca-obrigatoria";
+    static final String SEGUNDO_FATOR_OBRIGATORIO = "/problemas/segundo-fator-obrigatorio";
 
     private RespostaProblema() {
     }
