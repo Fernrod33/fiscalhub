@@ -57,12 +57,36 @@ async function tokenCsrf(): Promise<string | undefined> {
   return valor && decodeURIComponent(valor);
 }
 
-async function requisitar(metodo: string, caminho: string, corpo?: unknown, aceita = 'application/json'): Promise<Response> {
+/**
+ * Reautenticação das ações destrutivas: o token (5 min, preso à sessão) fica só na memória. Um 403
+ * /problemas/reautenticacao-necessaria chama `pedir` (o diálogo de senha e código) e repete a requisição uma vez.
+ */
+const REAUTENTICACAO = '/problemas/reautenticacao-necessaria';
+let reautenticacao: { token: string; expira: number } | null = null;
+let pedirReautenticacao: (() => Promise<{ token: string; validadeSegundos: number }>) | null = null;
+let reautenticando: Promise<{ token: string; validadeSegundos: number }> | null = null; // um diálogo para pedidos simultâneos
+
+export function configurarReautenticacao(pedir: typeof pedirReautenticacao) {
+  pedirReautenticacao = pedir;
+}
+
+export function esquecerReautenticacao() {
+  reautenticacao = null;
+}
+
+/** Cada resposta da API conta como atividade (o servidor mede a inatividade pela última requisição). */
+let aoAtividade: () => void = () => {};
+export function configurarAtividade(f: () => void) {
+  aoAtividade = f;
+}
+
+async function requisitar(metodo: string, caminho: string, corpo?: unknown, aceita = 'application/json', repetida = false): Promise<Response> {
   const headers: Record<string, string> = { Accept: `${aceita}, application/problem+json` };
   if (metodo !== 'GET') {
     const csrf = await tokenCsrf();
     if (csrf) headers['X-XSRF-TOKEN'] = csrf;
   }
+  if (reautenticacao && reautenticacao.expira > Date.now()) headers['X-Reautenticacao'] = reautenticacao.token;
   let body: BodyInit | undefined;
   if (corpo instanceof FormData) {
     body = corpo; // o navegador define o multipart/form-data com boundary
@@ -72,8 +96,16 @@ async function requisitar(metodo: string, caminho: string, corpo?: unknown, acei
   }
 
   const resposta = await fetch(API_URL + caminho, { method: metodo, headers, body, credentials: 'include' });
+  if (resposta.status !== 401) aoAtividade();
   if (resposta.ok) return resposta;
-  throw falha(resposta.status, await resposta.json().catch(() => ({})));
+  const problema: Partial<Problema> = await resposta.json().catch(() => ({}));
+  if (resposta.status === 403 && problema.type === REAUTENTICACAO && pedirReautenticacao && !repetida) {
+    reautenticando ??= pedirReautenticacao().finally(() => { reautenticando = null; });
+    const r = await reautenticando; // rejeita se a pessoa cancelar
+    reautenticacao = { token: r.token, expira: Date.now() + r.validadeSegundos * 1000 - 5_000 };
+    return requisitar(metodo, caminho, corpo, aceita, true);
+  }
+  throw falha(resposta.status, problema);
 }
 
 /** Resposta de erro -> ErroApi; 401 com sessão aberta encerra a sessão (mesma regra para fetch e XHR). */

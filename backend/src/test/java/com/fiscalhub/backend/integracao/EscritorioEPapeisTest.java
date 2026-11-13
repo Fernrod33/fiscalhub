@@ -67,7 +67,7 @@ class EscritorioEPapeisTest {
 
     @Test
     void adminCriaUsuarioComSenhaProvisoriaQueDeveSerTrocada() throws Exception {
-        mvc.perform(post("/api/usuarios").with(dados.sessao(admin)).contentType(APPLICATION_JSON)
+        mvc.perform(post("/api/usuarios").with(dados.sessaoReautenticada(admin)).contentType(APPLICATION_JSON)
                         .content("{\"nome\":\"Caio\",\"email\":\"caio@test.com\",\"papel\":\"CONSULTOR\",\"senhaProvisoria\":\"provisoria-forte-1\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.papel").value("CONSULTOR"))
@@ -80,7 +80,7 @@ class EscritorioEPapeisTest {
                 .andExpect(jsonPath("$.usuario.trocarSenhaNoProximoLogin").value(true));
 
         Usuario caio = usuarioRepository.findByEmail("caio@test.com").orElseThrow();
-        mvc.perform(put("/api/usuarios/me/senha").with(dados.sessao(caio)).contentType(APPLICATION_JSON)
+        mvc.perform(put("/api/usuarios/me/senha").with(dados.sessaoReautenticada(caio)).contentType(APPLICATION_JSON)
                         .content("{\"senhaAtual\":\"provisoria-forte-1\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(cookie().httpOnly(CookieSessao.NOME, true)) // sessão nova: a troca invalidou a anterior
@@ -91,7 +91,7 @@ class EscritorioEPapeisTest {
     @Test
     void consultorEAssistenteNaoGerenciamUsuarios() throws Exception {
         for (Papel papel : new Papel[]{Papel.CONSULTOR, Papel.ASSISTENTE}) {
-            RequestPostProcessor token = dados.sessao(dados.usuario(escritorio, papel + "@test.com", papel));
+            RequestPostProcessor token = dados.sessaoReautenticada(dados.usuario(escritorio, papel + "@test.com", papel));
             mvc.perform(get("/api/usuarios").with(token)).andExpect(status().isForbidden());
             mvc.perform(post("/api/usuarios").with(token).contentType(APPLICATION_JSON)
                             .content("{\"nome\":\"X\",\"email\":\"x@test.com\",\"papel\":\"ADMIN\",\"senhaProvisoria\":\"provisoria-forte-1\"}"))
@@ -105,10 +105,10 @@ class EscritorioEPapeisTest {
     void adminNaoGerenciaUsuarioDeOutroEscritorio() throws Exception {
         Usuario deFora = dados.usuario(dados.escritorio("Outro"), "fora@test.com", Papel.CONSULTOR);
 
-        mvc.perform(patch("/api/usuarios/{id}/papel", deFora.getId()).with(dados.sessao(admin))
+        mvc.perform(patch("/api/usuarios/{id}/papel", deFora.getId()).with(dados.sessaoReautenticada(admin))
                         .contentType(APPLICATION_JSON).content("{\"papel\":\"ASSISTENTE\"}"))
                 .andExpect(status().isNotFound());
-        mvc.perform(patch("/api/usuarios/{id}/desativar", deFora.getId()).with(dados.sessao(admin)))
+        mvc.perform(patch("/api/usuarios/{id}/desativar", deFora.getId()).with(dados.sessaoReautenticada(admin)))
                 .andExpect(status().isNotFound());
         assertThat(deFora.getPapel()).isEqualTo(Papel.CONSULTOR);
         assertThat(deFora.getAtivo()).isTrue();
@@ -116,9 +116,9 @@ class EscritorioEPapeisTest {
 
     @Test
     void ultimoAdminAtivoNaoSaiNemPerdeOPapel() throws Exception {
-        mvc.perform(delete("/api/usuarios/me").with(dados.sessao(admin)))
+        mvc.perform(delete("/api/usuarios/me").with(dados.sessaoReautenticada(admin)))
                 .andExpect(status().isBadRequest());
-        mvc.perform(patch("/api/usuarios/{id}/papel", admin.getId()).with(dados.sessao(admin))
+        mvc.perform(patch("/api/usuarios/{id}/papel", admin.getId()).with(dados.sessaoReautenticada(admin))
                         .contentType(APPLICATION_JSON).content("{\"papel\":\"CONSULTOR\"}"))
                 .andExpect(status().isBadRequest());
         assertThat(admin.getAtivo()).isTrue();
@@ -128,9 +128,9 @@ class EscritorioEPapeisTest {
     @Test
     void usuarioDesativadoNaoLogaETokenAntigoDeixaDeValer() throws Exception {
         Usuario consultor = dados.usuario(escritorio, "consultor@test.com", Papel.CONSULTOR);
-        RequestPostProcessor tokenAntigo = dados.sessao(consultor);
+        RequestPostProcessor tokenAntigo = dados.sessaoReautenticada(consultor);
 
-        mvc.perform(patch("/api/usuarios/{id}/desativar", consultor.getId()).with(dados.sessao(admin)))
+        mvc.perform(patch("/api/usuarios/{id}/desativar", consultor.getId()).with(dados.sessaoReautenticada(admin)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
 
@@ -144,14 +144,14 @@ class EscritorioEPapeisTest {
     @Test
     void segundoAdminPodeSairETokenComPapelAntigoDeixaDeValer() throws Exception {
         Usuario outroAdmin = dados.usuario(escritorio, "admin2@test.com", Papel.ADMIN);
-        RequestPostProcessor tokenAntigo = dados.sessao(outroAdmin);
+        RequestPostProcessor tokenAntigo = dados.sessaoReautenticada(outroAdmin);
 
-        mvc.perform(patch("/api/usuarios/{id}/papel", outroAdmin.getId()).with(dados.sessao(admin))
+        mvc.perform(patch("/api/usuarios/{id}/papel", outroAdmin.getId()).with(dados.sessaoReautenticada(admin))
                         .contentType(APPLICATION_JSON).content("{\"papel\":\"ASSISTENTE\"}"))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/usuarios").with(tokenAntigo)).andExpect(status().isUnauthorized());
 
-        mvc.perform(delete("/api/usuarios/me").with(dados.sessao(outroAdmin)))
+        mvc.perform(delete("/api/usuarios/me").with(dados.sessaoReautenticada(outroAdmin)))
                 .andExpect(status().isNoContent());
     }
 }

@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from 'react';
 import type { Usuario } from '@/lib/api/tipos';
-import { configurarSessao, http } from '@/lib/http';
+import { configurarSessao, esquecerReautenticacao, http } from '@/lib/http';
 import { queryClient } from '@/lib/query';
 
 const ouvintes = new Set<() => void>();
@@ -12,7 +12,11 @@ let atual: Usuario | null = null;
 
 export function definirSessao(usuario: Usuario | null) {
   atual = usuario;
-  if (!usuario) queryClient.clear(); // nada do usuário anterior fica em cache
+  if (usuario) expirouPorInatividade = false;
+  else {
+    queryClient.clear(); // nada do usuário anterior fica em cache
+    esquecerReautenticacao();
+  }
   ouvintes.forEach((f) => f());
 }
 
@@ -22,6 +26,14 @@ export async function carregarSessao() {
 }
 
 /** Logout no servidor (invalida o token e apaga o cookie); a sessão local fecha mesmo se a API falhar. */
+/** Sessão encerrada por inatividade: o login avisa até a próxima entrada. */
+let expirouPorInatividade = false;
+export const expirouSemUso = () => expirouPorInatividade;
+export function expirarPorInatividade() {
+  expirouPorInatividade = true;
+  return sair();
+}
+
 export const sair = () => http.post('/api/auth/logout').catch(() => {}).finally(() => definirSessao(null));
 
 export function useSessao(): Usuario | null {

@@ -30,15 +30,35 @@ public class SegurancaController {
     public record Senha(@NotBlank @Size(max = 200) String senha) {
     }
 
+    public record PedidoReautenticacao(@NotBlank @Size(max = 200) String senha, @Size(max = 20) String codigo) {
+    }
+
     /** Segurança e privacidade do escritório: exigência do 2º fator e o contato do encarregado (DPO). */
     public record ConfiguracaoSeguranca(@NotNull Boolean exigirSegundoFator, @Size(max = 150) String encarregadoNome,
                                         @jakarta.validation.constraints.Email @Size(max = 150) String encarregadoEmail) {
     }
 
     private final SegurancaContaService seguranca;
+    private final com.fiscalhub.backend.security.BloqueioLogin bloqueio;
 
-    SegurancaController(SegurancaContaService seguranca) {
+    SegurancaController(SegurancaContaService seguranca, com.fiscalhub.backend.security.BloqueioLogin bloqueio) {
         this.seguranca = seguranca;
+        this.bloqueio = bloqueio;
+    }
+
+    /** Tempos da sessão para o aviso de inatividade e a reautenticação no frontend. */
+    @GetMapping("/api/usuarios/me/sessao")
+    public SegurancaContaService.DadosSessao sessao() {
+        return seguranca.dadosSessao();
+    }
+
+    /** Senha (e código, com o 2º fator ativo) de novo: devolve o token do cabeçalho X-Reautenticacao das ações destrutivas. */
+    @PostMapping("/api/usuarios/me/reautenticacao")
+    @Auditavel(value = AcaoAuditoria.REAUTENTICAR, registrarFalha = true)
+    public SegurancaContaService.Reautenticacao reautenticar(@Valid @RequestBody PedidoReautenticacao corpo,
+                                                             @AuthenticationPrincipal UsuarioAutenticado ua,
+                                                             jakarta.servlet.http.HttpServletRequest request) {
+        return seguranca.reautenticar(ua, corpo.senha(), corpo.codigo(), request.getRemoteAddr(), bloqueio);
     }
 
     @GetMapping("/api/usuarios/me/sessoes")

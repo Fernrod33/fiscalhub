@@ -41,6 +41,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .body(problema(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage()));
     }
 
+    @ExceptionHandler(com.fiscalhub.backend.security.ExigeReautenticacao.Necessaria.class)
+    ProblemDetail reautenticacao(com.fiscalhub.backend.security.ExigeReautenticacao.Necessaria ex) {
+        ProblemDetail pd = problema(HttpStatus.FORBIDDEN, ex.getMessage());
+        pd.setType(java.net.URI.create("/problemas/reautenticacao-necessaria"));
+        pd.setTitle("Reautenticação necessária");
+        return pd;
+    }
+
     @ExceptionHandler(BusinessRuleException.class)
     ProblemDetail regraDeNegocio(BusinessRuleException ex) {
         return problema(HttpStatus.BAD_REQUEST, ex.getMessage());

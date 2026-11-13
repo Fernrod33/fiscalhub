@@ -1,13 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { criarCliente, criarEscritorioEEntrar, semViolacoesGraves } from './apoio';
+import { confirmarIdentidade, criarCliente, criarEscritorioEEntrar, semViolacoesGraves } from './apoio';
 
-test('LGPD: exportar os dados do cliente em ZIP, agendar a exclusão com o CNPJ e cancelar', async ({ page }) => {
-  await criarEscritorioEEntrar(page);
+test('LGPD: exportar os dados do cliente em ZIP (com a senha confirmada), agendar a exclusão com o CNPJ e cancelar', async ({ page }) => {
+  const conta = await criarEscritorioEEntrar(page);
   const razao = await criarCliente(page, 'Cliente LGPD Ltda');
 
   await page.getByRole('link', { name: razao }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Exportar dados' }).click();
+  await confirmarIdentidade(page, conta); // vale 5 min: a exclusão logo abaixo não pede de novo
   expect((await download).suggestedFilename()).toMatch(/^fiscalhub-cliente-\d+-.*\.zip$/);
 
   await page.getByRole('navigation', { name: 'Menu principal' }).getByRole('link', { name: 'Clientes' }).click();

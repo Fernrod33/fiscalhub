@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa } from './apoio';
+import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, entrar, massa } from './apoio';
 
 /**
  * Teste de restauração (deploy/teste-restauracao.sh), em duas fases contra o mesmo endereço:
@@ -39,7 +39,7 @@ test('restauração do backup: a massa volta igual', async ({ page }) => {
   test.setTimeout(600_000);
 
   if (FASE === 'carga') {
-    const { email, senha } = await criarEscritorioEEntrar(page);
+    const conta = await criarEscritorioEEntrar(page);
     const razao = await criarCliente(page, 'Metalurgica Pinheiral');
     await page.getByRole('link', { name: razao }).click();
     const clienteId = Number(/clientes\/(\d+)/.exec(page.url())![1]);
@@ -57,15 +57,13 @@ test('restauração do backup: a massa volta igual', async ({ page }) => {
     const emitido = await page.request.post(`/api/clientes/${clienteId}/relatorios`, { data: { tipo: 'SITUACAO_FISCAL' }, headers: { 'X-XSRF-TOKEN': xsrf } });
     expect(emitido.status()).toBe(201);
 
-    writeFileSync(ARQUIVO, JSON.stringify({ email, senha, clienteId, estado: await estado(page, clienteId) }, null, 1));
+    writeFileSync(ARQUIVO, JSON.stringify({ conta, clienteId, estado: await estado(page, clienteId) }, null, 1));
     return;
   }
 
   const salvo = JSON.parse(readFileSync(ARQUIVO, 'utf-8'));
   await page.goto('/login');
-  await page.getByLabel('E-mail').fill(salvo.email);
-  await page.getByLabel('Senha').fill(salvo.senha);
-  await page.getByRole('button', { name: 'Entrar' }).click();
+  await entrar(page, salvo.conta);
   await expect(page.getByRole('heading', { level: 1, name: 'Olá, Pessoa' })).toBeVisible();
 
   const depois = await estado(page, salvo.clienteId);

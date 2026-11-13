@@ -34,7 +34,7 @@ class SessaoCookieCsrfTest {
 
     @BeforeEach
     void setUp() {
-        admin = dados.usuario(dados.escritorio("Cookies"), "admin-cookie@test.com", Papel.ADMIN);
+        admin = dados.usuario(dados.escritorio("Cookies"), "admin-cookie@test.com", Papel.CONSULTOR);
         sessao = new Cookie(CookieSessao.NOME, dados.token(admin));
     }
 

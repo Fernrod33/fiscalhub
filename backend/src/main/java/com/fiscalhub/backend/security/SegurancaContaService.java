@@ -50,9 +50,15 @@ public class SegurancaContaService {
     private final UsuarioRepository usuarios;
     private final EscritorioRepository escritorios;
     private final PasswordEncoder senhas;
+    private final int inatividadeMinutos;
+    private final int reautenticacaoMinutos;
 
     public SegurancaContaService(JdbcTemplate jdbc, JwtUtils jwt, CifraDados cifra, UsuarioRepository usuarios,
-                                 EscritorioRepository escritorios, PasswordEncoder senhas) {
+                                 EscritorioRepository escritorios, PasswordEncoder senhas,
+                                 @org.springframework.beans.factory.annotation.Value("${fiscalhub.sessao.inatividade-minutos:30}") int inatividadeMinutos,
+                                 @org.springframework.beans.factory.annotation.Value("${fiscalhub.sessao.reautenticacao-minutos:5}") int reautenticacaoMinutos) {
+        this.inatividadeMinutos = inatividadeMinutos;
+        this.reautenticacaoMinutos = reautenticacaoMinutos;
         this.jdbc = jdbc;
         this.jwt = jwt;
         this.cifra = cifra;
@@ -106,15 +112,44 @@ public class SegurancaContaService {
         }
     }
 
-    /** Último uso gravado no máximo a cada 5 minutos por sessão (o filtro chama a cada requisição). */
+    /**
+     * Último uso gravado no máximo uma vez por minuto por sessão (o filtro chama a cada requisição): a expiração por
+     * inatividade (fiscalhub.sessao.inatividade-minutos) erra no máximo 1 minuto para menos.
+     */
     public void registrarUso(UUID sessaoId) {
-        jdbc.update("UPDATE sessao SET ultimo_uso = now() WHERE id = ? AND ultimo_uso < now() - interval '5 minutes'", sessaoId);
+        jdbc.update("UPDATE sessao SET ultimo_uso = now() WHERE id = ? AND ultimo_uso < now() - interval '1 minute'", sessaoId);
     }
 
     /** Sessões vencidas há mais de 30 dias saem do banco (as revogadas também, depois do mesmo prazo). */
     @Scheduled(cron = "0 30 3 * * *")
     public void limparSessoes() {
         jdbc.update("DELETE FROM sessao WHERE expira_em < now() - interval '30 days' OR revogada_em < now() - interval '30 days'");
+    }
+
+    public record Reautenticacao(String token, long validadeSegundos) {
+    }
+
+    public record DadosSessao(long inatividadeSegundos, long reautenticacaoSegundos) {
+    }
+
+    /**
+     * Confere de novo a senha e, com o 2º fator ativo, o código (do aplicativo ou de recuperação), com o mesmo bloqueio
+     * progressivo do login. Erro = 400 (não 401: a sessão continua aberta).
+     */
+    public Reautenticacao reautenticar(UsuarioAutenticado ua, String senha, String codigo, String ip, BloqueioLogin bloqueio) {
+        Usuario u = usuario(ua);
+        bloqueio.verificar(u.getEmail(), ip);
+        boolean ok = senha != null && senhas.matches(senha, u.getSenha()) && (!u.getTotpAtivo() || conferirSegundoFator(u, codigo));
+        if (!ok) {
+            bloqueio.registrarFalha(u.getEmail(), ip);
+            throw new BusinessRuleException(u.getTotpAtivo() ? "Senha ou código incorretos." : "Senha incorreta.");
+        }
+        bloqueio.registrarSucesso(u.getEmail());
+        return new Reautenticacao(jwt.gerarReautenticacao(ua, reautenticacaoMinutos * 60_000L), reautenticacaoMinutos * 60L);
+    }
+
+    public DadosSessao dadosSessao() {
+        return new DadosSessao(inatividadeMinutos * 60L, reautenticacaoMinutos * 60L);
     }
 
     // ---- segundo fator
@@ -150,8 +185,8 @@ public class SegurancaContaService {
     public void desativarSegundoFator(UsuarioAutenticado ua, String senha) {
         Usuario u = usuario(ua);
         conferirSenha(u, senha);
-        if (u.getEscritorio().getExigirSegundoFator()) {
-            throw new BusinessRuleException("O escritório exige o segundo fator; ele não pode ser desativado.");
+        if (u.exigeSegundoFator()) {
+            throw new BusinessRuleException("O segundo fator é obrigatório para ADMIN ou exigido pelo escritório; ele não pode ser desativado.");
         }
         u.setTotpAtivo(false);
         u.setTotpSegredo(null);

@@ -51,8 +51,8 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
 | 3.3.4 Lista de sessões ativas | atendido | Idem, com IP, navegador, criação e último uso |
 | 3.4.1–3.4.5 Atributos do cookie | atendido | `HttpOnly`, `Secure` (perfil prod), `SameSite=Lax`, `Path=/api` (`CookieSessao`) |
 | 3.5.x Tokens sem estado | atendido | JWT HS256 assinado; conferido a cada requisição contra a sessão no banco |
-| 3.7.1 Reautenticação em operação sensível | parcial | Desativar o 2º fator e gerar códigos pedem a senha; trocar senha pede a atual. Exclusão de cliente pede confirmação dupla (Fase 7, LGPD), não a senha |
-| Expiração por inatividade | pendente | Só a absoluta (24 h); o `ultimo_uso` já é gravado e permite implementar |
+| 3.3.2 Expiração por inatividade | atendido | 30 min sem requisição (`SESSAO_INATIVIDADE_MINUTOS`), além da absoluta de 24 h; conferida a cada requisição contra `sessao.ultimo_uso`. O frontend avisa 2 min antes, com opção de continuar, e volta ao login preservando a rota |
+| 3.7.1 Reautenticação em operação sensível | atendido | Excluir cliente, exportar os dados de um cliente, desativar usuário e mudar papel exigem token de reautenticação (senha e código TOTP, 5 min, preso à sessão; `@ExigeReautenticacao`). Desativar o 2º fator e gerar códigos pedem a senha; trocar senha pede a atual |
 
 ## V4 — Controle de acesso
 
@@ -61,7 +61,7 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
 | 4.1.1–4.1.5 Negar por padrão, no servidor | atendido | `anyRequest().authenticated()`; escopo por escritório em todo serviço (`AcessoRecursoService`); testes `AcessoEntreEscritoriosTest` |
 | 4.2.1 IDOR | atendido | Recurso de outro escritório responde 404 |
 | 4.2.2 CSRF | atendido | Cookie `XSRF-TOKEN` + cabeçalho `X-XSRF-TOKEN` em toda alteração (`SessaoCookieCsrfTest`) |
-| 4.3.1 Administração com 2º fator | parcial | O ADMIN pode exigir o 2º fator de todo o escritório; não é obrigatório por padrão |
+| 4.3.1 Administração com 2º fator | atendido | Todo ADMIN precisa do TOTP ativo (a API responde 403 `/problemas/segundo-fator-obrigatorio` até ativar, inclusive após promoção) e não pode desativá-lo; o ADMIN pode exigi-lo de todo o escritório |
 
 ## V5 — Validação, sanitização e codificação
 
@@ -156,9 +156,6 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
 1. Medidor de força de senha na tela (2.1.8).
 2. E-mail transacional: aviso de troca de credencial (2.2.3), convite com senha de uso único e expiração (2.3.1),
    recuperação de senha pelo próprio usuário (2.5.x).
-3. Expiração por inatividade da sessão (3.3.x), com o `ultimo_uso` já gravado.
-4. Reautenticação (senha) para operações destrutivas como a exclusão de cliente (3.7.1).
-5. 2º fator obrigatório para o ADMIN por padrão (4.3.1) — hoje é opção do escritório.
-6. Cofre de chaves (6.4.x) e TLS interno se os serviços saírem do mesmo host (9.2.x).
-7. Coletor de logs externo com retenção (7.3.x).
-8. CSP de estilo sem `unsafe-inline` (14.4.3) exigiria nonce por resposta ou trocar os componentes.
+3. Cofre de chaves (6.4.x) e TLS interno se os serviços saírem do mesmo host (9.2.x).
+4. Coletor de logs externo com retenção (7.3.x).
+5. CSP de estilo sem `unsafe-inline` (14.4.3) exigiria nonce por resposta ou trocar os componentes.

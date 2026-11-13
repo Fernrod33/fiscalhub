@@ -69,6 +69,7 @@ public class ClienteController {
      * arrependimento (fiscalhub.lgpd.prazo-exclusao-dias); depois o job remove tudo, inclusive os arquivos.
      */
     @PostMapping("/{id}/exclusao")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
     @PreAuthorize("hasRole('ADMIN')")
     @Auditavel(value = AcaoAuditoria.CLIENTE_EXCLUSAO_SOLICITAR, idParam = "id")
     public ClienteResponseDTO solicitarExclusao(@PathVariable Long id, @RequestBody PedidoExclusao pedido,
@@ -85,6 +86,7 @@ public class ClienteController {
 
     /** Portabilidade: ZIP com os arquivos originais, os relatórios emitidos e os dados em JSON. Só ADMIN. */
     @GetMapping("/{id}/exportacao")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
     @PreAuthorize("hasRole('ADMIN')")
     @Auditavel(value = AcaoAuditoria.CLIENTE_EXPORTAR, idParam = "id")
     public ResponseEntity<StreamingResponseBody> exportar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {

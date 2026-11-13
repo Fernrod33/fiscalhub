@@ -23,9 +23,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UsuarioRepository usuarioRepository;
     private final CookieSessao cookieSessao;
     private final SegurancaContaService seguranca;
+    private final int inatividadeMinutos;
 
     public JwtAuthenticationFilter(JwtUtils jwtUtils, UsuarioRepository usuarioRepository, CookieSessao cookieSessao,
-                                   @Lazy SegurancaContaService seguranca) {
+                                   @Lazy SegurancaContaService seguranca,
+                                   @org.springframework.beans.factory.annotation.Value("${fiscalhub.sessao.inatividade-minutos:30}") int inatividadeMinutos) {
+        this.inatividadeMinutos = inatividadeMinutos;
         this.jwtUtils = jwtUtils;
         this.usuarioRepository = usuarioRepository;
         this.cookieSessao = cookieSessao;
@@ -39,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (autenticado.isPresent()) {
             UsuarioAutenticado u = autenticado.get();
             // ponytail: uma leitura por PK a cada requisição; cache curto quando a latência do filtro JWT for relevante
-            Optional<UsuarioRepository.EstadoToken> estado = usuarioRepository.estadoToken(u.id(), u.sessaoId())
+            Optional<UsuarioRepository.EstadoToken> estado = usuarioRepository.estadoToken(u.id(), u.sessaoId(), inatividadeMinutos)
                     .filter(e -> e.getAtivo() && e.getVersaoToken() == u.versaoToken() && e.getSessaoAberta());
             if (estado.isPresent()) {
                 // uma pendência por vez, nesta ordem (a mesma do guarda do frontend): só a rota dela fica liberada

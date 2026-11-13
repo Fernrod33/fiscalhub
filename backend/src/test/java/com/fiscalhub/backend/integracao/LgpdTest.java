@@ -64,7 +64,7 @@ class LgpdTest {
     @BeforeEach
     void setUp() throws Exception {
         admin = dados.usuario(dados.escritorio("LGPD " + System.nanoTime()), "lgpd-" + System.nanoTime() + "@test.com", Papel.ADMIN);
-        sessao = dados.sessao(admin);
+        sessao = dados.sessaoReautenticada(admin);
         cliente = dados.cliente(admin, "11222333000181");
         byte[] ecd = new ClassPathResource("amostras/ecd-2024-l9.txt").getContentAsByteArray();
         String resposta = mvc.perform(multipart("/api/clientes/{c}/documentos", cliente.getId())
@@ -79,7 +79,7 @@ class LgpdTest {
         Usuario novo = dados.usuario(admin.getEscritorio(), "termos-" + System.nanoTime() + "@test.com", Papel.CONSULTOR);
         novo.setTermosVersao(null);
         usuarios.saveAndFlush(novo);
-        RequestPostProcessor s = dados.sessao(novo);
+        RequestPostProcessor s = dados.sessaoReautenticada(novo);
         mvc.perform(get("/api/clientes").with(s)).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.type").value("/problemas/termos-pendentes"));
         mvc.perform(get("/api/usuarios/me").with(s)).andExpect(jsonPath("$.termosPendentes").value(true));
@@ -147,7 +147,10 @@ class LgpdTest {
         var log = LoggerFactory.getLogger("teste.lgpd");
         log.warn("Documento do CNPJ 11.222.333/0001-81 (sócio 123.456.789-09) com diferença de R$ 1.234,56 e 98765.43",
                 new IllegalStateException("CNPJ 11222333000181 sem cliente; total 45.000,00"));
-        assertThat(saida.getOut()).contains("[cnpj …81]", "[cpf …09]", "[valor]")
+        // só as linhas deste log (o print do MockMvc de outros testes vai direto ao System.out, fora do logback)
+        String linhas = String.join(System.lineSeparator(), saida.getOut().lines()
+                .filter(l -> l.contains("teste.lgpd") || l.contains("IllegalStateException")).toList());
+        assertThat(linhas).contains("[cnpj …81]", "[cpf …09]", "[valor]")
                 .doesNotContain("11.222.333/0001-81", "11222333000181", "123.456.789-09", "1.234,56", "98765.43", "45.000,00");
     }
 

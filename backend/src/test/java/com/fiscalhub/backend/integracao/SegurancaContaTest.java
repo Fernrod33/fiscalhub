@@ -69,6 +69,7 @@ class SegurancaContaTest {
 
     @Test
     void segundoFatorAtivaPedeOCodigoNoLoginRecusaReusoEAceitaCodigoDeRecuperacaoUmaVez() throws Exception {
+        admin = dados.semSegundoFator(admin);
         RequestPostProcessor sessao = dados.sessao(admin);
         JsonNode ativacao = corpo(mvc.perform(post("/api/usuarios/me/segundo-fator/iniciar").with(sessao)).andExpect(status().isOk()));
         String segredo = ativacao.get("segredo").asText();
@@ -98,9 +99,6 @@ class SegurancaContaTest {
     @Test
     void escritorioQueExigeLevaQuemNaoAtivouParaAAtivacao() throws Exception {
         Usuario consultor = dados.usuario(escritorio, "cons-" + System.nanoTime() + "@test.com", Papel.CONSULTOR);
-        // o ADMIN só exige depois de ativar o dele
-        mvc.perform(put("/api/escritorio/seguranca").with(dados.sessao(admin)).contentType(APPLICATION_JSON)
-                .content("{\"exigirSegundoFator\":true}")).andExpect(status().isBadRequest());
         jdbc.update("UPDATE escritorio SET exigir_segundo_fator = TRUE WHERE id = ?", escritorio.getId());
 
         RequestPostProcessor sessao = dados.sessao(consultor);

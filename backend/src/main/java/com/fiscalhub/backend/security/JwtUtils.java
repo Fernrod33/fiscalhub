@@ -87,4 +87,29 @@ public class JwtUtils {
             return Optional.empty();
         }
     }
+
+    /**
+     * Reautenticação recente (senha e código conferidos de novo) para ações destrutivas: presa ao usuário e à sessão
+     * (um token copiado de outra sessão não serve) e de curta duração. Não abre sessão (autenticar recusa a fase).
+     */
+    public String gerarReautenticacao(UsuarioAutenticado ua, long validadeMs) {
+        Date agora = new Date();
+        return Jwts.builder().claim("uid", ua.id()).claim("sid", ua.sessaoId().toString()).claim(FASE, "reauth")
+                .setIssuedAt(agora).setExpiration(new Date(agora.getTime() + validadeMs))
+                .signWith(signingKey, SignatureAlgorithm.HS256).compact();
+    }
+
+    /** O token vale para este usuário nesta sessão e ainda não expirou. */
+    public boolean reautenticacaoValida(String token, UsuarioAutenticado ua) {
+        if (token == null || ua == null || ua.sessaoId() == null) {
+            return false;
+        }
+        try {
+            Claims c = Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
+            return "reauth".equals(c.get(FASE)) && ua.id().equals(c.get("uid", Long.class))
+                    && ua.sessaoId().toString().equals(c.get("sid", String.class));
+        } catch (JwtException | IllegalArgumentException | NullPointerException e) {
+            return false;
+        }
+    }
 }

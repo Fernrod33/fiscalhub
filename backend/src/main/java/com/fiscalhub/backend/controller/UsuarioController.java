@@ -67,6 +67,7 @@ public class UsuarioController {
 
     /** Saída do próprio usuário: desativação (o último ADMIN ativo não pode sair). */
     @DeleteMapping("/me")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
     @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)
     public ResponseEntity<Void> deleteMe(@AuthenticationPrincipal UsuarioAutenticado ua) {
         usuarioService.desativar(ua, ua.id());
@@ -87,6 +88,7 @@ public class UsuarioController {
     }
 
     @PatchMapping("/{id}/papel")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
     @PreAuthorize("hasRole('ADMIN')")
     @Auditavel(AcaoAuditoria.USUARIO_ALTERAR_PAPEL)
     public UsuarioResponseDTO alterarPapel(@PathVariable Long id, @Valid @RequestBody AlteracaoPapelDTO dto,
@@ -95,6 +97,7 @@ public class UsuarioController {
     }
 
     @PatchMapping("/{id}/desativar")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
     @PreAuthorize("hasRole('ADMIN')")
     @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)
     public UsuarioResponseDTO desativar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {

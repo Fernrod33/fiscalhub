@@ -74,6 +74,7 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   SEGUNDO_FATOR_ATIVAR: 'Ativou a verificação em duas etapas',
   SEGUNDO_FATOR_DESATIVAR: 'Desativou a verificação em duas etapas',
   SEGUNDO_FATOR_CODIGOS: 'Gerou códigos de recuperação',
+  REAUTENTICAR: 'Confirmou a senha para uma ação destrutiva',
   ESCRITORIO_SEGURANCA: 'Alterou a segurança do escritório',
   TERMOS_ACEITAR: 'Aceitou os termos de uso',
   CLIENTE_EXCLUSAO_SOLICITAR: 'Agendou a exclusão do cliente',

@@ -64,8 +64,8 @@ class AcessoEntreEscritoriosTest {
         documentoB = dados.documento(clienteB);
         debitoB = dados.debito(documentoB, "1000.00", LocalDate.of(2024, 2, 20));
         simulacaoB = dados.simulacao(debitoB);
-        tokenA = dados.sessao(usuarioA);
-        tokenB = dados.sessao(usuarioB);
+        tokenA = dados.sessaoReautenticada(usuarioA);
+        tokenB = dados.sessaoReautenticada(usuarioB);
     }
 
     @Test
@@ -95,7 +95,7 @@ class AcessoEntreEscritoriosTest {
     /** Controle positivo: qualquer membro do escritório B (não só quem cadastrou) enxerga os recursos dele. */
     @Test
     void membrosDoMesmoEscritorioSeEnxergam() throws Exception {
-        RequestPostProcessor colega = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "colega-b@test.com", Papel.ASSISTENTE));
+        RequestPostProcessor colega = dados.sessaoReautenticada(dados.usuario(usuarioB.getEscritorio(), "colega-b@test.com", Papel.ASSISTENTE));
         for (String url : List.of(
                 "/api/clientes",
                 "/api/clientes/" + clienteB.getId(),
@@ -113,7 +113,7 @@ class AcessoEntreEscritoriosTest {
 
     @Test
     void assistenteLeEImportaMasNaoAlteraNemExclui() throws Exception {
-        RequestPostProcessor assistente = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "assist-b@test.com", Papel.ASSISTENTE));
+        RequestPostProcessor assistente = dados.sessaoReautenticada(dados.usuario(usuarioB.getEscritorio(), "assist-b@test.com", Papel.ASSISTENTE));
         Long c = clienteB.getId();
 
         mvc.perform(post("/api/clientes/{id}/exclusao", c).with(assistente).contentType(APPLICATION_JSON)
@@ -136,7 +136,7 @@ class AcessoEntreEscritoriosTest {
 
     @Test
     void consultorAlteraClienteMasNaoGerenciaUsuarios() throws Exception {
-        RequestPostProcessor consultor = dados.sessao(dados.usuario(usuarioB.getEscritorio(), "cons-b@test.com", Papel.CONSULTOR));
+        RequestPostProcessor consultor = dados.sessaoReautenticada(dados.usuario(usuarioB.getEscritorio(), "cons-b@test.com", Papel.CONSULTOR));
 
         mvc.perform(put("/api/clientes/{id}", clienteB.getId()).with(consultor)
                 .contentType(APPLICATION_JSON).content(CLIENTE_JSON)).andExpect(status().isOk());

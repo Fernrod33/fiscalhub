@@ -89,6 +89,15 @@ public class Usuario {
     @Column(name = "termos_aceitos_em")
     private LocalDateTime termosAceitosEm;
 
+    /** Todo ADMIN precisa do segundo fator; os demais, se o escritório exigir. A consulta do filtro JWT tem a mesma regra. */
+    public boolean exigeSegundoFator() {
+        return papel == Papel.ADMIN || Boolean.TRUE.equals(escritorio.getExigirSegundoFator());
+    }
+
+    public boolean segundoFatorPendente() {
+        return exigeSegundoFator() && !Boolean.TRUE.equals(totpAtivo);
+    }
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;

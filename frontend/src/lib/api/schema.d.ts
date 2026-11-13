@@ -244,6 +244,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios/me/reautenticacao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reautenticar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/escritorio/identidade/logo": {
         parameters: {
             query?: never;
@@ -607,6 +623,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["encerrarOutras"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/usuarios/me/sessao": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sessao"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1494,6 +1526,15 @@ export interface components {
         Codigo: {
             codigo: string;
         };
+        PedidoReautenticacao: {
+            senha: string;
+            codigo?: string;
+        };
+        Reautenticacao: {
+            token: string;
+            /** Format: int64 */
+            validadeSegundos: number;
+        };
         DocumentoFiscalRequestDTO: {
             /** @enum {string} */
             tipo: "ECD" | "ECF" | "EFD_CONTRIBUICOES" | "EFD_ICMS_IPI" | "BALANCETE" | "RELATORIO_SITUACAO_FISCAL" | "EXTRATO_REGULARIZE" | "CAPAG" | "DCTF" | "DCTFWEB" | "DARF" | "RELATORIO_PAGAMENTOS" | "CONTA_CORRENTE_PR" | "RTI" | "GR_PR" | "RELACAO_PAGAMENTOS_GR_PR" | "PDF" | "OUTRO";
@@ -1927,6 +1968,12 @@ export interface components {
             ip: string;
             dispositivo: string;
             atual: boolean;
+        };
+        DadosSessao: {
+            /** Format: int64 */
+            inatividadeSegundos: number;
+            /** Format: int64 */
+            reautenticacaoSegundos: number;
         };
         LayoutNaoReconhecido: {
             tipo: string;
@@ -2592,7 +2639,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "TERMOS_ACEITAR" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "CLIENTE_EXCLUSAO_SOLICITAR" | "CLIENTE_EXCLUSAO_CANCELAR" | "CLIENTE_EXPORTAR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
+            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "TERMOS_ACEITAR" | "REAUTENTICAR" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "CLIENTE_EXCLUSAO_SOLICITAR" | "CLIENTE_EXCLUSAO_CANCELAR" | "CLIENTE_EXPORTAR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -3176,6 +3223,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CodigosRecuperacao"];
+                };
+            };
+        };
+    };
+    reautenticar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoReautenticacao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Reautenticacao"];
                 };
             };
         };
@@ -3918,6 +3989,26 @@ export interface operations {
                     "*/*": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    sessao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DadosSessao"];
                 };
             };
         };

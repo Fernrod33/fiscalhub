@@ -12,7 +12,7 @@ import { mensagemErro } from '@/lib/http';
 import type { Usuario } from '@/lib/api/tipos';
 import { LayoutAuth } from '../components/layout-auth';
 import { useLogin, useSegundoFator } from '../api';
-import { useSessao } from '../sessao';
+import { expirouSemUso, useSessao } from '../sessao';
 
 const esquema = z.object({
   email: z.string().email('Informe um e-mail válido.'),
@@ -41,6 +41,12 @@ export default function LoginPage() {
                 rodape={<>Ainda não tem conta? <Link className="font-medium text-primary underline-offset-4 hover:underline" to="/cadastro">Cadastre o escritório</Link></>}>
       <Form {...form}>
         <form onSubmit={enviar} className="grid gap-4" noValidate>
+          {expirouSemUso() && !login.isError && (
+            <Alert>
+              <AlertCircle aria-hidden />
+              <AlertDescription>A sessão foi encerrada por inatividade. Entre de novo para continuar de onde parou.</AlertDescription>
+            </Alert>
+          )}
           {login.isError && (
             <Alert variant="destructive">
               <AlertCircle aria-hidden />

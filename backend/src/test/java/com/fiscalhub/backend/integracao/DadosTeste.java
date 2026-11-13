@@ -50,13 +50,16 @@ public class DadosTeste {
     private final DebitoRepository debitoRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.fiscalhub.backend.security.SegurancaContaService seguranca;
+    private final com.fiscalhub.backend.security.CifraDados cifra;
+    private final JwtUtils jwtUtils;
     private String senhaCodificada;
 
     public DadosTeste(EscritorioRepository escritorioRepository, UsuarioRepository usuarioRepository,
                       ClienteRepository clienteRepository, DocumentoFiscalRepository documentoRepository,
                       JdbcTemplate jdbc, IndiceMonetarioRepository indiceRepository,
                       DebitoRepository debitoRepository, PasswordEncoder passwordEncoder,
-                      com.fiscalhub.backend.security.SegurancaContaService seguranca) {
+                      com.fiscalhub.backend.security.SegurancaContaService seguranca,
+                      com.fiscalhub.backend.security.CifraDados cifra, JwtUtils jwtUtils) {
         this.escritorioRepository = escritorioRepository;
         this.usuarioRepository = usuarioRepository;
         this.clienteRepository = clienteRepository;
@@ -66,6 +69,8 @@ public class DadosTeste {
         this.debitoRepository = debitoRepository;
         this.passwordEncoder = passwordEncoder;
         this.seguranca = seguranca;
+        this.cifra = cifra;
+        this.jwtUtils = jwtUtils;
     }
 
     public Escritorio escritorio(String nome) {
@@ -85,7 +90,34 @@ public class DadosTeste {
         u.setPapel(papel);
         u.setEscritorio(escritorio);
         u.setTermosVersao(com.fiscalhub.backend.lgpd.Termos.VERSAO); // o aceite tem teste próprio (LgpdTest)
+        if (papel == Papel.ADMIN) { // todo ADMIN tem o 2º fator ativo; ADMIN sem ele tem teste próprio (SegurancaContaTest)
+            u.setTotpAtivo(true);
+            u.setTotpSegredo(cifra.cifrar(SEGREDO_TOTP));
+        }
         return usuarioRepository.save(u);
+    }
+
+    /** Segredo TOTP dos ADMIN de teste (TotpTest.codigo calcula o código). */
+    public static final String SEGREDO_TOTP = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
+
+    /** O ADMIN que ainda não ativou o 2º fator (a API o recusa até ativar). */
+    public Usuario semSegundoFator(Usuario u) {
+        u.setTotpAtivo(false);
+        u.setTotpSegredo(null);
+        return usuarioRepository.saveAndFlush(u);
+    }
+
+    /** Sessão com reautenticação recente (cabeçalho X-Reautenticacao da mesma sessão): para as ações destrutivas. */
+    public RequestPostProcessor sessaoReautenticada(Usuario usuario) {
+        String token = token(usuario);
+        var ua = jwtUtils.autenticar(token).orElseThrow();
+        String reauth = jwtUtils.gerarReautenticacao(ua, 300_000);
+        Cookie jwt = new Cookie(CookieSessao.NOME, token);
+        return req -> {
+            adicionarCookie(req, jwt);
+            req.addHeader(com.fiscalhub.backend.security.ExigeReautenticacao.CABECALHO, reauth);
+            return CSRF.postProcessRequest(req);
+        };
     }
 
     /**

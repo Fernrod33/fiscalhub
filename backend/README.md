@@ -48,9 +48,17 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
   o `qrcodegen`), `/ativar` (primeiro código; devolve 10 códigos de recuperação, uma vez), `/desativar` e `/codigos`
   (pedem a senha). Segredo cifrado com AES-256-GCM (`CHAVE_DADOS`), código não reaproveitável, códigos de recuperação
   como SHA-256 e de uso único. Com o 2º fator ativo, `POST /api/auth/login` devolve só `desafio` (5 min) e a sessão
-  abre em `POST /api/auth/login/segundo-fator`. O ADMIN exige de todo o escritório em `PUT /api/escritorio/seguranca`
-  (só depois de ativar o dele); quem não ativou recebe 403 `/problemas/segundo-fator-obrigatorio` em tudo, menos
-  `/api/usuarios/me`, o logout e as rotas do 2º fator.
+  abre em `POST /api/auth/login/segundo-fator`. Todo ADMIN precisa do 2º fator (inclusive quem é promovido a ADMIN) e
+  não pode desativá-lo; o ADMIN também pode exigi-lo de todo o escritório em `PUT /api/escritorio/seguranca`. Quem
+  ainda não ativou recebe 403 `/problemas/segundo-fator-obrigatorio` em tudo, menos `/api/usuarios/me`, o logout e as
+  rotas do 2º fator.
+- **Inatividade**: a sessão expira após `SESSAO_INATIVIDADE_MINUTOS` (padrão 30) sem requisição, além da absoluta de
+  24 h (o `ultimo_uso` é gravado de minuto em minuto). `GET /api/usuarios/me/sessao` informa os prazos ao frontend,
+  que avisa 2 minutos antes.
+- **Reautenticação**: excluir cliente, exportar os dados de um cliente, desativar usuário (inclusive a própria conta)
+  e mudar papel (`@ExigeReautenticacao`) pedem o cabeçalho `X-Reautenticacao` com o token de
+  `POST /api/usuarios/me/reautenticacao` (senha e, com o 2º fator ativo, o código; 5 minutos, preso à sessão). Sem ele:
+  403 `/problemas/reautenticacao-necessaria`. Falhas entram no bloqueio progressivo e na auditoria (`REAUTENTICAR`).
 - **Sessões por dispositivo** (`sessao`, V28): o JWT leva o id da sessão (`sid`), conferido a cada requisição junto
   com o usuário. `GET /api/usuarios/me/sessoes` lista (IP, navegador, criação, último uso), `DELETE .../{id}` encerra
   uma, `DELETE /api/usuarios/me/sessoes` encerra as outras; o logout encerra só a atual. Troca de senha, desativação e

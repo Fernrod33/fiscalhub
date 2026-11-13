@@ -43,7 +43,7 @@ class SenhaETokensTest {
         Usuario novo = dados.usuario(escritorio, "novo-tok@test.com", Papel.CONSULTOR);
         novo.setTrocarSenhaNoProximoLogin(true);
         usuarioRepository.saveAndFlush(novo);
-        RequestPostProcessor provisorio = dados.sessao(novo);
+        RequestPostProcessor provisorio = dados.sessaoReautenticada(novo);
 
         mvc.perform(get("/api/clientes").with(provisorio))
                 .andExpect(status().isForbidden())
@@ -62,7 +62,7 @@ class SenhaETokensTest {
 
     @Test
     void trocaDeSenhaInvalidaTokensAnteriores() throws Exception {
-        RequestPostProcessor antigo = dados.sessao(admin);
+        RequestPostProcessor antigo = dados.sessaoReautenticada(admin);
         mvc.perform(put("/api/usuarios/me/senha").with(antigo).contentType(APPLICATION_JSON)
                         .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk());
@@ -73,14 +73,14 @@ class SenhaETokensTest {
     @Test
     void mudarPapelOuDesativarInvalidaOTokenDoAfetado() throws Exception {
         Usuario consultor = dados.usuario(escritorio, "cons-tok@test.com", Papel.CONSULTOR);
-        RequestPostProcessor tokenConsultor = dados.sessao(consultor);
-        RequestPostProcessor tokenAdmin = dados.sessao(admin);
+        RequestPostProcessor tokenConsultor = dados.sessaoReautenticada(consultor);
+        RequestPostProcessor tokenAdmin = dados.sessaoReautenticada(admin);
 
         mvc.perform(patch("/api/usuarios/{id}/papel", consultor.getId()).with(tokenAdmin)
                 .contentType(APPLICATION_JSON).content("{\"papel\":\"ASSISTENTE\"}")).andExpect(status().isOk());
         mvc.perform(get("/api/usuarios/me").with(tokenConsultor)).andExpect(status().isUnauthorized());
 
-        RequestPostProcessor tokenAssistente = dados.sessao(consultor);
+        RequestPostProcessor tokenAssistente = dados.sessaoReautenticada(consultor);
         mvc.perform(patch("/api/usuarios/{id}/desativar", consultor.getId()).with(tokenAdmin))
                 .andExpect(status().isOk());
         mvc.perform(get("/api/usuarios/me").with(tokenAssistente)).andExpect(status().isUnauthorized());

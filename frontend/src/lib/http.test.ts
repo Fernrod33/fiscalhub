@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { configurarSessao, ErroApi, http, mensagemErro } from './http';
+import { configurarReautenticacao, configurarSessao, ErroApi, esquecerReautenticacao, http, mensagemErro } from './http';
 
 function responder(status: number, corpo: unknown) {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(corpo), {
@@ -124,5 +124,26 @@ describe('upload com progresso', () => {
     const erro = await envio;
     expect(erro).toBeInstanceOf(ErroApi);
     expect(erro.recursoExistenteId).toBe(3);
+  });
+
+  it('403 de reautenticação abre o pedido uma vez e repete a ação com o token; cancelar rejeita', async () => {
+    document.cookie = 'XSRF-TOKEN=tok';
+    const corpo = (status: number, c: unknown) => new Response(JSON.stringify(c), { status });
+    const fetchFalso = vi.fn()
+      .mockResolvedValueOnce(corpo(403, { type: '/problemas/reautenticacao-necessaria' }))
+      .mockResolvedValueOnce(corpo(200, { ok: true }));
+    vi.stubGlobal('fetch', fetchFalso);
+    const pedir = vi.fn().mockResolvedValue({ token: 'reauth', validadeSegundos: 300 });
+    configurarReautenticacao(pedir);
+
+    await expect(http.patch('/x', {})).resolves.toEqual({ ok: true });
+    expect(pedir).toHaveBeenCalledOnce();
+    expect(fetchFalso.mock.calls[1][1].headers['X-Reautenticacao']).toBe('reauth');
+
+    esquecerReautenticacao();
+    fetchFalso.mockResolvedValueOnce(corpo(403, { type: '/problemas/reautenticacao-necessaria' }));
+    configurarReautenticacao(() => Promise.reject(new ErroApi(403, { detail: 'cancelada' })));
+    expect((await falha(http.patch('/x', {}))).message).toBe('cancelada');
+    configurarReautenticacao(null);
   });
 });
