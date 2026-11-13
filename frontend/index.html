@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>FiscalHub</title>
+    <!-- o proxy (deploy/Caddyfile) troca pelo nonce da CSP desta resposta; ver src/lib/csp.ts -->
+    <meta property="csp-nonce" nonce="{{placeholder `http.request.uuid`}}" />
   </head>
   <body>
     <div id="root"></div>

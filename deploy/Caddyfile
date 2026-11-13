@@ -14,9 +14,10 @@
 	}
 
 	header {
-		# script só do próprio domínio (nada de unsafe-inline); estilo inline é dos componentes (Recharts, Radix, motion)
-		# e da prévia do relatório (iframe srcdoc com sandbox vazio, herda esta política)
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+		# nada de unsafe-inline: script só do próprio domínio; <style> só com o nonce desta resposta ({http.request.uuid},
+		# o mesmo que o templates abaixo põe no index.html; frontend/src/lib/csp.ts o repassa aos <style> das bibliotecas
+		# e da prévia do relatório, um iframe srcdoc que herda esta política). Estilo por propriedade (CSSOM) não é afetado.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-{http.request.uuid}'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
 		X-Frame-Options "DENY"
@@ -34,7 +35,14 @@
 
 	# o actuator fica na porta 8081 do backend: nunca passa por aqui
 	handle {
-		reverse_proxy frontend:8080
+		# o nonce entra no <meta property="csp-nonce"> do index.html (o único text/html do frontend)
+		templates {
+			mime text/html
+		}
+		reverse_proxy frontend:8080 {
+			# templates precisa do HTML sem compressão; o encode acima comprime para o navegador
+			header_up -Accept-Encoding
+		}
 	}
 
 	log {

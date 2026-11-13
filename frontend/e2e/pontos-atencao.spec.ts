@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves, API } from './apoio';
 
 test('massa → painel com críticos → Pontos de atenção → R04 → evidência na célula de Tributos → descartar → Diagnóstico', async ({ page }) => {

@@ -42,6 +42,7 @@ docker compose logs backend | grep -i -E "migrat|error" | tail
 - O Flyway roda na subida, sem baseline automático (`application-prod.properties`). Migração com erro: o backend não
   sobe e o anterior já parou. Volte à tag anterior **e** restaure o backup feito no passo 1 (as migrações não têm volta).
 - Versões são tags (`CHANGELOG.md`); nunca suba a branch diretamente.
+- Mudou o `deploy/Caddyfile` (CSP, cabeçalhos)? O arquivo é montado, não copiado: `docker compose restart proxy`.
 
 ## 4. Backup
 

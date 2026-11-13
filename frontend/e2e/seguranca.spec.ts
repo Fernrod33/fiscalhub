@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { criarEscritorioEEntrar, semViolacoesGraves } from './apoio';
 
 test('Segurança: ADMIN ativa o 2º fator no primeiro acesso, entra com código de recuperação e vê as sessões', async ({ page }) => {

@@ -85,7 +85,10 @@ class RelatoriosEIdentidadeTest {
         mvc.perform(post(base).with(assistente).contentType(APPLICATION_JSON).content(pedido)).andExpect(status().isForbidden());
         mvc.perform(post(base + "/previa").with(assistente).contentType(APPLICATION_JSON).content(pedido))
                 .andExpect(status().isOk()).andExpect(header().string("Content-Security-Policy", org.hamcrest.Matchers.startsWith("default-src 'none'")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("PRÉVIA")));
+                .andExpect(header().string("Content-Security-Policy", org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("unsafe-inline"))))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("PRÉVIA")))
+                // CSP sem 'unsafe-inline': nenhum atributo style, só blocos <style> (que recebem o nonce no frontend)
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("style="))));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM relatorio_emitido WHERE cliente_id = ?", Long.class, cliente.getId())).isZero();
 
         String emitido = mvc.perform(post(base).with(dados.sessao(consultor)).contentType(APPLICATION_JSON).content(pedido))

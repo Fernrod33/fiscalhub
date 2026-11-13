@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { confirmarIdentidade, criarEscritorioEEntrar, entrar, semViolacoesGraves } from './apoio';
 
 test('Reautenticação: mudar papel e desativar usuário pedem senha e código; cancelar não altera nada', async ({ page }) => {

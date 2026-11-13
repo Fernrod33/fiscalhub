@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { comNonce } from '@/lib/csp';
 import { FileDown, FileSpreadsheet, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -160,7 +161,7 @@ export default function RelatoriosPage() {
           : previa.data === undefined
             ? <Skeleton className="h-[60vh]" />
             // sandbox vazio: sem scripts, formulários nem acesso à origem do app
-            : <iframe title="Prévia do relatório" sandbox="" srcDoc={previa.data} aria-busy={previa.isFetching}
+            : <iframe title="Prévia do relatório" sandbox="" srcDoc={comNonce(previa.data)} aria-busy={previa.isFetching}
                       className="h-[75vh] w-full rounded-md border bg-white" />}
       </Cartao>
 

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { criarCliente, criarEscritorioEEntrar } from './apoio';
 
 /** Amostras sintéticas versionadas no backend (as mesmas dos testes de integração). */

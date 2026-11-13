@@ -45,8 +45,11 @@ public class RelatorioController {
         }
     }
 
-    /** A prévia vai num iframe com sandbox; a política abaixo vale se o HTML for aberto direto. */
-    private static final String CSP_PREVIA = "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:";
+    /**
+     * A prévia vai num iframe srcdoc com sandbox e herda a CSP da página (com o nonce que o frontend põe nos <style>).
+     * A política abaixo só vale se o HTML for aberto direto: nada roda e nenhum estilo inline é aplicado.
+     */
+    private static final String CSP_PREVIA = "default-src 'none'; img-src data:; font-src data:";
 
     private final RelatorioService relatorios;
     private final CargaTributariaService carga;

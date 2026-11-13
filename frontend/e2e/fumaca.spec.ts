@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { criarCliente, criarEscritorioEEntrar } from './apoio';
 
 const ABAS = ['Visão geral', 'Importações', 'Demonstrações', 'Tributos', 'Capacidade', 'Simulações', 'Pontos de atenção', 'Relatórios'];

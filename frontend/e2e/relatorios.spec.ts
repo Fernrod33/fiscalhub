@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { expect, test, type Download } from '@playwright/test';
+import type { Download } from '@playwright/test';
+import { expect, test } from './teste';
 import { ARQUIVOS_MASSA, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
 
 const sha256 = async (d: Download) => createHash('sha256').update(await readFile((await d.path())!)).digest('hex');

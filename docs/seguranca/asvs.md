@@ -147,8 +147,8 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
 | 14.1.x Build | atendido | CI reprodutível; imagens multi-stage |
 | 14.2.x Dependências | atendido | Dependabot, npm audit e Dependency-Check (alta e crítica) |
 | 14.3.x Sem informação de depuração | atendido | Perfil prod sem SQL no log, sem OpenAPI, sem stack trace na resposta; `-Server` no proxy |
-| 14.4.x Cabeçalhos | atendido | CSP sem `unsafe-inline` em script, `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, COOP (`deploy/Caddyfile`) |
-| 14.4.3 CSP de estilo | parcial | `style-src 'unsafe-inline'`: os componentes (Recharts, Radix, motion) e a prévia do relatório usam estilo inline. Script não tem exceção |
+| 14.4.x Cabeçalhos | atendido | CSP sem `unsafe-inline` (nem em script nem em estilo), `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`, COOP (`deploy/Caddyfile`) |
+| 14.4.3 CSP de estilo | atendido | `style-src 'self' 'nonce-…'`: o proxy gera um nonce por resposta (`{http.request.uuid}`) e o põe no cabeçalho e, pelo `templates`, no `<meta property="csp-nonce">` do `index.html`. `frontend/src/lib/csp.ts` o repassa aos `<style>` criados por bibliotecas (sonner, `react-remove-scroll` do Radix) e aos `<style>` da prévia do relatório (iframe srcdoc, que herda a política); o template do relatório não tem atributo `style`. Recharts, motion e as propriedades `style` do React usam CSSOM, que a CSP não bloqueia. zod roda sem JIT (sem `new Function`). O e2e falha em qualquer violação de CSP (`e2e/teste.ts`). Exceção documentada: o nonce fica legível para o JavaScript da própria página (necessário para as bibliotecas); script continua só `'self'` |
 | 14.5.x Validação de cabeçalhos | atendido | `X-Forwarded-For` só aceito de IP privado (o proxy) |
 
 ## Pendências (resumo)
@@ -158,4 +158,3 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
    recuperação de senha pelo próprio usuário (2.5.x).
 3. Cofre de chaves (6.4.x) e TLS interno se os serviços saírem do mesmo host (9.2.x).
 4. Coletor de logs externo com retenção (7.3.x).
-5. CSP de estilo sem `unsafe-inline` (14.4.3) exigiria nonce por resposta ou trocar os componentes.

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { ARQUIVOS_MASSA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
 
 test('massa fictícia → Tributos: COFINS 08/2026 paga a menor com a origem → Situação fiscal: inscrição impeditiva', async ({ page }) => {

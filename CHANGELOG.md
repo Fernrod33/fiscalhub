@@ -2,6 +2,17 @@
 
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões em [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Segurança de conta
+- 2º fator obrigatório para todo ADMIN (inclusive promovido): a API responde 403 `/problemas/segundo-fator-obrigatorio`
+  até a ativação, e o ADMIN não pode desativá-lo.
+- Sessão expira após 30 min sem requisição (`SESSAO_INATIVIDADE_MINUTOS`); aviso 2 min antes, com opção de continuar,
+  e volta ao login preservando a rota.
+- Reautenticação (senha e código, 5 min) para excluir cliente, exportar os dados de um cliente, desativar usuário e
+  mudar papel.
+- CSP sem `'unsafe-inline'` em `style-src`: nonce por resposta no proxy. Ao atualizar: `docker compose restart proxy`.
+
 ## [2.0.0-rc.1] — 2026-11-12
 
 Primeira versão candidata da v2: o MVP completo para um piloto real, reescrito a partir da v1 (motor de parcelamento

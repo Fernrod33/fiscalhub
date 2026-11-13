@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves, API } from './apoio';
 
 /** A massa completa: a ECD dá a parcela sustentável do selo; o extrato e a CAPAG da PGFN, a inscrição de IPI e a classe C. */

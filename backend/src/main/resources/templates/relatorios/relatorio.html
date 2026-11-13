@@ -63,18 +63,26 @@
     .previa .anexo { page-break-before: auto; }
 
     .rodape { position: running(rodape); font-size: 7pt; color: #556378; width: 100%; }
+    .rodape table { width: 100%; border-collapse: collapse; }
+    .rodape-esq { width: 55%; }
+    .rodape-dir { text-align: right; }
     .rodape .pagina::after { content: "Página " counter(page) " de " counter(pages); }
     .previa .rodape { display: none; }
     .rodape-previa { margin-top: 10mm; border-top: 1px solid #d7dee7; padding-top: 3mm; font-size: 7.5pt; color: #556378; }
   </style>
+  <!--/* cor da identidade do escritório (só #rrggbb entra sem escape); sem atributo style: a CSP da prévia não tem 'unsafe-inline' */-->
+  <style th:inline="css" th:with="cor=${m.cabecalho.cor != null and m.cabecalho.cor.matches('#[0-9a-fA-F]{6}') ? m.cabecalho.cor : 'inherit'}">
+    .faixa { background: [(${cor})]; }
+    .capa h1 { color: [(${cor})]; }
+  </style>
 </head>
 <body>
   <div class="rodape">
-    <table style="width: 100%; border-collapse: collapse;"><tr>
-      <td style="width: 55%;">
+    <table><tr>
+      <td class="rodape-esq">
         <span th:text="${m.cabecalho.escritorio}">Escritório</span><span th:if="${m.cabecalho.rodape}" th:text="${' · ' + m.cabecalho.rodape}"></span>
       </td>
-      <td style="text-align: right;">
+      <td class="rodape-dir">
         <span th:text="${numero}">Relatório nº 1</span> · <span class="pagina"></span>
       </td>
     </tr><tr>
@@ -83,11 +91,11 @@
   </div>
 
   <section class="capa">
-    <div class="faixa" th:style="${'background: ' + m.cabecalho.cor}"></div>
+    <div class="faixa"></div>
     <img class="logo" th:if="${logo}" th:src="${logo}" alt="Logotipo do escritório" />
     <p class="muted" th:unless="${logo}" th:text="${m.cabecalho.escritorio}">Escritório</p>
     <div th:if="${previa}" class="marca-previa">PRÉVIA — sem número, não emitida</div>
-    <h1 th:text="${m.titulo}" th:style="${'color: ' + m.cabecalho.cor}">Título</h1>
+    <h1 th:text="${m.titulo}">Título</h1>
     <dl>
       <dt>Cliente</dt>
       <dd><span th:text="${m.cabecalho.clienteRazaoSocial}">Razão social</span><br />

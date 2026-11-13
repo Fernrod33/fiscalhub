@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './teste';
 import { confirmarIdentidade, criarCliente, criarEscritorioEEntrar, semViolacoesGraves } from './apoio';
 
 test('LGPD: exportar os dados do cliente em ZIP (com a senha confirmada), agendar a exclusão com o CNPJ e cancelar', async ({ page }) => {
