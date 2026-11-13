@@ -97,7 +97,10 @@ services:
   proxy:
     <<: *padrao
     image: caddy:2-alpine
-    depends_on: [backend, frontend]
+    # só abre as portas com o backend pronto (readiness) e o frontend servindo
+    depends_on:
+      backend: { condition: service_healthy }
+      frontend: { condition: service_healthy }
     ports:
       - "80:80"
       - "443:443"

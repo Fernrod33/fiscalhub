@@ -11,12 +11,17 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 60_000,
   fullyParallel: false,
+  // Os testes dividem um backend só, cuja fila de processamento de documentos tem 2 threads (spring.task.execution.pool):
+  // o padrão do Playwright (metade dos núcleos: 6 nesta máquina, 2 no runner do CI) punha 6 testes importando a massa ao
+  // mesmo tempo, e a espera de cada um passava a depender do acúmulo dos outros (timeouts e respostas não processadas a
+  // tempo pelo navegador sem CPU). 2 workers = a capacidade do backend, igual em qualquer máquina.
+  workers: 2,
   // no CI um retry: o flaky aparece no relatório (não some), e uma falha de verdade falha duas vezes
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: URL_EXTERNA ?? 'http://localhost:5173',
-    trace: 'retain-on-failure',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
     // telas sem animação: o axe avalia o estado final (o contraste de um elemento ainda entrando dava falso positivo)
     contextOptions: { reducedMotion: 'reduce' },
   },

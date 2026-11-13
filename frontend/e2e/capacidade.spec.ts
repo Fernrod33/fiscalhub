@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
+import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves, API } from './apoio';
 
 
 test('massa → Capacidade: CAPAG oficial C × estimada, simulação no PR e emissão do relatório e do dossiê', async ({ page }) => {
@@ -11,7 +11,7 @@ test('massa → Capacidade: CAPAG oficial C × estimada, simulação no PR e emi
   await secoes.getByRole('link', { name: 'Importações', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(ARQUIVOS.map(massa));
   // a tabela pagina em 20: espera pelo resumo da API (mesma sessão) até todos terminarem
-  const api = process.env.VITE_API_URL ?? 'http://localhost:8080';
+  const api = API;
   await expect.poll(async () => {
     const r = await (await page.request.get(`${api}/api/documentos/resumo`)).json();
     return (r.PROCESSADO ?? 0) + (r.PROCESSADO_COM_ALERTAS ?? 0);

@@ -2,6 +2,12 @@ import AxeBuilder from '@axe-core/playwright';
 import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 
+/**
+ * Base da API para o page.request: com E2E_URL (proxy, CI) a mesma origem da página; sem ela, o backend local do Vite.
+ * Nunca a porta 8080 fixa: atrás do proxy ela nem existe.
+ */
+export const API = process.env.E2E_URL ?? process.env.VITE_API_URL ?? 'http://localhost:8080';
+
 /** Cadastra um escritório novo (dados únicos por execução) e entra com o ADMIN dele. */
 export async function criarEscritorioEEntrar(page: Page) {
   const sufixo = `${Date.now()}${Math.floor(Math.random() * 1000)}`;

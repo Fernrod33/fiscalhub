@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves } from './apoio';
+import { ARQUIVOS_MASSA_COMPLETA as ARQUIVOS, criarCliente, criarEscritorioEEntrar, massa, semViolacoesGraves, API } from './apoio';
 
 /** A massa completa: a ECD dá a parcela sustentável do selo; o extrato e a CAPAG da PGFN, a inscrição de IPI e a classe C. */
 test('massa → Simulações: inscrição de IPI, parcelamento × transação, selo e proposta em PDF', async ({ page }) => {
@@ -10,7 +10,7 @@ test('massa → Simulações: inscrição de IPI, parcelamento × transação, s
   const secoes = page.getByRole('navigation', { name: 'Seções do cliente' });
   await secoes.getByRole('link', { name: 'Importações', exact: true }).click();
   await page.locator('input[type=file]').setInputFiles(ARQUIVOS.map(massa));
-  const api = process.env.VITE_API_URL ?? 'http://localhost:8080';
+  const api = API;
   await expect.poll(async () => {
     const r = await (await page.request.get(`${api}/api/documentos/resumo`)).json();
     return (r.PROCESSADO ?? 0) + (r.PROCESSADO_COM_ALERTAS ?? 0);
