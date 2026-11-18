@@ -66,26 +66,24 @@ class EscritorioEPapeisTest {
     }
 
     @Test
-    void adminCriaUsuarioComSenhaProvisoriaQueDeveSerTrocada() throws Exception {
+    void adminCriaUsuarioPorConviteSemSenhaDefinidaPorEle() throws Exception {
         mvc.perform(post("/api/usuarios").with(dados.sessaoReautenticada(admin)).contentType(APPLICATION_JSON)
-                        .content("{\"nome\":\"Caio\",\"email\":\"caio@test.com\",\"papel\":\"CONSULTOR\",\"senhaProvisoria\":\"provisoria-forte-1\"}"))
+                        .content("{\"nome\":\"Caio\",\"email\":\"caio@test.com\",\"papel\":\"CONSULTOR\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.papel").value("CONSULTOR"))
-                .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(true))
+                .andExpect(jsonPath("$.convitePendente").value(true))
                 .andExpect(jsonPath("$.senha").doesNotExist());
+        // o fluxo do convite (e-mail, link de uso único) está no ContaPorEmailTest
+    }
 
-        mvc.perform(post("/api/auth/login").with(DadosTeste.CSRF).contentType(APPLICATION_JSON)
-                        .content("{\"email\":\"caio@test.com\",\"senha\":\"provisoria-forte-1\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.usuario.trocarSenhaNoProximoLogin").value(true));
-
-        Usuario caio = usuarioRepository.findByEmail("caio@test.com").orElseThrow();
+    @Test
+    void trocaDeSenhaEmiteSessaoNova() throws Exception {
+        Usuario caio = dados.usuario(escritorio, "caio@test.com", Papel.CONSULTOR);
         mvc.perform(put("/api/usuarios/me/senha").with(dados.sessaoReautenticada(caio)).contentType(APPLICATION_JSON)
-                        .content("{\"senhaAtual\":\"provisoria-forte-1\",\"novaSenha\":\"definitiva-forte-1\"}"))
+                        .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk())
                 .andExpect(cookie().httpOnly(CookieSessao.NOME, true)) // sessão nova: a troca invalidou a anterior
                 .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(false));
-        assertThat(caio.getTrocarSenhaNoProximoLogin()).isFalse();
     }
 
     @Test
@@ -94,7 +92,7 @@ class EscritorioEPapeisTest {
             RequestPostProcessor token = dados.sessaoReautenticada(dados.usuario(escritorio, papel + "@test.com", papel));
             mvc.perform(get("/api/usuarios").with(token)).andExpect(status().isForbidden());
             mvc.perform(post("/api/usuarios").with(token).contentType(APPLICATION_JSON)
-                            .content("{\"nome\":\"X\",\"email\":\"x@test.com\",\"papel\":\"ADMIN\",\"senhaProvisoria\":\"provisoria-forte-1\"}"))
+                            .content("{\"nome\":\"X\",\"email\":\"x@test.com\",\"papel\":\"ADMIN\"}"))
                     .andExpect(status().isForbidden());
             mvc.perform(patch("/api/usuarios/{id}/desativar", admin.getId()).with(token))
                     .andExpect(status().isForbidden());

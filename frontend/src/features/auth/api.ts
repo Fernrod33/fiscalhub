@@ -1,5 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
-import type { LoginRequest, RespostaLogin, SegundoFatorLogin, SignupRequest, TrocaSenha, Usuario } from '@/lib/api/tipos';
+import type {
+  AceiteConvite, LoginRequest, PedidoRecuperacao, RedefinicaoSenha, RespostaLogin, SegundoFatorLogin, SignupRequest, TrocaSenha, Usuario,
+} from '@/lib/api/tipos';
 import { http } from '@/lib/http';
 import { definirSessao } from './sessao';
 
@@ -30,4 +32,19 @@ export const useSignup = () => useMutation({
 export const useTrocarSenha = () => useMutation({
   mutationFn: (dados: TrocaSenha) => http.put<Usuario>('/api/usuarios/me/senha', dados),
   onSuccess: definirSessao,
+});
+
+// ---- links do e-mail (token de uso único no fragmento #, que não vai ao servidor nem ao Referer)
+
+export const useAceitarConvite = () => useMutation({
+  mutationFn: (dados: AceiteConvite) => http.post<void>('/api/auth/convite', dados),
+});
+
+/** A resposta é a mesma exista ou não a conta. */
+export const useRecuperarSenha = () => useMutation({
+  mutationFn: (dados: PedidoRecuperacao) => http.post<{ message: string }>('/api/auth/senha/recuperar', dados),
+});
+
+export const useRedefinirSenha = () => useMutation({
+  mutationFn: (dados: RedefinicaoSenha) => http.post<void>('/api/auth/senha/redefinir', dados),
 });

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { UserMinus, UserPlus, Users } from 'lucide-react';
+import { MailPlus, UserMinus, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
 import type { NovoUsuario, Papel, Usuario } from '@/lib/api/tipos';
 import { http, mensagemErro } from '@/lib/http';
 import { PAPEIS } from '@/lib/rotulos';
-import { DICA_SENHA, SENHA_MAXIMA, SENHA_MINIMA } from '@/features/auth/api';
 import { useSessao } from '@/features/auth/sessao';
 
 const CHAVE = ['usuarios'];
@@ -38,19 +37,19 @@ const esquema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome.').max(100),
   email: z.string().email('Informe um e-mail válido.'),
   papel: z.enum(PAPEIS_LISTA as [Papel, ...Papel[]]),
-  senhaProvisoria: z.string().min(SENHA_MINIMA, `Mínimo de ${SENHA_MINIMA} caracteres.`).max(SENHA_MAXIMA, `Máximo de ${SENHA_MAXIMA} caracteres.`),
 });
 
-/** Usuários do escritório (só ADMIN): criar com senha provisória, mudar papel, desativar. */
+/** Usuários do escritório (só ADMIN): convidar por e-mail (o convidado define a senha), mudar papel, desativar. */
 export default function UsuariosPage() {
   const eu = useSessao()?.id;
   const usuarios = useQuery({ queryKey: CHAVE, queryFn: () => http.get<Usuario[]>('/api/usuarios') });
-  const criar = useMutacaoUsuarios((u: NovoUsuario) => http.post('/api/usuarios', u), 'Usuário criado. Ele trocará a senha no primeiro acesso.');
+  const criar = useMutacaoUsuarios((u: NovoUsuario) => http.post('/api/usuarios', u), 'Convite enviado. O link vale por 72 horas.');
+  const reenviar = useMutacaoUsuarios((id: number) => http.post(`/api/usuarios/${id}/convite`), 'Convite reenviado. O link anterior deixou de valer.');
   const mudarPapel = useMutacaoUsuarios(({ id, papel }: { id: number; papel: Papel }) => http.patch(`/api/usuarios/${id}/papel`, { papel }), 'Papel alterado.');
   const desativar = useMutacaoUsuarios((id: number) => http.patch(`/api/usuarios/${id}/desativar`), 'Usuário desativado.');
   const [novo, setNovo] = useState(false);
   const [desativando, setDesativando] = useState<Usuario | null>(null);
-  const form = useForm<z.infer<typeof esquema>>({ resolver: zodResolver(esquema), defaultValues: { nome: '', email: '', papel: 'CONSULTOR', senhaProvisoria: '' } });
+  const form = useForm<z.infer<typeof esquema>>({ resolver: zodResolver(esquema), defaultValues: { nome: '', email: '', papel: 'CONSULTOR' } });
 
   const colunas: ColumnDef<Usuario>[] = [
     { accessorKey: 'nome', header: 'Nome' },
@@ -66,10 +65,15 @@ export default function UsuariosPage() {
     { accessorKey: 'ativo', header: 'Situação', cell: ({ row }) => (
       <span className="flex gap-1">
         {row.original.ativo ? <Badge variant="outline">Ativo</Badge> : <Badge variant="secondary">Desativado</Badge>}
-        {row.original.trocarSenhaNoProximoLogin && row.original.ativo && <Badge className="bg-warning-bg text-warning">Senha provisória</Badge>}
+        {row.original.convitePendente && row.original.ativo && <Badge className="bg-warning-bg text-warning">Convite pendente</Badge>}
       </span>) },
     { id: 'acoes', header: () => <span className="sr-only">Ações</span>, enableSorting: false, cell: ({ row }) => row.original.ativo && row.original.id !== eu && (
       <div className="flex justify-end">
+        {row.original.convitePendente && (
+          <Button variant="ghost" size="sm" disabled={reenviar.isPending} onClick={() => reenviar.mutate(row.original.id)}>
+            <MailPlus aria-hidden /> Reenviar convite
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={() => setDesativando(row.original)}><UserMinus aria-hidden /> Desativar</Button>
       </div>) },
   ];
@@ -87,7 +91,7 @@ export default function UsuariosPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Novo usuário</DialogTitle>
-            <DialogDescription>Ele entra com a senha provisória e define a própria senha no primeiro acesso.</DialogDescription>
+            <DialogDescription>Enviaremos um convite para o e-mail informado; a pessoa define a própria senha pelo link (válido por 72 horas).</DialogDescription>
           </DialogHeader>
           <Form {...form}>
             <form onSubmit={enviar} className="grid gap-4" noValidate>
@@ -103,10 +107,9 @@ export default function UsuariosPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <CampoTexto control={form.control} name="senhaProvisoria" rotulo="Senha provisória" type="password" autoComplete="new-password" descricao={DICA_SENHA} />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setNovo(false)}>Cancelar</Button>
-                <Button type="submit" disabled={criar.isPending}>{criar.isPending ? 'Criando…' : 'Criar usuário'}</Button>
+                <Button type="submit" disabled={criar.isPending}>{criar.isPending ? 'Enviando…' : 'Enviar convite'}</Button>
               </div>
             </form>
           </Form>

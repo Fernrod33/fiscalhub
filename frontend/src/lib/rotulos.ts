@@ -105,6 +105,11 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   PONTO_ATENCAO_ESTADO: 'Mudou o estado de um ponto de atenção',
   PARAMETROS_PONTOS_ALTERAR: 'Alterou parâmetros das regras',
   AUDITORIA_EXPURGAR: 'Expurgou eventos fora do prazo de retenção',
+  EMAIL_ENVIAR: 'E-mail enviado ao usuário',
+  CONVITE_REENVIAR: 'Reenviou o convite',
+  CONVITE_ACEITAR: 'Aceitou o convite e definiu a senha',
+  SENHA_RECUPERACAO_SOLICITAR: 'Pediu a recuperação da senha',
+  SENHA_REDEFINIR: 'Redefiniu a senha pelo link do e-mail',
 };
 
 export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado']>, { rotulo: string; tom: Tom }> = {

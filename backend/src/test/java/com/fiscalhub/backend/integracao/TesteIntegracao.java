@@ -16,6 +16,6 @@ import java.lang.annotation.Target;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import({PostgresTestcontainer.class, DadosTeste.class})
+@Import({PostgresTestcontainer.class, MailpitTestcontainer.class, DadosTeste.class})
 public @interface TesteIntegracao {
 }

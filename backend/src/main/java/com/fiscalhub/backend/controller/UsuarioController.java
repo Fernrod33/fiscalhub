@@ -87,6 +87,15 @@ public class UsuarioController {
         return ResponseEntity.status(HttpStatus.CREATED).body(UsuarioResponseDTO.fromEntity(usuarioService.criarNoEscritorio(ua, dto)));
     }
 
+    /** Novo link de convite (o anterior deixa de valer), enquanto o usuário não definiu a senha. */
+    @PostMapping("/{id}/convite")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(value = AcaoAuditoria.CONVITE_REENVIAR, idParam = "id")
+    public ResponseEntity<Void> reenviarConvite(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        usuarioService.reenviarConvite(ua, id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/papel")
     @com.fiscalhub.backend.security.ExigeReautenticacao
     @PreAuthorize("hasRole('ADMIN')")

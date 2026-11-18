@@ -1,5 +1,7 @@
 package com.fiscalhub.backend.controller;
 
+import com.fiscalhub.backend.dto.ContaPorEmailDTO;
+import com.fiscalhub.backend.service.ContaPorEmailService;
 import com.fiscalhub.backend.dto.LoginRequest;
 import com.fiscalhub.backend.dto.RespostaLogin;
 import com.fiscalhub.backend.dto.SegundoFatorLogin;
@@ -39,9 +41,12 @@ public class AuthController {
     private final CookieSessao cookieSessao;
     private final BloqueioLogin bloqueio;
     private final SegurancaContaService seguranca;
+    private final ContaPorEmailService contaPorEmail;
 
     AuthController(AuthenticationManager authenticationManager, UsuarioService usuarioService, JwtUtils jwtUtils,
-                   CookieSessao cookieSessao, BloqueioLogin bloqueio, SegurancaContaService seguranca) {
+                   CookieSessao cookieSessao, BloqueioLogin bloqueio, SegurancaContaService seguranca,
+                   ContaPorEmailService contaPorEmail) {
+        this.contaPorEmail = contaPorEmail;
         this.authenticationManager = authenticationManager;
         this.usuarioService = usuarioService;
         this.jwtUtils = jwtUtils;
@@ -125,6 +130,31 @@ public class AuthController {
     @GetMapping("/csrf")
     public ResponseEntity<Void> csrf(CsrfToken token) {
         token.getToken(); // o token é diferido: carregá-lo grava o cookie
+        return ResponseEntity.noContent().build();
+    }
+
+    // ---- convite e recuperação de senha (link de uso único enviado por e-mail)
+
+    @PostMapping("/convite")
+    public ResponseEntity<Void> aceitarConvite(@Valid @RequestBody ContaPorEmailDTO.AceiteConvite corpo, HttpServletRequest request) {
+        contaPorEmail.aceitarConvite(corpo.token(), corpo.senha(), request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Mesma resposta exista ou não a conta (o e-mail só sai se ela existir e estiver ativa). */
+    @PostMapping("/senha/recuperar")
+    public ResponseEntity<MessageResponse> solicitarRecuperacao(@Valid @RequestBody ContaPorEmailDTO.PedidoRecuperacao corpo,
+                                                                HttpServletRequest request) {
+        contaPorEmail.solicitarRecuperacao(corpo.email(), request.getRemoteAddr());
+        return ResponseEntity.accepted().body(new MessageResponse(RESPOSTA_RECUPERACAO));
+    }
+
+    public static final String RESPOSTA_RECUPERACAO =
+            "Se houver uma conta ativa com este e-mail, enviaremos um link para redefinir a senha. Ele vale por 30 minutos.";
+
+    @PostMapping("/senha/redefinir")
+    public ResponseEntity<Void> redefinirSenha(@Valid @RequestBody ContaPorEmailDTO.Redefinicao corpo, HttpServletRequest request) {
+        contaPorEmail.redefinirSenha(corpo.token(), corpo.novaSenha(), corpo.codigo(), request.getRemoteAddr());
         return ResponseEntity.noContent().build();
     }
 

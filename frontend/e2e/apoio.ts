@@ -145,3 +145,30 @@ export async function semViolacoesGraves(page: Page, tela: string) {
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`), tela).toEqual([]);
 }
+
+/** Mailpit do compose de desenvolvimento (compose.dev.yaml), onde ficam os e-mails enviados pelo backend. */
+const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8025';
+
+/**
+ * Espera o destinatário ter pelo menos {@code quantos} e-mails e devolve o caminho (com o #token) do link do mais novo
+ * que leve a {@code rota}, para abrir na origem do teste (a do e-mail é a ORIGEM_PUBLICA do backend).
+ */
+export async function linkDoEmail(para: string, rota: '/convite' | '/redefinir-senha', quantos = 1) {
+  const busca = `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${para}"`)}`;
+  let mensagens: { ID: string }[] = [];
+  await expect.poll(async () => {
+    mensagens = (await (await fetch(busca)).json()).messages;
+    return mensagens.length;
+  }, { message: `e-mail para ${para}`, timeout: 30_000 }).toBeGreaterThanOrEqual(quantos);
+  for (const { ID } of mensagens) {
+    const { Text } = await (await fetch(`${MAILPIT}/api/v1/message/${ID}`)).json();
+    const link = new RegExp(`https?://\\S+?(${rota}#[A-Za-z0-9_-]{43})`).exec(Text);
+    if (link) return link[1];
+  }
+  throw new Error(`nenhum e-mail para ${para} com link para ${rota}`);
+}
+
+export async function assuntosDosEmails(para: string) {
+  const r = await (await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${para}"`)}`)).json();
+  return (r.messages as { Subject: string }[]).map((m) => m.Subject);
+}

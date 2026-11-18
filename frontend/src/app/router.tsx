@@ -32,6 +32,9 @@ const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType
 export const router = createBrowserRouter([
   { path: '/login', ...pagina(() => padrao(import('@/features/auth/pages/login-page'))) },
   { path: '/cadastro', ...pagina(() => padrao(import('@/features/auth/pages/cadastro-page'))) },
+  { path: '/convite', ...pagina(() => padrao(import('@/features/auth/pages/convite-page'))) },
+  { path: '/esqueci-senha', ...pagina(() => padrao(import('@/features/auth/pages/esqueci-senha-page'))) },
+  { path: '/redefinir-senha', ...pagina(() => padrao(import('@/features/auth/pages/redefinir-senha-page'))) },
   // Só em desenvolvimento: em produção o ramo some do bundle
   ...(import.meta.env.DEV ? [{ path: '/laboratorio-design', ...pagina(() => padrao(import('@/laboratorio/LaboratorioDesign'))) }] : []),
   {

@@ -65,6 +65,10 @@ public class Usuario {
     @Column(name = "trocar_senha_no_proximo_login", nullable = false)
     private Boolean trocarSenhaNoProximoLogin = false;
 
+    /** Convidado que ainda não definiu a senha pelo link do e-mail (a senha gravada é aleatória). */
+    @Column(name = "convite_pendente", nullable = false)
+    private Boolean convitePendente = false;
+
     /** Muda na troca de senha, desativação e mudança de papel: invalida os tokens emitidos antes. */
     @JsonIgnore
     @Column(name = "versao_token", nullable = false)

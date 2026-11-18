@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.service;
 
+import com.fiscalhub.backend.email.EmailsConta;
 import com.fiscalhub.backend.dto.NovoUsuarioDTO;
 import com.fiscalhub.backend.dto.SignupRequest;
 import com.fiscalhub.backend.dto.TrocaSenhaDTO;
@@ -27,13 +28,18 @@ public class UsuarioService {
     private final EscritorioRepository escritorioRepository;
     private final AcessoRecursoService acessoRecursoService;
     private final PasswordEncoder passwordEncoder;
+    private final ContaPorEmailService contaPorEmail;
+    private final EmailsConta emails;
 
     public UsuarioService(UsuarioRepository usuarioRepository, EscritorioRepository escritorioRepository,
-                          AcessoRecursoService acessoRecursoService, PasswordEncoder passwordEncoder) {
+                          AcessoRecursoService acessoRecursoService, PasswordEncoder passwordEncoder,
+                          ContaPorEmailService contaPorEmail, EmailsConta emails) {
         this.usuarioRepository = usuarioRepository;
         this.escritorioRepository = escritorioRepository;
         this.acessoRecursoService = acessoRecursoService;
         this.passwordEncoder = passwordEncoder;
+        this.contaPorEmail = contaPorEmail;
+        this.emails = emails;
     }
 
     public Usuario findByEmail(String email) {
@@ -63,12 +69,18 @@ public class UsuarioService {
         return usuarioRepository.findByEscritorioIdOrderByNome(ua.escritorioId());
     }
 
-    // ponytail: senha provisória definida pelo ADMIN; trocar por convite por e-mail quando houver serviço de e-mail
+    /** Senha aleatória (ninguém a conhece) até o convidado definir a dele pelo link do e-mail. */
     public Usuario criarNoEscritorio(UsuarioAutenticado ua, NovoUsuarioDTO dto) {
-        Usuario usuario = novoUsuario(dto.nome(), dto.email(), dto.senhaProvisoria(), dto.papel(),
-                escritorioRepository.getReferenceById(ua.escritorioId()));
-        usuario.setTrocarSenhaNoProximoLogin(true);
-        return usuarioRepository.save(usuario);
+        Usuario usuario = novoUsuario(dto.nome(), dto.email(), java.util.UUID.randomUUID().toString(),
+                dto.papel(), escritorioRepository.findById(ua.escritorioId()).orElseThrow());
+        usuario.setConvitePendente(true);
+        usuarioRepository.save(usuario);
+        contaPorEmail.convidar(usuario);
+        return usuario;
+    }
+
+    public void reenviarConvite(UsuarioAutenticado ua, Long usuarioId) {
+        contaPorEmail.reenviarConvite(acessoRecursoService.usuario(usuarioId, ua));
     }
 
     public Usuario alterarPapel(UsuarioAutenticado ua, Long usuarioId, Papel papel) {
@@ -79,6 +91,7 @@ public class UsuarioService {
         if (usuario.getPapel() != papel) {
             usuario.setPapel(papel);
             invalidarTokens(usuario);
+            emails.aviso(usuario, EmailsConta.Aviso.PAPEL_ALTERADO);
         }
         return usuario;
     }
@@ -116,6 +129,7 @@ public class UsuarioService {
         usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
         usuario.setTrocarSenhaNoProximoLogin(false);
         invalidarTokens(usuario);
+        emails.aviso(usuario, EmailsConta.Aviso.SENHA_ALTERADA);
         return usuarioRepository.saveAndFlush(usuario);
     }
 

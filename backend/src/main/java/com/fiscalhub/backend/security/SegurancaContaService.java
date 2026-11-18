@@ -1,5 +1,6 @@
 package com.fiscalhub.backend.security;
 
+import com.fiscalhub.backend.email.EmailsConta;
 import com.fiscalhub.backend.entity.Escritorio;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.exception.BusinessRuleException;
@@ -50,11 +51,12 @@ public class SegurancaContaService {
     private final UsuarioRepository usuarios;
     private final EscritorioRepository escritorios;
     private final PasswordEncoder senhas;
+    private final EmailsConta emails;
     private final int inatividadeMinutos;
     private final int reautenticacaoMinutos;
 
     public SegurancaContaService(JdbcTemplate jdbc, JwtUtils jwt, CifraDados cifra, UsuarioRepository usuarios,
-                                 EscritorioRepository escritorios, PasswordEncoder senhas,
+                                 EscritorioRepository escritorios, PasswordEncoder senhas, EmailsConta emails,
                                  @org.springframework.beans.factory.annotation.Value("${fiscalhub.sessao.inatividade-minutos:30}") int inatividadeMinutos,
                                  @org.springframework.beans.factory.annotation.Value("${fiscalhub.sessao.reautenticacao-minutos:5}") int reautenticacaoMinutos) {
         this.inatividadeMinutos = inatividadeMinutos;
@@ -65,6 +67,7 @@ public class SegurancaContaService {
         this.usuarios = usuarios;
         this.escritorios = escritorios;
         this.senhas = senhas;
+        this.emails = emails;
     }
 
     // ---- sessões
@@ -178,6 +181,7 @@ public class SegurancaContaService {
         }
         u.setTotpAtivo(true);
         u.setTotpUltimoPasso(passo.getAsLong());
+        emails.aviso(u, EmailsConta.Aviso.SEGUNDO_FATOR_ATIVADO);
         return novosCodigos(u);
     }
 
@@ -192,6 +196,7 @@ public class SegurancaContaService {
         u.setTotpSegredo(null);
         u.setTotpUltimoPasso(null);
         jdbc.update("DELETE FROM codigo_recuperacao WHERE usuario_id = ?", u.getId());
+        emails.aviso(u, EmailsConta.Aviso.SEGUNDO_FATOR_DESATIVADO);
     }
 
     public CodigosRecuperacao regenerarCodigos(UsuarioAutenticado ua, String senha) {
@@ -263,7 +268,7 @@ public class SegurancaContaService {
         return usuarios.findById(ua.id()).orElseThrow();
     }
 
-    private static String sha256(String texto) {
+    static String sha256(String texto) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(texto.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {

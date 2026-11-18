@@ -55,6 +55,7 @@ export default function LoginPage() {
           )}
           <CampoTexto control={form.control} name="email" rotulo="E-mail" type="email" autoComplete="email" />
           <CampoTexto control={form.control} name="senha" rotulo="Senha" type="password" autoComplete="current-password" />
+          <Link className="-mt-2 justify-self-end text-sm font-medium text-primary underline-offset-4 hover:underline" to="/esqueci-senha">Esqueci minha senha</Link>
           <Button type="submit" disabled={login.isPending}>{login.isPending ? 'Entrando…' : 'Entrar'}</Button>
         </form>
       </Form>

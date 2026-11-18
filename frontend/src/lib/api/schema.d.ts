@@ -164,6 +164,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/usuarios/{id}/convite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["reenviarConvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuarios/me/termos": {
         parameters: {
             query?: never;
@@ -516,6 +532,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/senha/redefinir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["redefinirSenha"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/senha/recuperar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["solicitarRecuperacao"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -558,6 +606,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["segundoFator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/convite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["aceitarConvite"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1375,6 +1439,7 @@ export interface components {
             segundoFatorAtivo: boolean;
             segundoFatorPendente: boolean;
             termosPendentes: boolean;
+            convitePendente: boolean;
         };
         TrocaSenhaDTO: {
             senhaAtual: string;
@@ -1510,7 +1575,6 @@ export interface components {
             email: string;
             /** @enum {string} */
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
-            senhaProvisoria?: string;
         };
         Ativacao: {
             segredo: string;
@@ -1899,6 +1963,15 @@ export interface components {
         MessageResponse: {
             message: string;
         };
+        Redefinicao: {
+            token: string;
+            novaSenha?: string;
+            codigo?: string;
+        };
+        PedidoRecuperacao: {
+            /** Format: email */
+            email: string;
+        };
         LoginRequest: {
             /** Format: email */
             email: string;
@@ -1911,6 +1984,10 @@ export interface components {
         SegundoFatorLogin: {
             desafio: string;
             codigo: string;
+        };
+        AceiteConvite: {
+            token: string;
+            senha?: string;
         };
         AlteracaoPapelDTO: {
             /** @enum {string} */
@@ -2628,8 +2705,8 @@ export interface components {
             observacao: string;
         };
         CsrfToken: {
-            token: string;
             parameterName: string;
+            token: string;
             headerName: string;
         };
         AuditoriaEventoDTO: {
@@ -2639,7 +2716,7 @@ export interface components {
             usuarioId: number;
             usuarioNome: string;
             /** @enum {string} */
-            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "TERMOS_ACEITAR" | "REAUTENTICAR" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "CLIENTE_EXCLUSAO_SOLICITAR" | "CLIENTE_EXCLUSAO_CANCELAR" | "CLIENTE_EXPORTAR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR" | "AUDITORIA_EXPURGAR";
+            acao: "LOGIN" | "LOGIN_SEGUNDO_FATOR" | "SESSAO_ENCERRAR" | "SEGUNDO_FATOR_ATIVAR" | "SEGUNDO_FATOR_DESATIVAR" | "SEGUNDO_FATOR_CODIGOS" | "ESCRITORIO_SEGURANCA" | "TERMOS_ACEITAR" | "REAUTENTICAR" | "DOCUMENTO_IMPORTAR" | "DOCUMENTO_BAIXAR" | "DOCUMENTO_EXCLUIR" | "DOCUMENTO_REPROCESSAR" | "DOCUMENTO_CONFIRMAR_CLIENTE" | "PLANILHA_MAPEAR_COLUNAS" | "PLANILHA_SALVAR_DEPARA" | "CLIENTE_CRIAR" | "CLIENTE_EDITAR" | "CLIENTE_EXCLUIR" | "CLIENTE_EXCLUSAO_SOLICITAR" | "CLIENTE_EXCLUSAO_CANCELAR" | "CLIENTE_EXPORTAR" | "SIMULACAO_CRIAR" | "SIMULACAO_RECALCULAR" | "SIMULACAO_EXCLUIR" | "USUARIO_CRIAR" | "USUARIO_ALTERAR_PAPEL" | "USUARIO_DESATIVAR" | "IDENTIDADE_ALTERAR" | "IDENTIDADE_LOGO" | "RELATORIO_EMITIR" | "RELATORIO_BAIXAR" | "PARAMETROS_CAPACIDADE_ALTERAR" | "DFC_DEPARA_ALTERAR" | "PONTO_ATENCAO_ESTADO" | "PARAMETROS_PONTOS_ALTERAR" | "AUDITORIA_EXPURGAR" | "EMAIL_ENVIAR" | "CONVITE_REENVIAR" | "CONVITE_ACEITAR" | "SENHA_RECUPERACAO_SOLICITAR" | "SENHA_REDEFINIR";
             recursoTipo: string;
             /** Format: int64 */
             recursoId: number;
@@ -3114,6 +3191,26 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["UsuarioResponseDTO"];
                 };
+            };
+        };
+    };
+    reenviarConvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3810,6 +3907,52 @@ export interface operations {
             };
         };
     };
+    redefinirSenha: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Redefinicao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    solicitarRecuperacao: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedidoRecuperacao"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
     logout: {
         parameters: {
             query?: never;
@@ -3873,6 +4016,28 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["RespostaLogin"];
                 };
+            };
+        };
+    };
+    aceitarConvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AceiteConvite"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -85,6 +85,11 @@ services:
       UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE_MB:-500}MB
       MANAGEMENT_SERVER_PORT: "8081"
       ADMIN_SISTEMA: ${ADMIN_SISTEMA:-}
+      # E-mail transacional pelo SMTP do Amazon SES (docs/deploy/email-ses.md); credenciais só no .env
+      SMTP_HOST: ${SMTP_HOST:-email-smtp.sa-east-1.amazonaws.com}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_SENHA: ${SMTP_SENHA:-}
+      EMAIL_REMETENTE: ${EMAIL_REMETENTE:-FiscalHub <nao-responda@${DOMINIO}>}
     mem_limit: ${BACKEND_MEMORIA:-2g}
 
   frontend:

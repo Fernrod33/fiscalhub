@@ -40,7 +40,13 @@ public enum AcaoAuditoria {
     PONTO_ATENCAO_ESTADO("PONTO_ATENCAO"),
     PARAMETROS_PONTOS_ALTERAR("ESCRITORIO"),
     /** Expurgo dos eventos fora do prazo de retenção, pelo job (sem escritório nem usuário). */
-    AUDITORIA_EXPURGAR("AUDITORIA");
+    AUDITORIA_EXPURGAR("AUDITORIA"),
+    /** Envio de e-mail da conta pelo job (recurso = destinatário); só modelo, resultado e tentativas, nunca o conteúdo. */
+    EMAIL_ENVIAR("USUARIO"),
+    CONVITE_REENVIAR("USUARIO"),
+    CONVITE_ACEITAR("USUARIO"),
+    SENHA_RECUPERACAO_SOLICITAR("USUARIO"),
+    SENHA_REDEFINIR("USUARIO");
 
     private final String recurso;
 

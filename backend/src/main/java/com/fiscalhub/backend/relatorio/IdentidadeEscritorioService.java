@@ -122,7 +122,7 @@ public class IdentidadeEscritorioService {
         return chave == null ? null : "data:image/png;base64," + Base64.getEncoder().encodeToString(ler(chave));
     }
 
-    private byte[] ler(String chave) {
+    public byte[] ler(String chave) {
         try (InputStream in = armazenamento.abrir(chave)) {
             return in.readAllBytes();
         } catch (IOException ex) {
@@ -189,7 +189,8 @@ public class IdentidadeEscritorioService {
         return escritorios.findById(ua.escritorioId()).orElseThrow(() -> new ResourceNotFoundException("Escritório não encontrado."));
     }
 
-    private static Identidade identidade(Escritorio e) {
+    /** Também usada nos e-mails (EmailsConta). */
+    public static Identidade identidade(Escritorio e) {
         return new Identidade(e.getId(), e.getNome(), e.getNomeExibicao(), e.getLogoChave() != null,
                 e.getCorPrincipal() == null ? COR_PADRAO : e.getCorPrincipal(), e.getRodapeRelatorio(), e.getResponsavelNome(),
                 e.getResponsavelRegistro());

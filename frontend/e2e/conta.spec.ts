@@ -8,8 +8,7 @@ test('Reautenticação: mudar papel e desativar usuário pedem senha e código; 
   const novo = page.getByRole('dialog', { name: 'Novo usuário' });
   await novo.getByLabel('Nome').fill('Pessoa Assistente');
   await novo.getByLabel('E-mail').fill(`assist-${Date.now()}@teste.com`);
-  await novo.getByLabel('Senha provisória').fill('provisoria-e2e-forte');
-  await novo.getByRole('button', { name: 'Criar usuário' }).click();
+  await novo.getByRole('button', { name: 'Enviar convite' }).click();
   await expect(novo).toBeHidden();
 
   // cancelar a confirmação: o papel continua o mesmo
