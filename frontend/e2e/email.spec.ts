@@ -25,17 +25,18 @@ test('Convite: o ADMIN convida, o convidado define a senha pelo link do e-mail e
   await convidado.getByRole('button', { name: 'Definir senha' }).click();
   await expect(convidado).toHaveURL(/\/login$/);
 
-  await convidado.getByLabel('E-mail').fill(email);
-  await convidado.getByLabel('Senha').fill('frase-do-convidado-e2e');
-  await convidado.getByRole('button', { name: 'Entrar' }).click();
-  await expect(convidado.getByRole('heading', { level: 1, name: 'Termos de Uso e Política de Privacidade' })).toBeVisible();
-
-  // uso único
+  // uso único: o mesmo link não define outra senha
   await convidado.goto(caminho);
   await convidado.getByLabel('Nova senha', { exact: true }).fill('outra-frase-do-convidado');
   await convidado.getByLabel('Confirme a nova senha').fill('outra-frase-do-convidado');
   await convidado.getByRole('button', { name: 'Definir senha' }).click();
   await expect(convidado.getByText('Link inválido ou expirado. Peça um novo.')).toBeVisible();
+
+  await convidado.goto('/login');
+  await convidado.getByLabel('E-mail').fill(email);
+  await convidado.getByLabel('Senha').fill('frase-do-convidado-e2e');
+  await convidado.getByRole('button', { name: 'Entrar' }).click();
+  await expect(convidado.getByRole('heading', { level: 1, name: 'Termos de Uso e Política de Privacidade' })).toBeVisible();
 });
 
 test('Recuperação de senha: mesma resposta para qualquer e-mail, link de uso único e o código do 2º fator continua exigido', async ({ page, browser }) => {
