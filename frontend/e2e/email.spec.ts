@@ -20,7 +20,7 @@ test('Convite: o ADMIN convida, o convidado define a senha pelo link do e-mail e
   await expect(convidado.getByRole('heading', { name: 'Defina sua senha' })).toBeVisible();
   await expect(convidado).not.toHaveURL(/#/); // o token sai da barra de endereços
   await semViolacoesGraves(convidado, 'convite');
-  await convidado.getByLabel('Nova senha').fill('frase-do-convidado-e2e');
+  await convidado.getByLabel('Nova senha', { exact: true }).fill('frase-do-convidado-e2e');
   await convidado.getByLabel('Confirme a nova senha').fill('frase-do-convidado-e2e');
   await convidado.getByRole('button', { name: 'Definir senha' }).click();
   await expect(convidado).toHaveURL(/\/login$/);
@@ -32,7 +32,7 @@ test('Convite: o ADMIN convida, o convidado define a senha pelo link do e-mail e
 
   // uso único
   await convidado.goto(caminho);
-  await convidado.getByLabel('Nova senha').fill('outra-frase-do-convidado');
+  await convidado.getByLabel('Nova senha', { exact: true }).fill('outra-frase-do-convidado');
   await convidado.getByLabel('Confirme a nova senha').fill('outra-frase-do-convidado');
   await convidado.getByRole('button', { name: 'Definir senha' }).click();
   await expect(convidado.getByText('Link inválido ou expirado. Peça um novo.')).toBeVisible();
@@ -52,7 +52,7 @@ test('Recuperação de senha: mesma resposta para qualquer e-mail, link de uso �
   const caminho = await linkDoEmail(conta.email, '/redefinir-senha');
   await anonimo.goto(caminho);
   const novaSenha = 'frase-recuperada-e2e';
-  await anonimo.getByLabel('Nova senha').fill(novaSenha);
+  await anonimo.getByLabel('Nova senha', { exact: true }).fill(novaSenha);
   await anonimo.getByLabel('Confirme a nova senha').fill(novaSenha);
   await anonimo.getByRole('button', { name: 'Salvar senha' }).click(); // sem o código: recusado, o link continua valendo
   await expect(anonimo.getByText('Informe o código atual do aplicativo autenticador', { exact: false })).toBeVisible();
