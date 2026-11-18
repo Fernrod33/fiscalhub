@@ -104,6 +104,7 @@ export const ACOES_AUDITORIA: Record<EventoAuditoria['acao'], string> = {
   DFC_DEPARA_ALTERAR: 'Alterou o de-para da DFC',
   PONTO_ATENCAO_ESTADO: 'Mudou o estado de um ponto de atenção',
   PARAMETROS_PONTOS_ALTERAR: 'Alterou parâmetros das regras',
+  AUDITORIA_EXPURGAR: 'Expurgou eventos fora do prazo de retenção',
 };
 
 export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado']>, { rotulo: string; tom: Tom }> = {
@@ -114,7 +115,7 @@ export const RESULTADOS_AUDITORIA: Record<NonNullable<EventoAuditoria['resultado
 /** Tipo de recurso gravado na trilha (AcaoAuditoria.recurso no backend). */
 export const RECURSOS_AUDITORIA: Record<string, string> = {
   USUARIO: 'Usuário', CLIENTE: 'Cliente', DOCUMENTO: 'Documento', SIMULACAO: 'Simulação', ESCRITORIO: 'Escritório',
-  RELATORIO: 'Relatório', PONTO_ATENCAO: 'Ponto de atenção',
+  RELATORIO: 'Relatório', PONTO_ATENCAO: 'Ponto de atenção', AUDITORIA: 'Auditoria',
 };
 
 export const TIPOS_RELATORIO: Record<TipoRelatorio, { rotulo: string; descricao: string }> = {

@@ -4,6 +4,7 @@ import com.fiscalhub.backend.auditoria.AcaoAuditoria;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.fiscalhub.backend.auditoria.AuditoriaEvento;
 import com.fiscalhub.backend.auditoria.AuditoriaEventoRepository;
+import com.fiscalhub.backend.auditoria.RetencaoAuditoria;
 import com.fiscalhub.backend.entity.Escritorio;
 import com.fiscalhub.backend.entity.Usuario;
 import com.fiscalhub.backend.entity.enums.Papel;
@@ -25,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Ações auditadas geram evento pelo aspecto; cada ADMIN só vê o próprio escritório; a tabela é só inserção. */
+/** Ações auditadas geram evento pelo aspecto; cada ADMIN só vê o próprio escritório; a tabela é só inserção, salvo o expurgo da retenção. */
 @TesteIntegracao
 @Transactional
 class AuditoriaTest {
@@ -34,6 +35,7 @@ class AuditoriaTest {
     @Autowired DadosTeste dados;
     @Autowired AuditoriaEventoRepository repository;
     @Autowired JdbcTemplate jdbc;
+    @Autowired RetencaoAuditoria retencao;
 
     private Escritorio escritorio;
     private Usuario admin;
@@ -113,6 +115,40 @@ class AuditoriaTest {
 
         assertThatThrownBy(() -> jdbc.update("UPDATE auditoria_evento SET acao = 'LOGIN' WHERE escritorio_id = ?", escritorio.getId()))
                 .hasMessageContaining("somente insercao");
+    }
+
+    @Test
+    void expurgoRemoveSoOsForaDoPrazoERegistraOExpurgoEODeleteComumContinuaBloqueado() {
+        long antigo = eventoHa("6 years");
+        long recente = eventoHa("4 years");
+
+        int removidos = retencao.expurgar();
+
+        assertThat(removidos).isGreaterThanOrEqualTo(1);
+        assertThat(jdbc.queryForList("SELECT id FROM auditoria_evento WHERE id IN (?, ?)", Long.class, antigo, recente))
+                .containsExactly(recente);
+        var registro = jdbc.queryForMap("""
+                SELECT detalhes->>'registros' AS registros, detalhes->>'anterioresA' AS ate, detalhes->>'retencaoAnos' AS anos
+                FROM auditoria_evento WHERE acao = 'AUDITORIA_EXPURGAR' ORDER BY id DESC LIMIT 1""");
+        assertThat(registro).containsEntry("registros", String.valueOf(removidos)).containsEntry("anos", "5");
+        assertThat((String) registro.get("ate")).startsWith(java.time.LocalDate.now().minusYears(5).toString());
+
+        // depois do expurgo, na mesma transação, o DELETE comum de um evento antigo continua barrado
+        long outroAntigo = eventoHa("7 years");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM auditoria_evento WHERE id = ?", outroAntigo))
+                .hasMessageContaining("somente insercao");
+    }
+
+    @Test
+    void deleteComumContinuaBloqueado() {
+        long antigo = eventoHa("10 years");
+        assertThatThrownBy(() -> jdbc.update("DELETE FROM auditoria_evento WHERE id = ?", antigo))
+                .hasMessageContaining("somente insercao");
+    }
+
+    private long eventoHa(String intervalo) {
+        return jdbc.queryForObject("INSERT INTO auditoria_evento (escritorio_id, acao, data_hora) VALUES (?, 'LOGIN', now() - ?::interval) RETURNING id",
+                Long.class, escritorio.getId(), intervalo);
     }
 
     private List<AuditoriaEvento> eventos() {

@@ -42,7 +42,7 @@ signatários, e pessoas físicas que compram ou vendem para o cliente. Além dis
 | Senha | `usuario.senha` (BCrypt) | autenticar | idem |
 | Segredo do 2º fator e códigos de recuperação | `usuario.totp_segredo` (AES-GCM), `codigo_recuperacao` (SHA-256) | 2º fator | até desativar |
 | IP e navegador (User-Agent) de cada sessão | `sessao` | listar e encerrar sessões | 30 dias depois de vencida ou encerrada |
-| Ações (quem, quando, IP, ids dos recursos); e-mail tentado num login que falhou | `auditoria_evento` (só inserção) | segurança e prestação de contas | **[A DEFINIR com o jurídico]**: hoje indefinida |
+| Ações (quem, quando, IP, ids dos recursos); e-mail tentado num login que falhou | `auditoria_evento` (só inserção) | segurança e prestação de contas | 5 anos por padrão (`AUDITORIA_RETENCAO_ANOS`), alinhado à decadência e à prescrição (CTN arts. 173 e 174); job diário expurga o mais antigo pela função `auditoria_expurgar` e registra o expurgo na trilha. **Prazo final a validar com o jurídico** |
 | Aceite dos termos (versão e data) | `usuario.termos_versao`, `termos_aceitos_em` | prova do aceite | enquanto o usuário existir |
 | Encarregado do escritório (nome, e-mail) | `escritorio` | contato do titular | enquanto o escritório existir |
 

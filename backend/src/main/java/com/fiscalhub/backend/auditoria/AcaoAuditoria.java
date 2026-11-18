@@ -38,7 +38,9 @@ public enum AcaoAuditoria {
     PARAMETROS_CAPACIDADE_ALTERAR("ESCRITORIO"),
     DFC_DEPARA_ALTERAR("ESCRITORIO"),
     PONTO_ATENCAO_ESTADO("PONTO_ATENCAO"),
-    PARAMETROS_PONTOS_ALTERAR("ESCRITORIO");
+    PARAMETROS_PONTOS_ALTERAR("ESCRITORIO"),
+    /** Expurgo dos eventos fora do prazo de retenção, pelo job (sem escritório nem usuário). */
+    AUDITORIA_EXPURGAR("AUDITORIA");
 
     private final String recurso;
 
