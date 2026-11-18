@@ -115,6 +115,15 @@ class SituacaoFiscalTest {
     void debitoImportadoAlimentaASimulacaoEInscricaoSemVencimentoEhRecusada() throws Exception {
         importar("rsf.pdf", Files.readAllBytes(MASSA.resolve("situacao-fiscal/Relatorio_Situacao_Fiscal_11222333000181_20261014.pdf")));
         dados.selic(YearMonth.of(2026, 10), YearMonth.of(2026, 11), "0.90");
+        try {
+            simularDebitoImportado();
+        } finally {
+            // o banco é compartilhado: SELIC de out-nov/2026 trocaria a projeção do aceite da massa (data-base 14/10/2026)
+            jdbc.update("DELETE FROM indice_monetario WHERE tipo = 'SELIC' AND ano = 2026 AND mes IN (10, 11)");
+        }
+    }
+
+    private void simularDebitoImportado() throws Exception {
         String debitos = mvc.perform(get("/api/clientes/{c}/debitos", cliente.getId()).with(sessao))
                 .andReturn().getResponse().getContentAsString();
         Number cofins = JsonPath.<List<Number>>read(debitos, "$[?(@.tributo == 'COFINS' && @.orgaoCredor == 'RFB')].id").getFirst();
