@@ -31,10 +31,10 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
 | 2.1.11 Colar e gerenciador de senhas | atendido | Campos `type=password` com `autocomplete` correto |
 | 2.2.1 Anti-automação | atendido | Bloqueio progressivo por conta (5 falhas) e por IP (20), espera dobrando até 1 h (`security/BloqueioLogin`); limite global de 30 requisições/min por IP em `/api/auth/**` (`security/LimiteAutenticacao`); 429 com `Retry-After`; tentativas e bloqueios auditados (`LOGIN`, motivo `BLOQUEADO`) |
 | 2.2.2 Sem SMS/e-mail como 2º fator | atendido | Só TOTP |
-| 2.2.3 Aviso de mudança de credencial | pendente | Sem serviço de e-mail; a troca de senha e o 2º fator são auditados |
-| 2.3.1 Senha inicial aleatória e de troca obrigatória | parcial | A senha provisória do ADMIN passa pela mesma política e exige troca no 1º acesso (`trocarSenhaNoProximoLogin`); falta convite por e-mail com expiração |
+| 2.2.3 Aviso de mudança de credencial | atendido | E-mail ao usuário quando a senha é trocada ou redefinida, o 2º fator é ativado ou desativado e o papel muda (`email/EmailsConta`), com a data e a orientação se não foi ele. Não há troca de e-mail no sistema (o e-mail é o login) |
+| 2.3.1 Senha inicial aleatória e de troca obrigatória | atendido | Convite por e-mail no lugar da senha provisória: o ADMIN não define nem conhece senha; o convidado a define por link com token de 256 bits, uso único, válido por 72 h (só o SHA-256 no banco, `security/TokensAcesso`); reenviar invalida o anterior |
 | 2.4.1 Armazenamento de senha | atendido | BCrypt (custo 10, `SecurityConfig`) |
-| 2.5.x Recuperação | parcial | Recuperação de 2º fator por códigos de uso único; recuperação de senha esquecida é feita pelo ADMIN (senha provisória); sem fluxo por e-mail |
+| 2.5.x Recuperação | atendido | Recuperação de 2º fator por códigos de uso único. Senha esquecida: link por e-mail com token de uso único de 30 min, no fragmento `#` (fora de logs e do Referer); resposta igual exista ou não a conta; limite por IP (429) e por conta (um e-mail a cada 5 min, em silêncio); não dispensa o TOTP (código pedido junto, falhas no bloqueio progressivo); a troca encerra as sessões e gera o aviso (`service/ContaPorEmailService`) |
 | 2.7.x / 2.8.x OTP | atendido | TOTP RFC 6238 (`security/Totp`), segredo de 160 bits cifrado com AES-256-GCM (`security/CifraDados`, `CHAVE_DADOS`), folga de ±1 passo, código não reutilizável (`totp_ultimo_passo`), falhas no bloqueio progressivo |
 | 2.8.x Códigos de recuperação | atendido | 10 códigos de 50 bits, SHA-256 no banco (`codigo_recuperacao`), uso único, regenerar pede a senha |
 | 2.9.x / 2.10.x Credenciais de serviço | atendido | Segredos por variável de ambiente; usuário do MinIO dedicado |
@@ -154,7 +154,7 @@ Contexto: dados fiscais e sigilosos (CTN, art. 198, e LGPD); um servidor com Doc
 ## Pendências (resumo)
 
 1. Medidor de força de senha na tela (2.1.8).
-2. E-mail transacional: aviso de troca de credencial (2.2.3), convite com senha de uso único e expiração (2.3.1),
-   recuperação de senha pelo próprio usuário (2.5.x).
+2. Bounces e reclamações do Amazon SES por SNS, para parar de enviar a endereços que voltam
+   (`docs/deploy/email-ses.md`; hoje vale a lista de supressão da conta).
 3. Cofre de chaves (6.4.x) e TLS interno se os serviços saírem do mesmo host (9.2.x).
 4. Coletor de logs externo com retenção (7.3.x).

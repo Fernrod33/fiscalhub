@@ -26,6 +26,8 @@ docker compose ps                        # todos healthy; minio-init "exited (0)
 `.env`: gere cada segredo com `openssl rand -base64 48` (32 para `CHAVE_DADOS` e a do `MINIO_KMS_SECRET_KEY`, no
 formato `nome:base64`). Preencha também `BACKUP_AGE_DESTINATARIO` (a pública, `age1...`) e o destino externo do backup
 (`BACKUP_DESTINO_RSYNC` ou `BACKUP_DESTINO_RCLONE`). Apague a `chave-backup.txt` do servidor depois de guardá-la.
+E-mail (convite, recuperação de senha, avisos): `SMTP_USUARIO`, `SMTP_SENHA` e `EMAIL_REMETENTE` do Amazon SES, conforme
+[deploy/email-ses.md](../deploy/email-ses.md). Sem eles, o sistema funciona, mas nenhum e-mail sai (falhas na auditoria).
 
 Conferência: `https://DOMINIO` abre o login; `curl -sI https://DOMINIO | grep -i strict-transport` mostra o HSTS.
 
