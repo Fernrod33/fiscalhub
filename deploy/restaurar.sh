@@ -29,7 +29,7 @@ dc up -d --wait postgres minio
 log "recriando o banco"
 dc exec -T postgres psql -U fiscalhub -d postgres -v ON_ERROR_STOP=1 \
 	-c 'DROP DATABASE IF EXISTS fiscalhub WITH (FORCE)' -c 'CREATE DATABASE fiscalhub OWNER fiscalhub'
-dc exec -T postgres pg_restore -U fiscalhub -d fiscalhub --no-owner --exit-on-error < "$PASTA/banco.dump"
+dc exec -T postgres pg_restore -U fiscalhub -d fiscalhub --no-owner --no-privileges --exit-on-error < "$PASTA/banco.dump"
 log "restaurando o bucket $BUCKET"
 mc_ "$PASTA" mirror --quiet --overwrite --remove /dados/minio "local/$BUCKET"
 log "subindo o backend"

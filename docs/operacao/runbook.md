@@ -93,6 +93,7 @@ Edite o `.env` e rode `docker compose up -d --wait` (o compose recria só o que 
 | `JWT_SECRET` | novo valor + `up -d` | todas as sessões caem; cada um entra de novo |
 | `CHAVE_DADOS` | **não troque sem plano**: os segredos do 2º fator ficam ilegíveis. Antes: `UPDATE usuario SET totp_ativo = false, totp_segredo = NULL, totp_ultimo_passo = NULL; DELETE FROM codigo_recuperacao;` e avise os usuários; depois o valor novo | cada usuário ativa o 2º fator de novo (o escritório que exige leva todos à ativação) |
 | `DB_PASSWORD` | `docker compose exec postgres psql -U fiscalhub -c "ALTER USER fiscalhub PASSWORD '...'"`, depois o `.env` e `up -d` | nenhum |
+| `DB_APP_PASSWORD` | novo valor no `.env` e `up -d` (o Flyway regrava a senha do `fiscalhub_app` a cada subida) | nenhum |
 | `S3_SECRET_KEY` | novo valor no `.env` e `up -d` (o `minio-init` recria o usuário com a senha nova) | nenhum |
 | `MINIO_ROOT_PASSWORD` | `mc admin user` não troca o root: pare o MinIO, troque no `.env` e suba | nenhum |
 | `MINIO_KMS_SECRET_KEY` | **não troque**: os objetos cifrados com a chave antiga deixam de abrir. Para rotacionar, restaure um backup num ambiente com a chave nova (o espelho regrava os arquivos cifrados com ela) | — |

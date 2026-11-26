@@ -80,6 +80,10 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/fiscalhub
       DB_USERNAME: fiscalhub
       DB_PASSWORD: ${DB_PASSWORD}
+      # a aplicação roda como fiscalhub_app (sem DDL, sem DELETE na auditoria); o Flyway, como fiscalhub
+      # ponytail: o Flyway roda no mesmo processo, então DB_PASSWORD (do dono) também está aqui: barra SQL injection e
+      # bug, não quem executa código no contêiner; fechar = migrar num serviço de uso único e tirar DB_PASSWORD daqui
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD no .env}
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
       CHAVE_DADOS: ${CHAVE_DADOS:?defina CHAVE_DADOS no .env}
       SESSAO_INATIVIDADE_MINUTOS: ${SESSAO_INATIVIDADE_MINUTOS:-30}

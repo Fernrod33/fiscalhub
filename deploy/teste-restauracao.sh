@@ -28,6 +28,7 @@ DOMINIO=localhost
 ACME_EMAIL=teste@localhost
 UPLOAD_MAX_SIZE_MB=500
 DB_PASSWORD=$(aleatorio 24)
+DB_APP_PASSWORD=$(aleatorio 24)
 JWT_SECRET=$(aleatorio 48)
 CHAVE_DADOS=$(openssl rand -base64 32)
 MINIO_ROOT_USER=fiscalhub-admin

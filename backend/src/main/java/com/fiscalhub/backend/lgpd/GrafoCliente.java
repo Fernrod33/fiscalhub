@@ -52,13 +52,16 @@ public class GrafoCliente {
     }
 
     private synchronized void montar() {
+        // pg_catalog: o information_schema só mostra as FKs de tabelas do próprio papel, e a aplicação não é a dona
         List<Fk> fks = jdbc.query("""
-                SELECT kcu.table_name, kcu.column_name, ccu.table_name
-                FROM information_schema.table_constraints tc
-                JOIN information_schema.key_column_usage kcu ON kcu.constraint_name = tc.constraint_name AND kcu.table_schema = tc.table_schema
-                JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema
-                WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public' AND ccu.column_name = 'id'
-                ORDER BY kcu.table_name, kcu.column_name""", (rs, i) -> new Fk(rs.getString(1), rs.getString(2), rs.getString(3)));
+                SELECT filha.relname, coluna.attname, pai.relname
+                FROM pg_constraint c
+                JOIN pg_class filha ON filha.oid = c.conrelid
+                JOIN pg_class pai ON pai.oid = c.confrelid
+                JOIN pg_attribute coluna ON coluna.attrelid = c.conrelid AND coluna.attnum = c.conkey[1]
+                JOIN pg_attribute referida ON referida.attrelid = c.confrelid AND referida.attnum = c.confkey[1]
+                WHERE c.contype = 'f' AND c.connamespace = 'public'::regnamespace AND referida.attname = 'id'
+                ORDER BY 1, 2""", (rs, i) -> new Fk(rs.getString(1), rs.getString(2), rs.getString(3)));
 
         Map<String, String> filtros = new LinkedHashMap<>();
         filtros.put("cliente", "\"id\" = ?");

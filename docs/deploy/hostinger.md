@@ -116,7 +116,8 @@ cp .env.example .env && chmod 600 .env    # preencha
 ```
 
 No `.env`: `DOMINIO`, `ACME_EMAIL`, os segredos (`openssl rand -base64 48`; 32 para `CHAVE_DADOS` e
-`MINIO_KMS_SECRET_KEY` no formato `nome:base64`), as credenciais SMTP do SES, `BACKUP_AGE_DESTINATARIO` e os
+`MINIO_KMS_SECRET_KEY` no formato `nome:base64`; `openssl rand -hex 24` para `DB_APP_PASSWORD`, a senha do papel
+`fiscalhub_app` com que a aplicação roda, sem DDL e sem `DELETE` na auditoria), as credenciais SMTP do SES, `BACKUP_AGE_DESTINATARIO` e os
 `BACKUP_S3_*` do passo 3.
 
 Passe pelo passo 7 e então:

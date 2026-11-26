@@ -2,8 +2,9 @@ package com.fiscalhub.backend.integracao;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 
 import javax.sql.DataSource;
 import java.util.Map;
@@ -16,8 +17,15 @@ class FimDaSenhaProvisoriaMigracaoTest {
 
     private static final String SCHEMA = "v33_teste";
 
-    @Autowired DataSource dataSource;
-    @Autowired JdbcTemplate jdbc;
+    // como dono do banco, que cria o schema (o papel da aplicação não tem DDL)
+    private final DataSource dataSource;
+    private final JdbcTemplate jdbc;
+
+    FimDaSenhaProvisoriaMigracaoTest(@Value("${spring.datasource.url}") String url, @Value("${spring.flyway.user}") String dono,
+                                     @Value("${spring.flyway.password}") String senha) {
+        dataSource = new SimpleDriverDataSource(new org.postgresql.Driver(), url, dono, senha);
+        jdbc = new JdbcTemplate(dataSource);
+    }
 
     @Test
     void senhaProvisoriaViraConvitePendente() {
@@ -50,7 +58,8 @@ class FimDaSenhaProvisoriaMigracaoTest {
 
     private void migrarAte(String versao) {
         Flyway.configure().dataSource(dataSource).schemas(SCHEMA).locations("classpath:db/migration").target(versao)
-                .load().migrate();
+                .skipDefaultCallbacks(true).load().migrate(); // os papéis (afterMigrate.sql) são do schema public
+
     }
 
     private long usuario(String s, long escritorio, String email, boolean provisoria) {

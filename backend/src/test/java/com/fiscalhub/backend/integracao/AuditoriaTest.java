@@ -11,11 +11,15 @@ import com.fiscalhub.backend.entity.enums.Papel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +40,9 @@ class AuditoriaTest {
     @Autowired AuditoriaEventoRepository repository;
     @Autowired JdbcTemplate jdbc;
     @Autowired RetencaoAuditoria retencao;
+    @Value("${spring.datasource.url}") String url;
+    @Value("${spring.flyway.user}") String dono;
+    @Value("${spring.flyway.password}") String senhaDono;
 
     private Escritorio escritorio;
     private Usuario admin;
@@ -114,7 +121,7 @@ class AuditoriaTest {
         repository.flush();
 
         assertThatThrownBy(() -> jdbc.update("UPDATE auditoria_evento SET acao = 'LOGIN' WHERE escritorio_id = ?", escritorio.getId()))
-                .hasMessageContaining("somente insercao");
+                .rootCause().hasMessageContaining("permission denied for table auditoria_evento");
     }
 
     @Test
@@ -133,17 +140,48 @@ class AuditoriaTest {
         assertThat(registro).containsEntry("registros", String.valueOf(removidos)).containsEntry("anos", "5");
         assertThat((String) registro.get("ate")).startsWith(java.time.LocalDate.now().minusYears(5).toString());
 
-        // depois do expurgo, na mesma transação, o DELETE comum de um evento antigo continua barrado
+        // depois do expurgo, na mesma transação, o DELETE direto de um evento antigo continua sem permissão
         long outroAntigo = eventoHa("7 years");
         assertThatThrownBy(() -> jdbc.update("DELETE FROM auditoria_evento WHERE id = ?", outroAntigo))
-                .hasMessageContaining("somente insercao");
+                .rootCause().hasMessageContaining("permission denied for table auditoria_evento");
+    }
+
+    /** A aplicação só executa a função; quem apaga é o dono dela, um papel sem login. */
+    @Test
+    void papeisDoBanco() {
+        assertThat(jdbc.queryForMap("""
+                SELECT current_user AS usuario,
+                       has_table_privilege('auditoria_evento', 'DELETE') AS pode_apagar,
+                       has_table_privilege('auditoria_evento', 'TRUNCATE') AS pode_truncar,
+                       has_function_privilege('auditoria_expurgar(timestamp)', 'EXECUTE') AS pode_expurgar,
+                       (SELECT rolsuper FROM pg_roles WHERE rolname = current_user) AS superusuario,
+                       p.prosecdef AS security_definer, pg_get_userbyid(p.proowner) AS dono_da_funcao,
+                       (SELECT rolcanlogin FROM pg_roles WHERE rolname = 'fiscalhub_expurgo') AS expurgo_entra,
+                       has_function_privilege('public', 'auditoria_expurgar(timestamp)', 'EXECUTE') AS publico_expurga
+                FROM pg_proc p WHERE p.proname = 'auditoria_expurgar'"""))
+                .containsEntry("usuario", "fiscalhub_app").containsEntry("pode_apagar", false).containsEntry("pode_truncar", false)
+                .containsEntry("pode_expurgar", true).containsEntry("superusuario", false)
+                .containsEntry("security_definer", true).containsEntry("dono_da_funcao", "fiscalhub_expurgo")
+                .containsEntry("expurgo_entra", false).containsEntry("publico_expurga", false);
     }
 
     @Test
-    void deleteComumContinuaBloqueado() {
+    void deleteDiretoFalhaPorPermissaoEOTriggerBarraAteQuemTemDelete() throws Exception {
         long antigo = eventoHa("10 years");
         assertThatThrownBy(() -> jdbc.update("DELETE FROM auditoria_evento WHERE id = ?", antigo))
-                .hasMessageContaining("somente insercao");
+                .rootCause().hasMessageContaining("permission denied for table auditoria_evento");
+
+        // o dono do banco tem DELETE: ainda assim o trigger barra fora do expurgo (transação desfeita no fim)
+        try (Connection c = DriverManager.getConnection(url, dono, senhaDono)) {
+            c.setAutoCommit(false);
+            try (Statement st = c.createStatement()) {
+                st.execute("INSERT INTO auditoria_evento (acao, data_hora) VALUES ('LOGIN', now() - interval '10 years')");
+                assertThatThrownBy(() -> st.execute("DELETE FROM auditoria_evento WHERE data_hora < now() - interval '9 years'"))
+                        .hasMessageContaining("somente insercao");
+            } finally {
+                c.rollback();
+            }
+        }
     }
 
     private long eventoHa(String intervalo) {
