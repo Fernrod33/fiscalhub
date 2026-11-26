@@ -36,8 +36,8 @@ export function VigiaSessao() {
 
 function AvisoInatividade() {
   const sessao = useSessao();
-  // com pendência (senha provisória, 2º fator, termos) a API só libera o próprio cadastro: o aviso começa depois
-  const livre = !!sessao && !sessao.trocarSenhaNoProximoLogin && !sessao.segundoFatorPendente && !sessao.termosPendentes;
+  // com pendência (2º fator, termos) a API só libera o próprio cadastro: o aviso começa depois
+  const livre = !!sessao && !sessao.segundoFatorPendente && !sessao.termosPendentes;
   const { data } = useQuery({
     queryKey: ['sessao', 'dados'], queryFn: () => http.get<DadosSessao>('/api/usuarios/me/sessao'), staleTime: Infinity, enabled: livre,
   });

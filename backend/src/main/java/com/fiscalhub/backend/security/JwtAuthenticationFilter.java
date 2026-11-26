@@ -47,10 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (estado.isPresent()) {
                 // uma pendência por vez, nesta ordem (a mesma do guarda do frontend): só a rota dela fica liberada
                 UsuarioRepository.EstadoToken e = estado.get();
-                String[] pendencia = e.getTrocarSenhaNoProximoLogin()
-                        ? new String[]{"/api/usuarios/me/senha", RespostaProblema.SENHA_TROCA_OBRIGATORIA, "Troca de senha obrigatória",
-                                "Troque a senha provisória antes de continuar."}
-                        : e.getSegundoFatorPendente()
+                String[] pendencia = e.getSegundoFatorPendente()
                         ? new String[]{"/api/usuarios/me/segundo-fator", RespostaProblema.SEGUNDO_FATOR_OBRIGATORIO, "Segundo fator obrigatório",
                                 "O escritório exige o segundo fator: ative-o antes de continuar."}
                         : !com.fiscalhub.backend.lgpd.Termos.VERSAO.equals(e.getTermosVersao())
@@ -70,7 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Com a senha provisória ou o 2º fator pendente, só dá para ver o próprio cadastro, sair e resolver a pendência
+     * Com o 2º fator ou o aceite dos termos pendente, só dá para ver o próprio cadastro, sair e resolver a pendência
      * (a rota dela e as abaixo dela).
      */
     private static boolean liberada(HttpServletRequest request, String pendencia) {

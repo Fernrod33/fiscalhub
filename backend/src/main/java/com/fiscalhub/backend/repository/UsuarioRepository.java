@@ -17,7 +17,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     interface EstadoToken {
         Boolean getAtivo();
         Integer getVersaoToken();
-        Boolean getTrocarSenhaNoProximoLogin();
         /** Segundo fator exigido (todo ADMIN, ou o escritório exige de todos) e ainda não ativado: mesma regra de Usuario. */
         Boolean getSegundoFatorPendente();
         Boolean getSessaoAberta();
@@ -26,7 +25,7 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     }
 
     @org.springframework.data.jpa.repository.Query(nativeQuery = true, value = """
-            SELECT u.ativo AS ativo, u.versao_token AS versaoToken, u.trocar_senha_no_proximo_login AS trocarSenhaNoProximoLogin,
+            SELECT u.ativo AS ativo, u.versao_token AS versaoToken,
                    ((e.exigir_segundo_fator OR u.papel = 'ADMIN') AND NOT u.totp_ativo) AS segundoFatorPendente,
                    EXISTS (SELECT 1 FROM sessao s WHERE s.id = :sessao AND s.usuario_id = u.id AND s.revogada_em IS NULL
                            AND s.expira_em > now() AND s.ultimo_uso > now() - make_interval(mins => :inatividade)) AS sessaoAberta,

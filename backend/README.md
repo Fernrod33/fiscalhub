@@ -34,7 +34,7 @@ Repositório: [Fernrod33/fiscalhub](https://github.com/Fernrod33/fiscalhub) (bac
 - Documentos, débitos e simulações herdam o escopo pelo cliente. Recurso de outro escritório responde **404**; papel sem permissão responde **403**.
 - Saída de usuário é **desativação** (login bloqueado; nada fica órfão). O último `ADMIN` ativo não sai nem é rebaixado.
 - O JWT carrega `uid`, `escritorioId`, `papel` e `tv` (versão do token). A cada requisição o filtro lê o usuário pela chave primária e confere se ele segue ativo e com a mesma versão. Troca de senha, desativação e mudança de papel incrementam a versão e invalidam na hora os tokens anteriores.
-- **Senha provisória**: enquanto `trocarSenhaNoProximoLogin` for verdadeiro, toda rota autenticada responde 403 com `type` `/problemas/senha-troca-obrigatoria`, exceto `GET /api/usuarios/me` e `PUT /api/usuarios/me/senha`. A troca emite um cookie de sessão novo.
+- **Sem senha provisória**: o ADMIN convida por e-mail e o convidado define a própria senha pelo link (V33 converteu as contas que ainda tinham senha provisória em convite pendente). A recuperação de senha responde 202 na hora e faz a busca da conta, o token e o e-mail em segundo plano: o tempo de resposta não revela se a conta existe.
 
 ## Segurança da conta
 
@@ -695,7 +695,7 @@ A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secur
 | Método | Rota | Descrição |
 |---|---|---|
 | POST | `/api/auth/signup` | cria escritório + `ADMIN` (`nome`, `email`, `senha`, `cpf`, `telefone`, `nomeEscritorio`, `documentoEscritorio`) |
-| POST | `/api/auth/login` | emite o cookie da sessão e devolve o usuário (`id`, `nome`, `email`, `papel`, `escritorioId`, `trocarSenhaNoProximoLogin`...) |
+| POST | `/api/auth/login` | emite o cookie da sessão e devolve o usuário (`id`, `nome`, `email`, `papel`, `escritorioId`, `convitePendente`...) |
 | POST | `/api/auth/logout` | apaga o cookie e invalida o JWT no servidor (versão do token) |
 | GET | `/api/auth/csrf` | emite o cookie `XSRF-TOKEN` |
 
@@ -708,7 +708,7 @@ A sessão viaja no cookie `fiscalhub_sessao` (`httpOnly`, `SameSite=Lax`, `Secur
 | PUT | `/api/usuarios/me/senha` | todos | troca a senha (`senhaAtual`, `novaSenha`) e emite um cookie novo |
 | DELETE | `/api/usuarios/me` | todos | desativa a própria conta |
 | GET | `/api/usuarios` | ADMIN | usuários do escritório |
-| POST | `/api/usuarios` | ADMIN | cria com senha provisória (`nome`, `email`, `papel`, `senhaProvisoria`) |
+| POST | `/api/usuarios` | ADMIN | cria e envia o convite por e-mail (`nome`, `email`, `papel`) |
 | PATCH | `/api/usuarios/{id}/papel` | ADMIN | altera o papel |
 | PATCH | `/api/usuarios/{id}/desativar` | ADMIN | desativa |
 

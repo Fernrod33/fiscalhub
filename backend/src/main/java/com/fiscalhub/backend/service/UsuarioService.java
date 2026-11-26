@@ -127,7 +127,6 @@ public class UsuarioService {
             throw new BusinessRuleException("Senha atual incorreta.");
         }
         usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
-        usuario.setTrocarSenhaNoProximoLogin(false);
         invalidarTokens(usuario);
         emails.aviso(usuario, EmailsConta.Aviso.SENHA_ALTERADA);
         return usuarioRepository.saveAndFlush(usuario);

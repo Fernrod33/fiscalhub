@@ -11,7 +11,6 @@ import { CampoTexto } from '@/components/campo';
 import { mensagemErro } from '@/lib/http';
 import { LayoutAuth } from '../components/layout-auth';
 import { DICA_SENHA, SENHA_MAXIMA, SENHA_MINIMA, useTrocarSenha } from '../api';
-import { sair, useSessao } from '../sessao';
 
 const esquemaTrocaSenha = z.object({
   senhaAtual: z.string().min(1, 'Informe a senha atual.'),
@@ -20,9 +19,8 @@ const esquemaTrocaSenha = z.object({
 }).refine((d) => d.novaSenha === d.confirmacao, { message: 'As senhas não conferem.', path: ['confirmacao'] })
   .refine((d) => d.novaSenha !== d.senhaAtual, { message: 'A nova senha deve ser diferente da atual.', path: ['novaSenha'] });
 
-/** Usada tanto na troca obrigatória (senha provisória) quanto na troca voluntária pelo menu do usuário. */
+/** Troca voluntária, pelo menu do usuário. */
 export default function TrocarSenhaPage() {
-  const obrigatoria = useSessao()?.trocarSenhaNoProximoLogin;
   const trocar = useTrocarSenha();
   const navigate = useNavigate();
   const form = useForm<z.infer<typeof esquemaTrocaSenha>>({
@@ -35,9 +33,7 @@ export default function TrocarSenhaPage() {
   }));
 
   return (
-    <LayoutAuth titulo={obrigatoria ? 'Defina sua senha' : 'Trocar senha'}
-                subtitulo={obrigatoria ? 'Sua senha é provisória. Troque-a para continuar.' : undefined}
-                rodape={obrigatoria ? <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={sair}>Sair</button> : undefined}>
+    <LayoutAuth titulo="Trocar senha">
       <Form {...form}>
         <form onSubmit={enviar} className="grid gap-4" noValidate>
           {trocar.isError && (
@@ -46,11 +42,11 @@ export default function TrocarSenhaPage() {
               <AlertDescription>{mensagemErro(trocar.error, 'Não foi possível trocar a senha.')}</AlertDescription>
             </Alert>
           )}
-          <CampoTexto control={form.control} name="senhaAtual" rotulo={obrigatoria ? 'Senha provisória' : 'Senha atual'} type="password" autoComplete="current-password" />
+          <CampoTexto control={form.control} name="senhaAtual" rotulo="Senha atual" type="password" autoComplete="current-password" />
           <CampoTexto control={form.control} name="novaSenha" rotulo="Nova senha" type="password" autoComplete="new-password" descricao={DICA_SENHA} />
           <CampoTexto control={form.control} name="confirmacao" rotulo="Confirme a nova senha" type="password" autoComplete="new-password" />
           <div className="flex gap-2">
-            {!obrigatoria && <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>}
+            <Button type="button" variant="outline" onClick={() => navigate(-1)}>Cancelar</Button>
             <Button type="submit" className="flex-1" disabled={trocar.isPending}>{trocar.isPending ? 'Salvando…' : 'Salvar senha'}</Button>
           </div>
         </form>

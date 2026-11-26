@@ -82,8 +82,7 @@ class EscritorioEPapeisTest {
         mvc.perform(put("/api/usuarios/me/senha").with(dados.sessaoReautenticada(caio)).contentType(APPLICATION_JSON)
                         .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva-forte-1\"}"))
                 .andExpect(status().isOk())
-                .andExpect(cookie().httpOnly(CookieSessao.NOME, true)) // sessão nova: a troca invalidou a anterior
-                .andExpect(jsonPath("$.trocarSenhaNoProximoLogin").value(false));
+                .andExpect(cookie().httpOnly(CookieSessao.NOME, true)); // sessão nova: a troca invalidou a anterior
     }
 
     @Test

@@ -62,9 +62,6 @@ public class Usuario {
     @Column(nullable = false, length = 20)
     private Papel papel;
 
-    @Column(name = "trocar_senha_no_proximo_login", nullable = false)
-    private Boolean trocarSenhaNoProximoLogin = false;
-
     /** Convidado que ainda não definiu a senha pelo link do e-mail (a senha gravada é aleatória). */
     @Column(name = "convite_pendente", nullable = false)
     private Boolean convitePendente = false;

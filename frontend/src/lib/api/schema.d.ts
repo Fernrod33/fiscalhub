@@ -1431,7 +1431,6 @@ export interface components {
             ativo: boolean;
             /** @enum {string} */
             papel: "ADMIN" | "CONSULTOR" | "ASSISTENTE";
-            trocarSenhaNoProximoLogin: boolean;
             /** Format: int64 */
             escritorioId: number;
             /** Format: date-time */
