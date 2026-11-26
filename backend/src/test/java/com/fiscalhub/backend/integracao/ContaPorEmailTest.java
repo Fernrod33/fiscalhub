@@ -40,6 +40,8 @@ class ContaPorEmailTest {
     @Autowired Mailpit mailpit;
     @Autowired UsuarioRepository usuarios;
     @Autowired JdbcTemplate jdbc;
+    @Autowired @org.springframework.beans.factory.annotation.Qualifier("applicationTaskExecutor")
+    org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor pool;
 
     private Escritorio escritorio;
     private Usuario admin;
@@ -165,6 +167,28 @@ class ContaPorEmailTest {
         }
         assertThat(Math.abs(existe - naoExiste) / 50 / 1_000_000.0).isLessThan(20.0);
         assertThat(mailpit.esperar(consultor.getEmail(), 1)).isNotEmpty(); // o e-mail sai mesmo assim, em segundo plano
+    }
+
+    /** Pedidos simultâneos para a mesma conta: a trava na linha do usuário deixa passar um só token (e um só e-mail). */
+    @Test
+    void pedidosSimultaneosParaAMesmaContaGeramUmEmailSo() throws Exception {
+        Usuario consultor = dados.usuario(escritorio, "simultaneo-" + sufixo + "@test.com", Papel.CONSULTOR);
+        try (var paralelo = java.util.concurrent.Executors.newFixedThreadPool(8)) {
+            List<java.util.concurrent.Future<?>> pedidos = new java.util.ArrayList<>();
+            for (int i = 0; i < 16; i++) {
+                String ip = "10.5.0." + i;
+                pedidos.add(paralelo.submit(() -> recuperar(consultor.getEmail(), ip).andExpect(status().isAccepted())));
+            }
+            for (var p : pedidos) {
+                p.get();
+            }
+        }
+        while (pool.getActiveCount() > 0 || pool.getThreadPoolExecutor().getQueue().size() > 0) { // a busca roda em segundo plano
+            Mailpit.dormir(100);
+        }
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM token_acesso WHERE usuario_id = ? AND tipo = 'RECUPERACAO'",
+                Long.class, consultor.getId())).isEqualTo(1L);
+        assertThat(mailpit.esperar(consultor.getEmail(), 1)).hasSize(1);
     }
 
     @Test

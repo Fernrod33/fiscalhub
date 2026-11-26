@@ -114,6 +114,8 @@ public class ContaPorEmailService {
     private void recuperar(String email, String ip) {
         usuarios.findByEmail(email)
                 .filter(u -> u.getAtivo() && !u.getConvitePendente())
+                // trava a linha da conta até o commit: um pedido simultâneo espera aqui e já vê o token deste
+                .filter(u -> jdbc.queryForObject("SELECT id FROM usuario WHERE id = ? FOR UPDATE", Long.class, u.getId()) != null)
                 .filter(u -> !tokens.emitidoHaMenosDe(u.getId(), Tipo.RECUPERACAO, INTERVALO_POR_CONTA))
                 .ifPresent(u -> {
                     emails.recuperacao(u, tokens.emitir(u.getId(), Tipo.RECUPERACAO));
