@@ -12,18 +12,24 @@ import com.fiscalhub.backend.security.LimiteFrequencia;
 import com.fiscalhub.backend.security.SegurancaContaService;
 import com.fiscalhub.backend.security.TokensAcesso;
 import com.fiscalhub.backend.security.TokensAcesso.Tipo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.util.Map;
 
 /**
- * Convite (substitui a senha provisória) e recuperação de senha por link de uso único enviado por e-mail. A
- * recuperação responde igual exista ou não a conta, tem limite por IP (429) e por conta (um e-mail a cada 5 minutos, em
+ * Convite e recuperação de senha por link de uso único enviado por e-mail. A
+ * recuperação responde igual e no mesmo tempo exista ou não a conta (busca, token e e-mail saem em segundo plano), tem limite por IP (429) e por conta (um e-mail a cada 5 minutos, em
  * silêncio) e não dispensa o segundo fator: com ele ativo, o código é pedido junto com a senha nova.
  */
 @Service
@@ -32,6 +38,7 @@ public class ContaPorEmailService {
 
     public static final String LINK_INVALIDO = "Link inválido ou expirado. Peça um novo.";
     private static final Duration INTERVALO_POR_CONTA = Duration.ofMinutes(5);
+    private static final Logger log = LoggerFactory.getLogger(ContaPorEmailService.class);
 
     private final UsuarioRepository usuarios;
     private final TokensAcesso tokens;
@@ -43,11 +50,14 @@ public class ContaPorEmailService {
     private final AuditoriaEventoRepository auditoria;
     private final JdbcTemplate jdbc;
     private final int pedidosPorMinutoPorIp;
+    private final TaskExecutor executor;
+    private final TransactionTemplate transacao;
 
     public ContaPorEmailService(UsuarioRepository usuarios, TokensAcesso tokens, EmailsConta emails, PasswordEncoder senhas,
                                 SegurancaContaService seguranca, BloqueioLogin bloqueio, LimiteFrequencia limite,
                                 AuditoriaEventoRepository auditoria, JdbcTemplate jdbc,
-                                @Value("${fiscalhub.recuperacao.pedidos-por-minuto-por-ip:5}") int pedidosPorMinutoPorIp) {
+                                @Value("${fiscalhub.recuperacao.pedidos-por-minuto-por-ip:5}") int pedidosPorMinutoPorIp,
+                                @Qualifier("applicationTaskExecutor") TaskExecutor executor, TransactionTemplate transacao) {
         this.usuarios = usuarios;
         this.tokens = tokens;
         this.emails = emails;
@@ -58,6 +68,8 @@ public class ContaPorEmailService {
         this.auditoria = auditoria;
         this.jdbc = jdbc;
         this.pedidosPorMinutoPorIp = pedidosPorMinutoPorIp;
+        this.executor = executor;
+        this.transacao = transacao;
     }
 
     // ---- convite
@@ -86,9 +98,21 @@ public class ContaPorEmailService {
 
     // ---- recuperação de senha
 
+    /** Na requisição só o limite por IP (não depende da conta); o resto vai para o pool, para o tempo não revelar a conta. */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void solicitarRecuperacao(String email, String ip) {
         limite.verificar("pedidos de recuperação de senha", ip, pedidosPorMinutoPorIp);
-        usuarios.findByEmail(email.strip())
+        executor.execute(() -> {
+            try {
+                transacao.executeWithoutResult(t -> recuperar(email.strip(), ip));
+            } catch (RuntimeException e) {
+                log.warn("Pedido de recuperação de senha falhou ({})", e.getClass().getSimpleName());
+            }
+        });
+    }
+
+    private void recuperar(String email, String ip) {
+        usuarios.findByEmail(email)
                 .filter(u -> u.getAtivo() && !u.getConvitePendente())
                 .filter(u -> !tokens.emitidoHaMenosDe(u.getId(), Tipo.RECUPERACAO, INTERVALO_POR_CONTA))
                 .ifPresent(u -> {
@@ -120,7 +144,6 @@ public class ContaPorEmailService {
     /** Senha nova: invalida os tokens de sessão e encerra as sessões abertas. */
     private void definirSenha(Usuario u, String senha) {
         u.setSenha(senhas.encode(senha));
-        u.setTrocarSenhaNoProximoLogin(false);
         u.setVersaoToken(u.getVersaoToken() + 1);
         jdbc.update("UPDATE sessao SET revogada_em = now() WHERE usuario_id = ? AND revogada_em IS NULL", u.getId());
     }

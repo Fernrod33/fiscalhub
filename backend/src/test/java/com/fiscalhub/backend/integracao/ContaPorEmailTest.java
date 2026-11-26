@@ -146,6 +146,27 @@ class ContaPorEmailTest {
         login(admin.getEmail(), SENHA_NOVA).andExpect(status().isOk()).andExpect(jsonPath("$.desafio").isNotEmpty());
     }
 
+    /** A resposta sai antes da busca da conta: o tempo médio não diz se o e-mail existe. */
+    @Test
+    void recuperacaoLevaOMesmoTempoExistaOuNaoAConta() throws Exception {
+        Usuario consultor = dados.usuario(escritorio, "cronometrado-" + sufixo + "@test.com", Papel.CONSULTOR);
+        for (int i = 0; i < 5; i++) { // aquece a JIT e o pool antes de medir
+            recuperar("aquece-" + sufixo + "@test.com", "10.4.0." + i);
+        }
+        long existe = 0;
+        long naoExiste = 0;
+        for (int i = 0; i < 50; i++) { // intercalados, IPs distintos (limite por IP)
+            long t0 = System.nanoTime();
+            recuperar(consultor.getEmail(), "10.4.1." + i).andExpect(status().isAccepted());
+            long t1 = System.nanoTime();
+            recuperar("sumido-" + sufixo + "@test.com", "10.4.2." + i).andExpect(status().isAccepted());
+            existe += t1 - t0;
+            naoExiste += System.nanoTime() - t1;
+        }
+        assertThat(Math.abs(existe - naoExiste) / 50 / 1_000_000.0).isLessThan(20.0);
+        assertThat(mailpit.esperar(consultor.getEmail(), 1)).isNotEmpty(); // o e-mail sai mesmo assim, em segundo plano
+    }
+
     @Test
     void limitePorIpNaRecuperacao() throws Exception {
         for (int i = 0; i < 5; i++) {
