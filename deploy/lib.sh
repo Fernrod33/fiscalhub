@@ -49,6 +49,15 @@ age_gerar_chave() { # stdout: a chave privada (a pública vai num comentário "#
 	fi
 }
 
+# AWS CLI numa imagem fixada. Credenciais só por variável de ambiente (nunca na linha de comando nem em arquivo).
+# host.docker.internal: no teste, o "S3" é um MinIO publicado no host (sem efeito na AWS de verdade).
+AWS_IMAGEM="amazon/aws-cli:2.42.4@sha256:4a1a668837d5f97ced202e03827da1bc0b48cda946be89909cd7a02023f62921"
+aws_() { # $1 = pasta montada em /dados; o resto, o comando do aws; AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY no ambiente
+	pasta="$1"
+	shift
+	MSYS_NO_PATHCONV=1 docker run --rm --add-host host.docker.internal:host-gateway -v "$(caminho_docker "$pasta"):/dados" 		-e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-sa-east-1}" 		${AWS_ENDPOINT_URL:+-e AWS_ENDPOINT_URL="$AWS_ENDPOINT_URL"} "$AWS_IMAGEM" "$@"
+}
+
 # mc (cliente do MinIO) no contêiner minio-init, com a pasta local em /dados
 mc_() {
 	pasta="$1"

@@ -43,6 +43,7 @@ test('restauração do backup: a massa volta igual', async ({ page }) => {
     const conta = await criarEscritorioEEntrar(page);
     const razao = await criarCliente(page, 'Metalurgica Pinheiral');
     await page.getByRole('link', { name: razao }).click();
+    await expect(page).toHaveURL(/clientes\/\d+/); // o id sai da URL: espera a navegação terminar
     const clienteId = Number(/clientes\/(\d+)/.exec(page.url())![1]);
     await page.getByRole('navigation', { name: 'Seções do cliente' }).getByRole('link', { name: 'Importações', exact: true }).click();
     await page.locator('input[type=file]').setInputFiles(ARQUIVOS.map(massa));

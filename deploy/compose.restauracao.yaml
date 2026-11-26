@@ -1,8 +1,24 @@
 # Só para o deploy/teste-restauracao.sh: o compose de desenvolvimento num projeto separado, em http://localhost:8088,
-# sem publicar o backend (não disputa portas com o ambiente de desenvolvimento).
+# sem publicar o backend (não disputa portas com o ambiente de desenvolvimento), e um MinIO à parte no papel do bucket
+# S3 externo de backup (Object Lock), publicado só no host em 127.0.0.1:9100.
 services:
   backend:
+    ports: !reset []
+  mailpit:
     ports: !reset []
   proxy:
     ports: !override
       - "127.0.0.1:8088:80"
+  s3-externo:
+    image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${S3_EXTERNO_LEITURA_ID}
+      MINIO_ROOT_PASSWORD: ${S3_EXTERNO_LEITURA_SEGREDO}
+      MC_HOST_local: http://${S3_EXTERNO_LEITURA_ID}:${S3_EXTERNO_LEITURA_SEGREDO}@127.0.0.1:9000
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 20
+    ports:
+      - "127.0.0.1:9100:9000"
