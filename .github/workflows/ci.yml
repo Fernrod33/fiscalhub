@@ -1,5 +1,5 @@
 # CI de PR e push: backend (mvn verify com Testcontainers), frontend (lint, tipos, Vitest, build), e2e (Playwright contra
-# o compose de desenvolvimento) e segredos (gitleaks, histórico inteiro). Os jobs rodam em paralelo: alvo < 15 min.
+# o compose de desenvolvimento), segredos (gitleaks, histórico inteiro) e deploy (shellcheck, provisionamento). Os jobs rodam em paralelo: alvo < 15 min.
 name: CI
 
 on:
@@ -113,3 +113,12 @@ jobs:
       # só alta e crítica quebram o build; as dependências de desenvolvimento não vão para a imagem
       - run: npm audit --omit=dev --audit-level=high
         working-directory: frontend
+
+  # scripts de operação: shellcheck limpo e o provisionamento num Ubuntu 24.04 limpo (duas vezes: idempotente)
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker run --rm -v "$PWD/deploy:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 -x *.sh
+      - run: docker run --rm --cap-add NET_ADMIN -v "$PWD/deploy:/deploy:ro" ubuntu:24.04 sh /deploy/teste-provisionamento.sh
