@@ -120,5 +120,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: docker run --rm -v "$PWD/deploy:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 -x *.sh
+      - run: docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 -x *.sh
+        working-directory: deploy
       - run: docker run --rm --cap-add NET_ADMIN -v "$PWD/deploy:/deploy:ro" ubuntu:24.04 sh /deploy/teste-provisionamento.sh
