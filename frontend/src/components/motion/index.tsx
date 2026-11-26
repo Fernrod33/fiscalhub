@@ -1,6 +1,7 @@
 /**
  * Componentes de movimento reutilizáveis (pacote motion). Só animam transform e opacity
- * (exceto Collapse, para blocos pequenos). Com movimento reduzido, viram fade curto ou nada.
+ * (exceto Collapse, para blocos pequenos). Com movimento reduzido, as entradas já montam no estado final (sem fade:
+ * texto em opacidade parcial é texto com contraste baixo) e o Collapse vira fade curto.
  */
 import { useEffect, type ReactNode } from 'react';
 import { animate, AnimatePresence, motion, useMotionValue, useTransform, type Variants } from 'motion/react';
@@ -10,20 +11,16 @@ import { useMovimentoReduzido } from './use-movimento-reduzido';
 
 const DESLOCAMENTO = 8;
 
-function variantes(reduzido: boolean): Variants {
-  return reduzido
-    ? { oculto: { opacity: 0 }, visivel: { opacity: 1, transition: { duration: segundos(duracao.fast) } } }
-    : {
-      oculto: { opacity: 0, y: DESLOCAMENTO },
-      visivel: { opacity: 1, y: 0, transition: { duration: segundos(duracao.slow), ease: curva.standard } },
-    };
-}
+const VARIANTES: Variants = {
+  oculto: { opacity: 0, y: DESLOCAMENTO },
+  visivel: { opacity: 1, y: 0, transition: { duration: segundos(duracao.slow), ease: curva.standard } },
+};
 
 /** Entrada com fade e deslocamento. */
 export function Reveal({ children, className }: { children: ReactNode; className?: string }) {
   const reduzido = useMovimentoReduzido();
   return (
-    <motion.div className={className} initial="oculto" animate="visivel" variants={variantes(reduzido)}>
+    <motion.div className={className} initial={reduzido ? false : 'oculto'} animate="visivel" variants={VARIANTES}>
       {children}
     </motion.div>
   );
@@ -34,17 +31,16 @@ export function Stagger({ children, className, as = 'div' }: { children: ReactNo
   const reduzido = useMovimentoReduzido();
   const Componente = as === 'ul' ? motion.ul : motion.div;
   return (
-    <Componente className={className} initial="oculto" animate="visivel"
-                variants={{ visivel: { transition: { staggerChildren: reduzido ? 0 : 0.05 } } }}>
+    <Componente className={className} initial={reduzido ? false : 'oculto'} animate="visivel"
+                variants={{ visivel: { transition: { staggerChildren: 0.05 } } }}>
       {children}
     </Componente>
   );
 }
 
 export function StaggerItem({ children, className, as = 'div' }: { children: ReactNode; className?: string; as?: 'div' | 'li' }) {
-  const reduzido = useMovimentoReduzido();
   const Componente = as === 'li' ? motion.li : motion.div;
-  return <Componente className={className} variants={variantes(reduzido)}>{children}</Componente>;
+  return <Componente className={className} variants={VARIANTES}>{children}</Componente>;
 }
 
 /** Contagem do valor anterior até o novo, sempre pelo formatador central. */
