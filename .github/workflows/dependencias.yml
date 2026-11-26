@@ -24,16 +24,30 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-      - uses: actions/cache@v4
+      # sem a chave o NVD limita as requisições, o download passa de 20 min e cai com 524: melhor parar já, dizendo o motivo
+      - name: Chave do NVD presente
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          [ -n "$NVD_API_KEY" ] || { echo "::error::secret NVD_API_KEY ausente (Settings > Secrets and variables > Actions)"; exit 1; }
+      - uses: actions/cache/restore@v4
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: nvd-${{ github.run_id }}
           restore-keys: nvd-
-      - run: >
+      - env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: >
           mvn -B -ntp org.owasp:dependency-check-maven:12.1.8:check
-          -DfailBuildOnCVSS=7 -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+          -DfailBuildOnCVSS=7 -DnvdApiKeyEnvironmentVariable=NVD_API_KEY
           -DskipTestScope=true -DassemblyAnalyzerEnabled=false -Dformats=HTML,JSON
         working-directory: backend
+      # a base só vale se a análise chegou ao relatório; salva mesmo quando o job quebra por CVSS >= 7
+      - uses: actions/cache/save@v4
+        if: always() && hashFiles('backend/target/dependency-check-report.json') != ''
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: nvd-${{ github.run_id }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
