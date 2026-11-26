@@ -155,17 +155,20 @@ const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8025';
  */
 export async function linkDoEmail(para: string, rota: '/convite' | '/redefinir-senha', quantos = 1) {
   const busca = `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${para}"`)}`;
-  let mensagens: { ID: string }[] = [];
+  const padrao = new RegExp(`https?://\\S+?(${rota}#[A-Za-z0-9_-]{43})`);
+  let caminho: string | undefined;
+  // espera o próprio link (outros e-mails, como o aviso do 2º fator, podem chegar antes)
   await expect.poll(async () => {
-    mensagens = (await (await fetch(busca)).json()).messages;
-    return mensagens.length;
-  }, { message: `e-mail para ${para}`, timeout: 30_000 }).toBeGreaterThanOrEqual(quantos);
-  for (const { ID } of mensagens) {
-    const { Text } = await (await fetch(`${MAILPIT}/api/v1/message/${ID}`)).json();
-    const link = new RegExp(`https?://\\S+?(${rota}#[A-Za-z0-9_-]{43})`).exec(Text);
-    if (link) return link[1];
-  }
-  throw new Error(`nenhum e-mail para ${para} com link para ${rota}`);
+    const mensagens: { ID: string }[] = (await (await fetch(busca)).json()).messages;
+    if (mensagens.length < quantos) return undefined;
+    for (const { ID } of mensagens) {
+      const { Text } = await (await fetch(`${MAILPIT}/api/v1/message/${ID}`)).json();
+      caminho = padrao.exec(Text)?.[1];
+      if (caminho) break;
+    }
+    return caminho;
+  }, { message: `e-mail para ${para} com link para ${rota}`, timeout: 30_000 }).toBeTruthy();
+  return caminho!;
 }
 
 export async function assuntosDosEmails(para: string) {
