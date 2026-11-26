@@ -35,8 +35,6 @@ export const router = createBrowserRouter([
   { path: '/convite', ...pagina(() => padrao(import('@/features/auth/pages/convite-page'))) },
   { path: '/esqueci-senha', ...pagina(() => padrao(import('@/features/auth/pages/esqueci-senha-page'))) },
   { path: '/redefinir-senha', ...pagina(() => padrao(import('@/features/auth/pages/redefinir-senha-page'))) },
-  // Só em desenvolvimento: em produção o ramo some do bundle
-  ...(import.meta.env.DEV ? [{ path: '/laboratorio-design', ...pagina(() => padrao(import('@/laboratorio/LaboratorioDesign'))) }] : []),
   {
     element: <RotaProtegida />,
     ErrorBoundary: ErroRota,

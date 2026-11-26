@@ -37,7 +37,6 @@ src/
   lib/          http (cliente único, ProblemDetail -> ErroApi), formatadores, cnpj, rótulos,
                 preferências, config; api/ com os tipos gerados da OpenAPI
   styles/       globals.css (tokens) e motion.ts (tokens de movimento)
-  laboratorio/  referência viva do design system — só em dev, fora do build
 ```
 
 Regras que valem para todo o código:
@@ -106,8 +105,6 @@ Regras que valem para todo o código:
   login esperam a resposta da API.
 
 ## Design system
-
-Referência visual: `npm run dev` e abra `/laboratorio-design` (a rota não existe no build de produção).
 
 **Tokens** (`src/styles/globals.css`): cores semânticas em `:root` (claro) e `.dark` — `background`, `surface`, `foreground`, `muted`, `border`, `primary` (azul-petróleo), `success`/`warning`/`danger`/`info` com `-bg`, e `sidebar-*` (menu escuro nos dois temas). Use as classes do Tailwind geradas por eles (`bg-surface`, `text-muted-foreground`…), nunca cor literal.
 
