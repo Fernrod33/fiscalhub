@@ -190,11 +190,28 @@ if ($Docker) {
         [System.IO.File]::WriteAllLines($envRaiz, $linhas, (New-Object System.Text.UTF8Encoding($false)))
         Write-Ok '.env da raiz criado com segredos aleatórios (só para desenvolvimento)'
     }
+    $configRaiz = Read-ArquivoEnv $envRaiz
+    # senha do papel da aplicação (fiscalhub_app), também num .env de antes do 13a2; base64 sem / + =, logo sem aspas
+    if (-not $configRaiz['DB_APP_PASSWORD']) {
+        Set-ValorEnv $envRaiz 'DB_APP_PASSWORD' ((New-SegredoJwt) -replace '[/+=]', '')
+        Write-Ok 'DB_APP_PASSWORD gerada no .env da raiz'
+    }
+    # o .env.example deixa DOMINIO e ACME_EMAIL vazios (são do servidor); aqui valem localhost, só neste processo
+    $locais = @{}
+    foreach ($chave in 'DOMINIO', 'ACME_EMAIL') {
+        if (-not $configRaiz[$chave] -and -not [Environment]::GetEnvironmentVariable($chave)) {
+            $locais[$chave] = $(if ($chave -eq 'DOMINIO') { 'localhost' } else { 'dev@localhost' })
+            [Environment]::SetEnvironmentVariable($chave, $locais[$chave])
+        }
+    }
     Push-Location -LiteralPath $Raiz
     try {
         & docker compose -f compose.yaml -f compose.dev.yaml up -d --build
-        if ($LASTEXITCODE -ne 0) { Stop-ComErro 'docker compose up falhou (veja a saída acima).' }
-    } finally { Pop-Location }
+        if ($LASTEXITCODE -ne 0) { Stop-ComErro 'docker compose up falhou (veja a saída acima; se foi a migração: docker compose logs migracao).' }
+    } finally {
+        Pop-Location
+        foreach ($chave in $locais.Keys) { [Environment]::SetEnvironmentVariable($chave, $null) }
+    }
     Write-Host '  Aguardando o proxy' -NoNewline
     Wait-Porta 80 300 'proxy (docker compose logs proxy backend)'
     Write-Host ''
