@@ -1,6 +1,8 @@
 # Produção: um servidor com Docker Compose. Só o proxy (Caddy, TLS automático) publica portas (80 e 443).
 # Segredos e o que muda por servidor ficam no .env (copie do .env.example); nada de segredo neste arquivo nem nas imagens.
-# Subir: docker compose up -d --build   |   Runbook: docs/operacao/
+# Subir: docker compose up -d --build   |   Runbook: docs/operacao/ e docs/deploy/hostinger.md
+# Memória (VPS de 8 GB): os limites somam 4,4 GB (backend 2g com o heap a 75%, PostgreSQL 1g, MinIO 1g, proxy 256m,
+# frontend 128m); o resto fica para o sistema, o cache de disco e o backup. Pico medido: docs/deploy/hostinger.md.
 name: fiscalhub
 
 x-padrao: &padrao
@@ -17,6 +19,9 @@ services:
   postgres:
     <<: *padrao
     image: postgres:18-alpine
+    # 1/4 do limite em shared_buffers; o planejador conta com o cache de disco do sistema
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "effective_cache_size=1GB", "-c", "work_mem=8MB",
+              "-c", "maintenance_work_mem=64MB"]
     environment:
       POSTGRES_DB: fiscalhub
       POSTGRES_USER: fiscalhub
@@ -38,6 +43,8 @@ services:
       # chave da criptografia no lado do servidor (SSE-S3): nome:base64 de 32 bytes
       MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:?defina MINIO_KMS_SECRET_KEY no .env}
       MC_HOST_local: http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@127.0.0.1:9000
+      # teto do runtime Go abaixo do mem_limit: o coletor aperta antes do OOM do contêiner
+      GOMEMLIMIT: 768MiB
     volumes:
       - minio:/data
     healthcheck:
