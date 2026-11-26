@@ -80,6 +80,10 @@ jobs:
         working-directory: frontend
         env:
           E2E_URL: http://localhost
+      # compose de produção (perfil prod) num projeto à parte, reaproveitando a imagem já construída: backend sem a senha
+      # do dono, migração só pelo serviço migracao, e migração com falha impede o backend de subir
+      - name: Serviço de migração
+        run: sh deploy/teste-migracao.sh
       - name: Logs do compose
         if: failure()
         run: docker compose -f compose.yaml -f compose.dev.yaml logs --no-color > compose.log
@@ -120,6 +124,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 -x *.sh
+      - run: docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.11.0 -x ./*.sh
         working-directory: deploy
       - run: docker run --rm --cap-add NET_ADMIN -v "$PWD/deploy:/deploy:ro" ubuntu:24.04 sh /deploy/teste-provisionamento.sh

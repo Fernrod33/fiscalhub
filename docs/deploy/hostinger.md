@@ -123,8 +123,8 @@ No `.env`: `DOMINIO`, `ACME_EMAIL`, os segredos (`openssl rand -base64 48`; 32 p
 Passe pelo passo 7 e então:
 
 ```sh
-docker compose up -d --build --wait
-docker compose ps                          # todos healthy; minio-init "exited (0)"
+docker compose up -d --build --wait        # postgres e minio -> minio-init e migracao -> backend e frontend -> proxy
+docker compose ps -a                       # todos healthy; minio-init e migracao "exited (0)"
 curl -sI https://DOMINIO | grep -i strict-transport
 deploy/backup.sh                           # o primeiro backup, já com envio ao S3
 crontab -e                                 # 0 3 * * * /opt/fiscalhub/deploy/backup.sh >> /var/log/fiscalhub-backup.log 2>&1
@@ -132,6 +132,11 @@ crontab -e                                 # 0 3 * * * /opt/fiscalhub/deploy/bac
 
 Crie a pasta e o log do backup antes do cron: `sudo install -d -o deploy /var/backups/fiscalhub && sudo touch
 /var/log/fiscalhub-backup.log && sudo chown deploy /var/log/fiscalhub-backup.log`.
+
+A `migracao` cria o schema e os papéis do banco (`fiscalhub_app` para a aplicação, `fiscalhub_expurgo` para o expurgo
+da auditoria) e termina; só então o backend sobe, sem a senha do dono (`DB_PASSWORD` fica só com o PostgreSQL e a
+`migracao`). Se ela falhar, o backend não sobe: `docker compose logs migracao` e
+[runbook, seção 3](../operacao/runbook.md#3-atualizar).
 
 **Certificado trocado** (renovação manual, outro emissor, mudança do `DOMINIO`, Caddyfile alterado):
 `docker compose restart proxy`. A renovação automática do Let's Encrypt não precisa disso.

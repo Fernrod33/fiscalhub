@@ -97,7 +97,7 @@ falha_esperada "exclusão da versão travada (Object Lock), mesmo com a credenci
 	como_leitura s3api delete-object --bucket "$BUCKET_EXTERNO" --key "diario/$NOME" --version-id "$VERSAO"
 log "4/5 apagando a cópia local, destruindo os volumes (o s3-externo fica) e subindo um ambiente vazio"
 rm -rf "$BACKUP_DIR"
-dc rm -fsv backend frontend proxy postgres minio minio-init mailpit >/dev/null
+dc rm -fsv backend frontend proxy postgres minio minio-init migracao mailpit >/dev/null
 docker volume rm "${COMPOSE_PROJETO}_postgres" "${COMPOSE_PROJETO}_minio" >/dev/null
 dc up -d --wait --wait-timeout 400
 log "baixando do bucket externo com a credencial de leitura"

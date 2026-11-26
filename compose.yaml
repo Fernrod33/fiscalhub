@@ -68,6 +68,27 @@ services:
     volumes:
       - ./deploy/minio-init.sh:/init/minio-init.sh:ro
 
+  # uma vez por subida, antes do backend: o Flyway como dono do schema (fiscalhub), com o afterMigrate.sql que recria
+  # papéis e permissões; termina. Mesma imagem do backend, outro ponto de entrada (com.fiscalhub.backend.operacao.Migracao).
+  # Se a migração falhar, o backend não sobe (docs/deploy/hostinger.md, "Quando a migração falha").
+  migracao:
+    <<: *padrao
+    image: fiscalhub-backend:${VERSAO:-local}
+    pull_policy: never # a imagem é a do backend, construída por ele
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/fiscalhub
+      FLYWAY_USER: fiscalhub
+      FLYWAY_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+      FLYWAY_PLACEHOLDERS_APP_SENHA: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD no .env}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+    entrypoint: ["java", "-cp", "/app/BOOT-INF/classes:/app/BOOT-INF/lib/*", "com.fiscalhub.backend.operacao.Migracao"]
+    healthcheck:
+      disable: true
+    mem_limit: 512m
+
   backend:
     <<: *padrao
     build: ./backend
@@ -75,14 +96,11 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       minio-init: { condition: service_completed_successfully }
+      migracao: { condition: service_completed_successfully }
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/fiscalhub
-      DB_USERNAME: fiscalhub
-      DB_PASSWORD: ${DB_PASSWORD}
-      # a aplicação roda como fiscalhub_app (sem DDL, sem DELETE na auditoria); o Flyway, como fiscalhub
-      # ponytail: o Flyway roda no mesmo processo, então DB_PASSWORD (do dono) também está aqui: barra SQL injection e
-      # bug, não quem executa código no contêiner; fechar = migrar num serviço de uso único e tirar DB_PASSWORD daqui
+      # só o papel da aplicação (fiscalhub_app: sem DDL, sem DELETE na auditoria); a senha do dono fica com a migracao
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD no .env}
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
       CHAVE_DADOS: ${CHAVE_DADOS:?defina CHAVE_DADOS no .env}

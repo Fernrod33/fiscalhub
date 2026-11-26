@@ -32,6 +32,9 @@ dc exec -T postgres psql -U fiscalhub -d postgres -v ON_ERROR_STOP=1 \
 dc exec -T postgres pg_restore -U fiscalhub -d fiscalhub --no-owner --no-privileges --exit-on-error < "$PASTA/banco.dump"
 log "restaurando o bucket $BUCKET"
 mc_ "$PASTA" mirror --quiet --overwrite --remove /dados/minio "local/$BUCKET"
+# papéis não vão no pg_dump (e as permissões ficaram de fora, --no-privileges): a migração os recria antes do backend
+log "migração (papéis e permissões)"
+dc run --rm --no-deps migracao
 log "subindo o backend"
 dc up -d --wait backend
 log "restauração concluída"

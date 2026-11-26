@@ -22,8 +22,12 @@ git clone https://github.com/Fernrod33/fiscalhub.git /opt/fiscalhub && cd /opt/f
 git checkout v2.0.0-rc.1                 # sempre uma tag
 cp .env.example .env && chmod 600 .env   # preencha (abaixo)
 docker compose up -d --build --wait
-docker compose ps                        # todos healthy; minio-init "exited (0)"
+docker compose ps -a                     # todos healthy; minio-init e migracao "exited (0)"
 ```
+
+Ordem de subida: `postgres` e `minio` → `minio-init` (bucket) e `migracao` (Flyway como dono do schema, com os papéis
+e permissões do `afterMigrate.sql`; termina) → `backend` (só depois das duas, como `fiscalhub_app`, sem a senha do
+dono) e `frontend` → `proxy`.
 
 `.env`: gere cada segredo com `openssl rand -base64 48` (32 para `CHAVE_DADOS` e a do `MINIO_KMS_SECRET_KEY`, no
 formato `nome:base64`). Preencha também `BACKUP_AGE_DESTINATARIO` (a pública, `age1...`, gerada **na sua máquina**
@@ -40,12 +44,18 @@ Conferência: `https://DOMINIO` abre o login; `curl -sI https://DOMINIO | grep -
 cd /opt/fiscalhub
 deploy/backup.sh                          # sempre antes
 git fetch --tags && git checkout vX.Y.Z
-docker compose up -d --build --wait       # o Flyway aplica as migrações novas na subida do backend
-docker compose logs backend | grep -i -E "migrat|error" | tail
+docker compose up -d --build --wait       # a migracao aplica as migrações novas antes de o backend subir
+docker compose logs migracao | tail        # "Successfully applied N migrations" ou "Schema ... is up to date"
 ```
 
-- O Flyway roda na subida, sem baseline automático (`application-prod.properties`). Migração com erro: o backend não
-  sobe e o anterior já parou. Volte à tag anterior **e** restaure o backup feito no passo 1 (as migrações não têm volta).
+- Quem migra é o serviço `migracao` (Flyway, sem baseline automático); o backend tem o Flyway desligado e não tem a
+  senha do dono. **Quando a migração falha**, o `up` termina com erro e o backend novo não sobe:
+  1. `docker compose logs migracao` mostra a migração e o erro do PostgreSQL. A migração que falhou é desfeita
+     (DDL do PostgreSQL é transacional) e não entra no histórico; as anteriores da mesma subida ficam aplicadas.
+  2. `docker compose ps -a backend` diz se o backend da versão anterior continua no ar.
+  3. Sem migração nova aplicada antes da que falhou: volte à tag anterior e `docker compose up -d --build --wait`.
+     Com alguma aplicada: volte à tag anterior **e** restaure o backup do passo 1 (as migrações não têm volta).
+  4. Corrigida a migração (nova tag), `docker compose up -d --build --wait` roda a `migracao` de novo.
 - Versões são tags (`CHANGELOG.md`); nunca suba a branch diretamente.
 - Mudou o `deploy/Caddyfile` (CSP, cabeçalhos)? O arquivo é montado, não copiado: `docker compose restart proxy`.
 
@@ -74,8 +84,8 @@ Agendado no crontab do usuário de deploy:
 deploy/restaurar.sh /var/backups/fiscalhub/diario/fiscalhub-AAAAMMDD-HHMMSS.tar.age /caminho/chave-backup.txt
 ```
 
-Para o backend, recria o banco a partir do dump, espelha o bucket (arquivos que não estão no backup saem) e sobe o
-backend de novo. Pede para digitar "restaurar". Traga a chave privada só durante a restauração e apague depois.
+Para o backend, recria o banco a partir do dump, espelha o bucket (arquivos que não estão no backup saem), roda a
+`migracao` (os papéis não vão no dump: ela os recria, com as permissões) e sobe o backend de novo. Pede para digitar "restaurar". Traga a chave privada só durante a restauração e apague depois.
 
 **Teste de restauração automatizado** (numa máquina com Docker e Node, não em produção): `deploy/teste-restauracao.sh`
 sobe um ambiente limpo num projeto separado (porta 8088), carrega a massa completa, emite um relatório, faz o backup,
@@ -83,6 +93,10 @@ envia ao bucket externo (um MinIO no papel do S3, com Object Lock e a credencial
 do servidor não lê nem apaga e que a versão travada não sai, apaga a cópia local, destrói os volumes, sobe vazio, baixa
 do bucket com a credencial de leitura, restaura e confere com o Playwright que débitos, parcelamentos, CAPAG, pontos de atenção,
 relatórios e os bytes de cada arquivo voltaram iguais e que o aceite da massa continua valendo.
+
+**Teste da migração** (também no CI): `deploy/teste-migracao.sh` sobe o compose de produção num projeto separado e
+confere que o backend não recebe a `DB_PASSWORD`, que uma migração nova é aplicada pela `migracao` como dono, e que uma
+migração com erro impede o backend de subir até ser corrigida.
 
 ## 6. Trocar segredos
 
@@ -93,7 +107,7 @@ Edite o `.env` e rode `docker compose up -d --wait` (o compose recria só o que 
 | `JWT_SECRET` | novo valor + `up -d` | todas as sessões caem; cada um entra de novo |
 | `CHAVE_DADOS` | **não troque sem plano**: os segredos do 2º fator ficam ilegíveis. Antes: `UPDATE usuario SET totp_ativo = false, totp_segredo = NULL, totp_ultimo_passo = NULL; DELETE FROM codigo_recuperacao;` e avise os usuários; depois o valor novo | cada usuário ativa o 2º fator de novo (o escritório que exige leva todos à ativação) |
 | `DB_PASSWORD` | `docker compose exec postgres psql -U fiscalhub -c "ALTER USER fiscalhub PASSWORD '...'"`, depois o `.env` e `up -d` | nenhum |
-| `DB_APP_PASSWORD` | novo valor no `.env` e `up -d` (o Flyway regrava a senha do `fiscalhub_app` a cada subida) | nenhum |
+| `DB_APP_PASSWORD` | novo valor no `.env` e `up -d` (a `migracao` regrava a senha do `fiscalhub_app` antes do backend subir) | nenhum |
 | `S3_SECRET_KEY` | novo valor no `.env` e `up -d` (o `minio-init` recria o usuário com a senha nova) | nenhum |
 | `MINIO_ROOT_PASSWORD` | `mc admin user` não troca o root: pare o MinIO, troque no `.env` e suba | nenhum |
 | `MINIO_KMS_SECRET_KEY` | **não troque**: os objetos cifrados com a chave antiga deixam de abrir. Para rotacionar, restaure um backup num ambiente com a chave nova (o espelho regrava os arquivos cifrados com ela) | — |
