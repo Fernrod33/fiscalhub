@@ -5,6 +5,9 @@ partem da pasta do repositório no servidor (ex.: `/opt/fiscalhub`).
 
 ## 1. Preparar o servidor (uma vez)
 
+Na Hostinger (Ubuntu 24.04), os itens 2, 3 e 5 saem do `deploy/provisionar.sh`: passo a passo em
+[deploy/hostinger.md](../deploy/hostinger.md).
+
 1. **Disco cifrado** (LGPD e sigilo fiscal): o volume do Docker (`/var/lib/docker`) e a pasta de backups num disco com
    LUKS (ou a criptografia de disco do provedor). O MinIO já cifra os arquivos (SSE), mas o PostgreSQL não.
 2. Docker Engine com o plugin Compose; `age`, `rsync` (ou `rclone`) e `openssl` (`apt install age rsync openssl`).
@@ -18,14 +21,14 @@ partem da pasta do repositório no servidor (ex.: `/opt/fiscalhub`).
 git clone https://github.com/Fernrod33/fiscalhub.git /opt/fiscalhub && cd /opt/fiscalhub
 git checkout v2.0.0-rc.1                 # sempre uma tag
 cp .env.example .env && chmod 600 .env   # preencha (abaixo)
-age-keygen -o chave-backup.txt           # a PRIVADA vai para fora do servidor (cofre); a pública vai para o .env
 docker compose up -d --build --wait
 docker compose ps                        # todos healthy; minio-init "exited (0)"
 ```
 
 `.env`: gere cada segredo com `openssl rand -base64 48` (32 para `CHAVE_DADOS` e a do `MINIO_KMS_SECRET_KEY`, no
-formato `nome:base64`). Preencha também `BACKUP_AGE_DESTINATARIO` (a pública, `age1...`) e o destino externo do backup
-(`BACKUP_DESTINO_RSYNC` ou `BACKUP_DESTINO_RCLONE`). Apague a `chave-backup.txt` do servidor depois de guardá-la.
+formato `nome:base64`). Preencha também `BACKUP_AGE_DESTINATARIO` (a pública, `age1...`, gerada **na sua máquina**
+com `age-keygen`: a privada nunca vai para o servidor; duas cópias offline, ver [deploy/hostinger.md](../deploy/hostinger.md)
+seção 4) e o destino externo do backup (`BACKUP_S3_*`, ou `BACKUP_DESTINO_RSYNC`/`BACKUP_DESTINO_RCLONE`).
 E-mail (convite, recuperação de senha, avisos): `SMTP_USUARIO`, `SMTP_SENHA` e `EMAIL_REMETENTE` do Amazon SES, conforme
 [deploy/email-ses.md](../deploy/email-ses.md). Sem eles, o sistema funciona, mas nenhum e-mail sai (falhas na auditoria).
 
@@ -58,7 +61,10 @@ Agendado no crontab do usuário de deploy:
   pública do `.env`. Sem a chave privada, o arquivo não abre.
 - Retenção: 7 diários, 4 semanais (domingo) e 6 mensais (dia 1º) — `BACKUP_RETER_*`. Depois disso o dado excluído de um
   cliente não existe em mais nenhum lugar.
-- Cópia externa: `rsync` ou `rclone` ao fim de cada execução; sem destino, o log avisa.
+- Cópia externa: bucket S3 em `sa-east-1` com Object Lock (governance, 35 dias), enviada com uma credencial que só
+  tem `s3:PutObject` (quem invadir o servidor não lê nem apaga os backups); ou `rsync`/`rclone`. Sem destino, o log avisa.
+  Restaurar a partir do S3: baixe com a credencial de leitura (fora do servidor), `aws s3 cp s3://BUCKET/diario/ARQUIVO .`,
+  e siga a seção 5.
 - Conferir: `tail /var/log/fiscalhub-backup.log` (a última linha diz o arquivo e o tamanho) e, mensalmente, o teste de
   restauração (seção 5).
 
@@ -73,7 +79,9 @@ backend de novo. Pede para digitar "restaurar". Traga a chave privada só durant
 
 **Teste de restauração automatizado** (numa máquina com Docker e Node, não em produção): `deploy/teste-restauracao.sh`
 sobe um ambiente limpo num projeto separado (porta 8088), carrega a massa completa, emite um relatório, faz o backup,
-destrói os volumes, sobe vazio, restaura e confere com o Playwright que débitos, parcelamentos, CAPAG, pontos de atenção,
+envia ao bucket externo (um MinIO no papel do S3, com Object Lock e a credencial só de envio), confere que a credencial
+do servidor não lê nem apaga e que a versão travada não sai, apaga a cópia local, destrói os volumes, sobe vazio, baixa
+do bucket com a credencial de leitura, restaura e confere com o Playwright que débitos, parcelamentos, CAPAG, pontos de atenção,
 relatórios e os bytes de cada arquivo voltaram iguais e que o aceite da massa continua valendo.
 
 ## 6. Trocar segredos
