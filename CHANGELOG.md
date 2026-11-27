@@ -4,6 +4,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
 
 ## [Não lançado]
 
+## [2.0.0-rc.2] — 2026-11-26
+
+Segunda versão candidata: segurança de conta, e-mail transacional e a preparação do deploy na Hostinger (sem domínio
+ainda). Configuração nova no `.env`: `DB_APP_PASSWORD`, `SMTP_*`, `EMAIL_REMETENTE`, `BACKUP_S3_*`; `DOMINIO` vem vazio.
+
 ### Segurança de conta
 - 2º fator obrigatório para todo ADMIN (inclusive promovido): a API responde 403 `/problemas/segundo-fator-obrigatorio`
   até a ativação, e o ADMIN não pode desativá-lo.
@@ -12,6 +17,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); 
 - Reautenticação (senha e código, 5 min) para excluir cliente, exportar os dados de um cliente, desativar usuário e
   mudar papel.
 - CSP sem `'unsafe-inline'` em `style-src`: nonce por resposta no proxy. Ao atualizar: `docker compose restart proxy`.
+- Convite, recuperação de senha e avisos por e-mail (SMTP do Amazon SES). A recuperação responde 202 na hora, com o
+  mesmo tempo exista ou não a conta, e trava a conta contra pedidos simultâneos.
+- Fim da senha provisória (V33): quem a tinha vira convite pendente, sem senha e sem sessão aberta.
+
+### Banco e auditoria
+- Retenção da auditoria configurável (`AUDITORIA_RETENCAO_ANOS`, padrão 5) com expurgo diário.
+- A aplicação roda como `fiscalhub_app` (sem DDL, só SELECT e INSERT na auditoria); o expurgo é `SECURITY DEFINER` de
+  um papel sem login (V34). A migração roda no serviço `migracao`, de uso único, e o backend não tem a senha do dono.
+
+### Deploy e operação
+- Provisionamento idempotente do Ubuntu 24.04 (`deploy/provisionar.sh`), limites de memória para a VPS de 8 GB,
+  backup cifrado enviado a um S3 com Object Lock (credencial só de envio), runbook do primeiro deploy
+  (`docs/deploy/hostinger.md`).
+- **Atualização em duas etapas:** `docker compose run --rm migracao` antes do `up` (runbook, seção 3); com a migração
+  quebrada, a versão anterior segue no ar. Testado no CI (`deploy/teste-migracao.sh`).
+- `iniciar.ps1 -Docker` completa um `.env` antigo e aceita `DOMINIO` vazio; o laboratório de design saiu.
 
 ## [2.0.0-rc.1] — 2026-11-12
 
