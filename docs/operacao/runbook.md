@@ -19,7 +19,7 @@ Na Hostinger (Ubuntu 24.04), os itens 2, 3 e 5 saem do `deploy/provisionar.sh`: 
 
 ```sh
 git clone https://github.com/Fernrod33/fiscalhub.git /opt/fiscalhub && cd /opt/fiscalhub
-git checkout v2.0.0-rc.1                 # sempre uma tag
+git checkout v2.0.0-rc.2                 # sempre uma tag
 cp .env.example .env && chmod 600 .env   # preencha (abaixo)
 docker compose up -d --build --wait
 docker compose ps -a                     # todos healthy; minio-init e migracao "exited (0)"
@@ -44,18 +44,26 @@ Conferência: `https://DOMINIO` abre o login; `curl -sI https://DOMINIO | grep -
 cd /opt/fiscalhub
 deploy/backup.sh                          # sempre antes
 git fetch --tags && git checkout vX.Y.Z
-docker compose up -d --build --wait       # a migracao aplica as migrações novas antes de o backend subir
-docker compose logs migracao | tail        # "Successfully applied N migrations" ou "Schema ... is up to date"
+docker compose build                      # imagens da versão nova; os contêineres no ar não mudam
+docker compose run --rm migracao          # migra com a imagem nova; a versão anterior continua no ar
+docker compose up -d --wait               # só depois de a migração terminar sem erro: troca backend e frontend
 ```
 
-- Quem migra é o serviço `migracao` (Flyway, sem baseline automático); o backend tem o Flyway desligado e não tem a
-  senha do dono. **Quando a migração falha**, o `up` termina com erro e o backend novo não sobe:
-  1. `docker compose logs migracao` mostra a migração e o erro do PostgreSQL. A migração que falhou é desfeita
-     (DDL do PostgreSQL é transacional) e não entra no histórico; as anteriores da mesma subida ficam aplicadas.
-  2. `docker compose ps -a backend` diz se o backend da versão anterior continua no ar.
-  3. Sem migração nova aplicada antes da que falhou: volte à tag anterior e `docker compose up -d --build --wait`.
-     Com alguma aplicada: volte à tag anterior **e** restaure o backup do passo 1 (as migrações não têm volta).
-  4. Corrigida a migração (nova tag), `docker compose up -d --build --wait` roda a `migracao` de novo.
+- A migração vem **antes** do `up`, num comando à parte: o `up` sozinho troca o contêiner do backend antes de a
+  migração terminar, e com ela quebrada o sistema fica fora do ar até alguém agir. Pelo `run`, a versão anterior segue
+  respondendo, no mesmo contêiner, durante e depois da falha (é o que o `deploy/teste-migracao.sh` confere no CI).
+- Quem migra é o serviço `migracao` (Flyway como dono do schema, sem baseline automático); o backend tem o Flyway
+  desligado e não tem a senha do dono.
+- **Quando o `run` da migração termina com erro** (a saída mostra a migração e o erro do PostgreSQL):
+  1. Não rode o `up`. A versão anterior continua no ar.
+  2. Volte o código e as imagens à versão no ar, para que um `up` ou um reinício futuros não peguem a imagem nova:
+     `git checkout vANTERIOR && docker compose build`.
+  3. A migração que falhou é desfeita (DDL do PostgreSQL é transacional) e não entra no histórico; as anteriores a ela
+     na mesma execução ficam. Liste o que entrou na última hora:
+     `docker compose exec postgres psql -U fiscalhub -d fiscalhub -c "SELECT version, description FROM flyway_schema_history WHERE installed_on > now() - interval '1 hour'"`.
+     Sem linhas: nada a desfazer, a atualização acabou aqui. Com linhas: restaure o backup do começo
+     (seção 5), porque as migrações não têm volta.
+  4. Com a migração corrigida numa tag nova, repita o procedimento inteiro, a partir do backup.
 - Versões são tags (`CHANGELOG.md`); nunca suba a branch diretamente.
 - Mudou o `deploy/Caddyfile` (CSP, cabeçalhos)? O arquivo é montado, não copiado: `docker compose restart proxy`.
 
@@ -96,7 +104,9 @@ relatórios e os bytes de cada arquivo voltaram iguais e que o aceite da massa c
 
 **Teste da migração** (também no CI): `deploy/teste-migracao.sh` sobe o compose de produção num projeto separado e
 confere que o backend não recebe a `DB_PASSWORD`, que uma migração nova é aplicada pela `migracao` como dono, e que uma
-migração com erro impede o backend de subir até ser corrigida.
+migração com erro impede o backend de subir até ser corrigida, e simula a atualização da seção 3 para uma versão com
+migração quebrada: a versão anterior responde a cada segundo durante e depois da falha, no mesmo contêiner, e nada da
+migração fica no banco; corrigida, a versão nova sobe.
 
 ## 6. Trocar segredos
 
