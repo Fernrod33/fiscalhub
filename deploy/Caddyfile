@@ -1,0 +1,52 @@
+# Proxy reverso único exposto (80 e 443): TLS automático (Let's Encrypt) para {$DOMINIO}, cabeçalhos de segurança,
+# limite de upload igual ao do Spring e da tela (UPLOAD_MAX_SIZE_MB) e o id de correlação de cada requisição.
+# Em desenvolvimento (compose.dev.yaml) DOMINIO=http://localhost: sem TLS, mesmos cabeçalhos.
+{
+	email {$ACME_EMAIL}
+	admin off
+}
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	request_body {
+		max_size {$UPLOAD_MAX_SIZE_MB}MiB
+	}
+
+	header {
+		# nada de unsafe-inline: script só do próprio domínio; <style> só com o nonce desta resposta ({http.request.uuid},
+		# o mesmo que o templates abaixo põe no index.html; frontend/src/lib/csp.ts o repassa aos <style> das bibliotecas
+		# e da prévia do relatório, um iframe srcdoc que herda esta política). Estilo por propriedade (CSSOM) não é afetado.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-{http.request.uuid}'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy backend:8080 {
+			header_up X-Request-Id {http.request.uuid}
+		}
+	}
+
+	# o actuator fica na porta 8081 do backend: nunca passa por aqui
+	handle {
+		# o nonce entra no <meta property="csp-nonce"> do index.html (o único text/html do frontend)
+		templates {
+			mime text/html
+		}
+		reverse_proxy frontend:8080 {
+			# templates precisa do HTML sem compressão; o encode acima comprime para o navegador
+			header_up -Accept-Encoding
+		}
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,183 @@
+# -*- coding: utf-8 -*-
+"""Gera toda a massa de teste fictícia do FiscalHub.  Uso: python gerar_tudo.py [pasta_saida]"""
+import json
+import os
+import sys
+from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import ecd_ecf  # noqa: E402
+import efd  # noqa: E402
+import pdfs  # noqa: E402
+from common import D, ZERO, q  # noqa: E402
+
+# DFC pelo método direto: categoria pela conta referencial da contrapartida (prefixo mais longo). Mesma regra do
+# de-para padrão do backend (resources/capacidade/dfc-depara.txt), escrita aqui de forma independente.
+DEPARA_DFC = [
+    ("1.01.01", "CAIXA"), ("1.01.02.03", "TRIBUTOS"), ("1.01.02", "RECEBIMENTO_CLIENTES"),
+    ("1.01.03", "PAGAMENTO_FORNECEDORES"), ("1.02.03", "IMOBILIZADO"), ("1.02", "INVESTIMENTOS"),
+    ("2.01.01.01", "SALARIOS_ENCARGOS"), ("2.01.01.03", "PAGAMENTO_FORNECEDORES"), ("2.01.01.07", "EMPRESTIMOS"),
+    ("2.01.01.09.09", "PARCELAMENTOS_TRIBUTARIOS"), ("2.01.01.09", "TRIBUTOS"),
+    ("2.02.01.10", "PARCELAMENTOS_TRIBUTARIOS"), ("2.02", "EMPRESTIMOS"), ("2.03", "CAPITAL_DIVIDENDOS"),
+    ("3.01.01.01.01", "RECEBIMENTO_CLIENTES"), ("3.01.01.01.02", "TRIBUTOS"), ("3.01.01.07.01.02", "SALARIOS_ENCARGOS"),
+    ("3.02", "TRIBUTOS"), ("3.01", "OUTROS_OPERACIONAIS"),
+]
+ATIVIDADE = {"RECEBIMENTO_CLIENTES": "OPERACIONAL", "PAGAMENTO_FORNECEDORES": "OPERACIONAL",
+             "SALARIOS_ENCARGOS": "OPERACIONAL", "TRIBUTOS": "OPERACIONAL", "OUTROS_OPERACIONAIS": "OPERACIONAL",
+             "IMOBILIZADO": "INVESTIMENTO", "INVESTIMENTOS": "INVESTIMENTO", "EMPRESTIMOS": "FINANCIAMENTO",
+             "PARCELAMENTOS_TRIBUTARIOS": "FINANCIAMENTO", "CAPITAL_DIVIDENDOS": "FINANCIAMENTO", "OUTROS": "OUTROS"}
+
+
+def categoria(conta):
+    ref = ecd_ecf.REF_OFICIAL[conta]
+    melhor = max((p for p, _ in DEPARA_DFC if ref == p or ref.startswith(p + ".")), key=len, default=None)
+    return dict(DEPARA_DFC)[melhor] if melhor else "OUTROS"
+
+
+def dfc(ledger):
+    """Cada lançamento que movimenta o caixa: a variação líquida do caixa é rateada entre as contrapartidas do mesmo
+    sentido (crédito, se entrou caixa; débito, se saiu), na proporção dos valores. Só caixa (transferência): ignorado."""
+    por_cat = defaultdict(lambda: ZERO)
+    for _, _, partes, _, _ in ledger.entries:
+        caixa = sum(v if s == "D" else -v for c, v, s in partes if categoria(c) == "CAIXA")
+        if caixa == 0:
+            continue
+        lado = "C" if caixa > 0 else "D"
+        contra = [(c, v) for c, v, s in partes if categoria(c) != "CAIXA" and s == lado]
+        tot = sum(v for _, v in contra)
+        resto = caixa
+        for i, (c, v) in enumerate(contra):
+            parte = resto if i == len(contra) - 1 else q(caixa * v / tot)
+            por_cat[categoria(c)] += parte
+            resto -= parte
+    variacao = sum(ledger.bal[c] - ledger.ini[c] for c in ("1.1.01.001", "1.1.01.002"))
+    assert sum(por_cat.values()) == variacao, (sum(por_cat.values()), variacao)
+    ativ = defaultdict(lambda: ZERO)
+    for k, v in por_cat.items():
+        ativ[ATIVIDADE[k]] += v
+    return dict(categorias={k: str(v) for k, v in sorted(por_cat.items())},
+                atividades={k: str(v) for k, v in sorted(ativ.items())}, variacao_caixa=str(variacao))
+
+
+def simulacoes(pdf_c):
+    """Simulações da Fase 5 na data-base fixa de 14/10/2026, pelas regras de resources/parcelamento/regras.json, refeitas
+    aqui à mão. SELIC das parcelas futuras: 1,01% a.m. (média das SELIC carregadas no teste, só jan/2025)."""
+    import datetime as dt
+    from decimal import ROUND_HALF_UP
+    q = lambda x: x.quantize(D("0.01"), ROUND_HALF_UP)
+    selic = D("1.01")
+
+    def iguais(total, n):
+        v = q(total / n)
+        return [v] * (n - 1) + [total - v * (n - 1)]
+
+    def federal(nominais, primeiro):  # primeiro: meses entre a consolidação e a 1ª prestação
+        # no mês da consolidação, sem acréscimo; depois, SELIC dos meses entre a consolidação e o pagamento + 1%
+        return [q(v * (1 + (D(0) if primeiro + k == 0 else selic * (primeiro + k - 1) + 1) / 100)) for k, v in enumerate(nominais)]
+
+    def parana(nominais, fator):  # 1ª na concessão, sem juros; k-ésima: SELIC de k meses sobre imposto e multa
+        return [v + q(v * fator * selic * k / 100) for k, v in enumerate(nominais)]
+
+    def resumo(total, nominais, corrigidas, **extra):
+        return dict(total=str(total), parcelas=len(nominais), valor_parcela=str(nominais[0] if "entrada" not in extra else extra.pop("valor_parcela")),
+                    custo_nominal=str(sum(nominais)), custo_projetado=str(sum(corrigidas)),
+                    primeira=str(corrigidas[0]), ultima=str(corrigidas[-1]), **{k: str(v) for k, v in extra.items()})
+
+    out = {"data_base": "2026-10-14", "selic_projetada": str(selic)}
+    # 1. COFINS 08/2026 paga a menor (RFB ordinário): 19 dias → multa 6,27%; juros 1%; até 10 parcelas de R$ 500+
+    cof = pdf_c["cof"] - pdf_c["cof_pago"]
+    dias = (dt.date(2026, 10, 14) - pdf_c["venc_pc"]).days
+    total = cof + q(cof * D("0.33") * dias / 100) + q(cof / 100)
+    n = int(total // 500)
+    nom = iguais(total, n)
+    out["rfb_ordinario_cofins"] = resumo(total, nom, federal(nom, 0), dias=dias)  # 1ª no mês do pedido (IN RFB 2.063, arts. 4º e 13)
+    # 2. IPI inscrito não negociado (PGFN ordinário): valores do extrato + encargo de 20%; 60 parcelas, 1ª no mês do pedido
+    p, m, j = D("38750.00"), D("7750.00"), D("6980.12")
+    enc = q((p + m + j) * D("0.20"))
+    total = p + m + j + enc
+    nom = iguais(total, 60)
+    out["pgfn_ordinario_ipi"] = resumo(total, nom, federal(nom, 0), encargo=enc)
+    # 3. Transação Edital 6/2026 (reaberto pelo 10/2026), CAPAG oficial C: desconto máximo, entrada 6% em 6, saldo em 114
+    desc = min(m + j + enc, q(total * D("0.65")))
+    entrada = q(total * D("0.06"))
+    nom = iguais(entrada, 6) + iguais(total - desc - entrada, 114)
+    out["pgfn_transacao_ipi_c"] = resumo(total, nom, federal(nom, 0), desconto=desc, entrada=entrada, valor_parcela=nom[6])
+    # 4. ICMS-ST 08/2026 (SEFA-PR ordinário): 34 dias → multa 10%; juros 1%; EFD: até 24 parcelas; sem UPF/PR: bloqueada
+    st, venc = D("44850.00"), dt.date(2026, 9, 10)
+    total = st + q(st / 10) + q(st / 100)
+    fator = ((st + q(st / 10)) / total).quantize(D("0.0000000001"), ROUND_HALF_UP)
+    nom = iguais(total, 24)
+    out["sefa_pr_icms_st"] = resumo(total, nom, parana(nom, fator), dias=(dt.date(2026, 10, 14) - venc).days)
+    # 5. Reparcelamento do parcelamento PR-2025-0045871 (saldo 98.884,20): 60 parcelas, 6 pagas juntas na assinatura
+    saldo = D("98884.20")
+    v = q(saldo / 60)
+    nom = [v * 6] + iguais(saldo - v * 6, 54)
+    nom[-1] = saldo - v * 6 - v * 53
+    out["sefa_pr_reparcelamento"] = resumo(saldo, nom, parana(nom, D("1")), entrada=v * 6, valor_parcela=v)
+    return out
+
+
+# Pontos de atenção esperados (Fase 6): os 10 problemas plantados e os achados que as regras novas devem gerar, cada um
+# com o motivo. Qualquer outro achado aberto na massa é falso positivo.
+PONTOS = [
+    (1, "R01", "ALTA", "Pago a menor: COFINS 08/2026", "COFINS declarada 33.079,00 e paga 28.000,00"),
+    (1, "R07", "CRITICA", "Débito que impede a certidão: RFB COFINS 08/2026", "a diferença está em aberto no relatório de situação fiscal"),
+    (2, "R02", "ALTA", "Pago em atraso sem acréscimos: IPI 11/2024", "pago 48 dias depois só com o principal"),
+    (2, "R07", "CRITICA", "Débito que impede a certidão: RFB IPI 11/2024", "multa e juros em aberto no SIEF"),
+    (3, "R04", "ALTA", "ICMS-ST não recolhido com saldo credor de ICMS próprio: ICMS_ST · PR 08/2026", "o saldo credor não quita o ST"),
+    (3, "R07", "CRITICA", "Débito que impede a certidão: SEFA_PR ICMS_ST 08/2026", "ICMS-ST em aberto na conta corrente do PR"),
+    (4, "R05", "MEDIA", "Saldo credor de ICMS acumulado (PR)", "saldo credor de 03/2026 a 08/2026"),
+    (5, "R06", "ALTA", "Omissão de declaração: Omissão de EFD-Contribuições de 06/2026", "não é previdenciária: não impede a certidão"),
+    (6, "R07", "CRITICA", "Débito que impede a certidão: PGFN IPI 90 3 24 002201-55", "inscrição não negociada"),
+    (6, "R09", "ALTA", "Transação com desconto disponível: Transação por adesão — Edital PGDAU 6/2026, reaberto pelo Edital 10/2026 (capacidade de pagamento)",
+     "a mesma inscrição cabe na transação com desconto (CAPAG oficial C)"),
+    (7, "R08", "ALTA", "Revisão da CAPAG potencialmente vantajosa", "CAPAG oficial C × estimada D"),
+    (8, "R16", "INFO", "Escrituração substituta: ECD 2024", "a substituta prevalece"),
+    (9, "R11", "MEDIA", "Adição indedutível no e-Lalur: Multas por infracoes fiscais nao dedutiveis", "multa de ofício de 18.450,00 adicionada (IRPJ e CSLL)"),
+    (10, "R10", "ALTA", "Parcelas acima da parcela sustentável", "parcelamento do PR (12/36) e transação da PGFN somam mais que a parcela sustentável"),
+    (None, "R07", "CRITICA", "Débito que impede a certidão: PGE_PR ICMS 2023.0045678-2", "CDA ajuizada sem parcelamento"),
+    (None, "R07", "CRITICA", "Débito que impede a certidão: PGE_PR ICMS 2025.0087654-1", "CDA em cobrança sem parcelamento"),
+    (None, "R12", "INFO", "Prejuízo fiscal (IRPJ) acumulado", "saldo da Parte B do e-Lalur (ECF 2025)"),
+    (None, "R12", "INFO", "Base negativa da CSLL acumulado", "saldo da Parte B do e-Lacs (ECF 2025)"),
+]
+
+
+def main(base):
+    contabil = ecd_ecf.gerar(base)
+    fisc = efd.gerar(base)
+    efd_2025 = efd.gerar_2025(base, contabil["ledgers"][2025])
+    assert efd_2025[-1]["icms"]["transp"] == 0
+    efd_2026 = efd.gerar_2026_icms(base, pdfs.rti_2026(), ZERO)
+    pdf = pdfs.gerar(base, fisc, contabil, efd_2025, efd_2026)
+    # carga tributária de 2025: valor a recolher das EFD (ICMS, IPI, PIS, COFINS) e da ECF (IRPJ e CSLL zerados:
+    # prejuízo fiscal) sobre a receita bruta da ECD
+    tributos = sum(x["icms"]["a_recolher"] + x["icms"]["ipi_rec"] + x["pc"]["PIS"]["devido"] + x["pc"]["COFINS"]["devido"]
+                   for x in efd_2025)
+    receita = sum(mm["R"] for mm in contabil["ledgers"][2025].meses)
+    resumo = {
+        "ecd_resultado_por_ano": {str(a): str(r["resultado"]) for a, r in contabil["resumo"].items()},
+        "ecf_lucro_real_2025": {k: str(v) for k, v in contabil["ecf_real"].items()},
+        "prejuizo_fiscal_saldo_inicial_2025": str(contabil["prej_ant"]),
+        "efd_icms": {k: str(v) for k, v in fisc["icms"].items()},
+        "efd_contribuicoes": {t: {k: str(v) for k, v in fisc["pc"][t].items()} for t in ("PIS", "COFINS")},
+        "dctfweb_082026_total": str(pdf["dctfweb_total"]),
+        "situacao_fiscal": {k: str(v) for k, v in pdf["sit"].items()},
+        "pgfn_passivo_total": str(pdf["pgfn"]["passivo"]),
+        "carga_tributaria_2025": {"tributos": str(tributos), "receita_bruta": str(receita),
+                                  "carga": str((tributos * 100 / receita).quantize(D("0.01"), "ROUND_HALF_EVEN"))},
+        "dfc_direta": {"2024": dfc(contabil["ledgers"][2024]), "2025": dfc(contabil["ledgers"][2025])},
+        "classificacao_pr": pdf["pr"]["classificacao"],
+        "capag_oficial": {"classe": "C", "capacidade": str(pdfs.CAPAG_VALOR)},
+        "irrecuperaveis_pgfn": [],
+        "simulacoes": simulacoes(pdf["cen"]),
+        "pontos_atencao": [dict(item=i, regra=r, severidade=sv, titulo=t, motivo=m) for i, r, sv, t, m in PONTOS],
+    }
+    with open(os.path.join(base, "_gerador", "valores_esperados.json"), "w", encoding="utf-8") as fh:
+        json.dump(resumo, fh, ensure_ascii=False, indent=2, default=str)
+    return resumo
+
+
+if __name__ == "__main__":
+    out = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    print(json.dumps(main(out), ensure_ascii=False, indent=2, default=str))

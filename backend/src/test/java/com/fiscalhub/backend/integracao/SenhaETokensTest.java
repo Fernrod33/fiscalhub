@@ -1,0 +1,63 @@
+package com.fiscalhub.backend.integracao;
+
+import com.fiscalhub.backend.entity.Escritorio;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.entity.enums.Papel;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** Troca de senha, papel e desativação invalidam tokens antigos. */
+@TesteIntegracao
+@Transactional
+class SenhaETokensTest {
+
+    @Autowired MockMvc mvc;
+    @Autowired DadosTeste dados;
+
+    private Escritorio escritorio;
+    private Usuario admin;
+
+    @BeforeEach
+    void setUp() {
+        escritorio = dados.escritorio("Tokens");
+        admin = dados.usuario(escritorio, "admin-tok@test.com", Papel.ADMIN);
+    }
+
+    @Test
+    void trocaDeSenhaInvalidaTokensAnteriores() throws Exception {
+        RequestPostProcessor antigo = dados.sessaoReautenticada(admin);
+        mvc.perform(put("/api/usuarios/me/senha").with(antigo).contentType(APPLICATION_JSON)
+                        .content("{\"senhaAtual\":\"" + DadosTeste.SENHA + "\",\"novaSenha\":\"definitiva-forte-1\"}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/api/usuarios/me").with(antigo)).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void mudarPapelOuDesativarInvalidaOTokenDoAfetado() throws Exception {
+        Usuario consultor = dados.usuario(escritorio, "cons-tok@test.com", Papel.CONSULTOR);
+        RequestPostProcessor tokenConsultor = dados.sessaoReautenticada(consultor);
+        RequestPostProcessor tokenAdmin = dados.sessaoReautenticada(admin);
+
+        mvc.perform(patch("/api/usuarios/{id}/papel", consultor.getId()).with(tokenAdmin)
+                .contentType(APPLICATION_JSON).content("{\"papel\":\"ASSISTENTE\"}")).andExpect(status().isOk());
+        mvc.perform(get("/api/usuarios/me").with(tokenConsultor)).andExpect(status().isUnauthorized());
+
+        RequestPostProcessor tokenAssistente = dados.sessaoReautenticada(consultor);
+        mvc.perform(patch("/api/usuarios/{id}/desativar", consultor.getId()).with(tokenAdmin))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/usuarios/me").with(tokenAssistente)).andExpect(status().isUnauthorized());
+        // o token do ADMIN que fez as mudanças segue valendo
+        mvc.perform(get("/api/usuarios/me").with(tokenAdmin)).andExpect(status().isOk());
+    }
+}

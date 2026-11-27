@@ -1,0 +1,12 @@
+[
+  { "formato": "moeda", "valor": "1234.5", "esperado": "R$ 1.234,50" },
+  { "formato": "moeda", "valor": "-5079", "esperado": "-R$ 5.079,00" },
+  { "formato": "moeda", "valor": "0", "esperado": "R$ 0,00" },
+  { "formato": "moeda", "valor": "12485017.79", "esperado": "R$ 12.485.017,79" },
+  { "formato": "percentual", "valor": "15.84", "esperado": "15,84%" },
+  { "formato": "percentual", "valor": "0.5", "esperado": "0,50%" },
+  { "formato": "inteiro", "valor": "1234567", "esperado": "1.234.567" },
+  { "formato": "competencia", "valor": "2026-08-01", "esperado": "08/2026" },
+  { "formato": "data", "valor": "2024-12-24", "esperado": "24/12/2024" },
+  { "formato": "cnpj", "valor": "11222333000181", "esperado": "11.222.333/0001-81" }
+]

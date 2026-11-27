@@ -1,0 +1,15 @@
+Balancete de verificação - EMPRESA EXEMPLO LTDA
+
+Código;Descrição da conta;Saldo anterior;Débito;Crédito;Saldo atual
+1;ATIVO;1.000,00 D;8.000,00;3.000,00;6.000,00 D
+1.1;ATIVO CIRCULANTE;1.000,00 D;8.000,00;3.000,00;6.000,00 D
+1.1.01;Caixa;1.000,00 D;6.000,00;3.000,00;4.000,00 D
+1.1.02;Bancos conta movimento;0,00 D;2.000,00;0,00;2.000,00 D
+2;PASSIVO;500,00 C;1.000,00;1.500,00;1.000,00 C
+2.1;Fornecedores, nacionais;500,00 C;1.000,00;1.500,00;1.000,00 C
+3;PATRIMÔNIO LÍQUIDO;500,00 C;0,00;0,00;500,00 C
+3.1;Capital social;500,00 C;0,00;0,00;500,00 C
+3.2;Lucros acumulados;0,00 C;0,00;0,00;0,00 C
+4;RESULTADO;0,00 D;3.500,00;8.000,00;4.500,00 C
+4.1;Receita de vendas de mercadorias;0,00 C;0,00;8.000,00;8.000,00 C
+4.2;Custo das mercadorias vendidas;0,00 D;3.500,00;0,00;3.500,00 D

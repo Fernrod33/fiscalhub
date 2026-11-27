@@ -1,0 +1,24 @@
+# De-para padrão do plano referencial da RFB (L100/L300) para a categoria da DFC pelo método direto.
+# A contrapartida de cada lançamento que movimenta caixa e equivalentes (1.01.01) cai na categoria do prefixo mais
+# longo que casa com a conta referencial dela; sem prefixo: OUTROS. Cada escritório pode sobrepor prefixos (tela
+# Demonstrações > DFC). Mude aqui para mudar o padrão de todos (o teste da massa confere contra o gerador).
+# prefixo|categoria
+1.01.01|CAIXA
+1.01.02.03|TRIBUTOS
+1.01.02|RECEBIMENTO_CLIENTES
+1.01.03|PAGAMENTO_FORNECEDORES
+1.02.03|IMOBILIZADO
+1.02|INVESTIMENTOS
+2.01.01.01|SALARIOS_ENCARGOS
+2.01.01.03|PAGAMENTO_FORNECEDORES
+2.01.01.07|EMPRESTIMOS
+2.01.01.09.09|PARCELAMENTOS_TRIBUTARIOS
+2.01.01.09|TRIBUTOS
+2.02.01.10|PARCELAMENTOS_TRIBUTARIOS
+2.02|EMPRESTIMOS
+2.03|CAPITAL_DIVIDENDOS
+3.01.01.01.01|RECEBIMENTO_CLIENTES
+3.01.01.01.02|TRIBUTOS
+3.01.01.07.01.02|SALARIOS_ENCARGOS
+3.02|TRIBUTOS
+3.01|OUTROS_OPERACIONAIS

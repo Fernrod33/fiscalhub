@@ -1,0 +1,117 @@
+import { Link } from 'react-router-dom';
+import { FileText, Inbox } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Cartao, CartaoTitulo } from '@/components/cartao';
+import { EstadoVazio } from '@/components/estado-vazio';
+import { AnimatedNumber, Reveal, Stagger, StaggerItem } from '@/components/motion';
+import { CabecalhoPagina } from '@/components/layout/cabecalho-pagina';
+import { TextoTruncado } from '@/components/texto-truncado';
+import * as fmt from '@/lib/formatadores';
+import type { DocumentoStatus } from '@/lib/api/tipos';
+import { STATUS_FINAL } from '@/lib/rotulos';
+import { cn } from '@/lib/utils';
+import { useSessao } from '@/features/auth/sessao';
+import { useClientes } from '@/features/clientes/api';
+import { useDocumentosDoEscritorio, useResumoDocumentos } from '@/features/documentos/api';
+import { StatusDocumento } from '@/features/documentos/components/status-documento';
+import { DataTable, type ColumnDef } from '@/components/data-table';
+import type { ClientePainel, SimulacaoRecente } from '@/lib/api/tipos';
+import { usePainel } from '@/features/pontos-atencao/api';
+import { AlertasSistema } from '../components/alertas-sistema';
+
+const NUM = 'text-right whitespace-nowrap';
+const numero = (n: number, perigo = false) => <AnimatedNumber valor={n} className={cn('num', perigo && n > 0 && 'font-semibold text-danger')} />;
+
+const COLUNAS_CARTEIRA: ColumnDef<ClientePainel>[] = [
+  { accessorKey: 'razaoSocial', header: 'Cliente', cell: ({ row }) => (
+    <Link viewTransition to={`/clientes/${row.original.clienteId}/pontos-de-atencao`} className="text-primary underline-offset-4 hover:underline">
+      {row.original.razaoSocial}</Link>) },
+  { accessorKey: 'criticos', header: 'Críticos', cell: ({ getValue }) => numero(getValue<number>(), true), meta: { classe: NUM } },
+  { accessorKey: 'altos', header: 'Altos', cell: ({ getValue }) => numero(getValue<number>()), meta: { classe: NUM } },
+  { accessorKey: 'importacoesPendentes', header: 'Importações pendentes', cell: ({ getValue }) => numero(getValue<number>()), meta: { classe: NUM } },
+  { accessorKey: 'importacoesComErro', header: 'Com erro', cell: ({ getValue }) => numero(getValue<number>(), true), meta: { classe: NUM } },
+  { accessorKey: 'avaliadoEm', header: 'Avaliado em', cell: ({ getValue }) => fmt.dataHora(getValue<string>()), meta: { classe: 'whitespace-nowrap' } },
+];
+
+const COLUNAS_SIMULACOES: ColumnDef<SimulacaoRecente>[] = [
+  { accessorKey: 'razaoSocial', header: 'Cliente', cell: ({ row }) => (
+    <Link viewTransition to={`/clientes/${row.original.clienteId}/simulacoes`} className="text-primary underline-offset-4 hover:underline">
+      {row.original.razaoSocial}</Link>) },
+  { accessorKey: 'criadaEm', header: 'Salva em', cell: ({ getValue }) => fmt.dataHora(getValue<string>()), meta: { classe: 'whitespace-nowrap' } },
+  { accessorKey: 'recomendacao', header: 'Recomendação', cell: ({ getValue }) => getValue<string>() ?? 'motor antigo' },
+  { accessorKey: 'custo', header: 'Custo', cell: ({ getValue }) => fmt.moeda(getValue<number>()), meta: { classe: NUM } },
+];
+
+/** Painel do escritório: totais, carteira com os achados críticos e altos, simulações recentes e últimas importações. */
+export default function PainelPage() {
+  const nome = useSessao()?.nome?.split(' ')[0];
+  const clientes = useClientes();
+  const resumo = useResumoDocumentos();
+  const ultimos = useDocumentosDoEscritorio({ pagina: 0, tamanho: 8 });
+  const painel = usePainel();
+  const carregando = clientes.isPending || resumo.isPending;
+  const porStatus = Object.entries(resumo.data ?? {});
+  const conta = (f: (s: string) => boolean) => porStatus.filter(([s]) => f(s)).reduce((total, [, n]) => total + (n ?? 0), 0);
+  const kpis = [
+    { rotulo: 'Clientes', valor: clientes.data?.length ?? 0 },
+    { rotulo: 'Importações', valor: conta(() => true) },
+    { rotulo: 'Em processamento', valor: conta((s) => !STATUS_FINAL.includes(s as DocumentoStatus)) },
+    { rotulo: 'Processadas', valor: conta((s) => s.startsWith('PROCESSADO')) },
+    { rotulo: 'Com erro', valor: conta((s) => s === 'ERRO'), perigo: true },
+  ];
+
+  return (
+    <div className="grid gap-5">
+      <CabecalhoPagina titulo={nome ? `Olá, ${nome}` : 'Painel'} subtitulo="Visão do escritório" />
+      <AlertasSistema />
+      {carregando
+        ? <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">{kpis.map((k) => <Skeleton key={k.rotulo} className="h-20" />)}</div>
+        : (
+          <Stagger as="ul" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {kpis.map((k) => (
+              <StaggerItem as="li" key={k.rotulo} className="rounded-lg border bg-surface p-3 shadow-sm">
+                <p className="text-muted-foreground">{k.rotulo}</p>
+                <AnimatedNumber valor={k.valor} className={cn('text-2xl font-semibold', k.perigo && k.valor > 0 && 'text-danger')} />
+              </StaggerItem>
+            ))}
+          </Stagger>
+        )}
+      <Reveal className="grid gap-5">
+        <Cartao aria-labelledby="titulo-carteira">
+          <CartaoTitulo id="titulo-carteira">Carteira de clientes</CartaoTitulo>
+          <DataTable rotulo="Carteira de clientes" colunas={COLUNAS_CARTEIRA} dados={painel.data?.clientes} carregando={painel.isPending}
+                     vazio={<EstadoVazio icone={Inbox} titulo="Nenhum cliente" descricao="Cadastre um cliente e importe os documentos dele." />} />
+        </Cartao>
+        <Cartao aria-labelledby="titulo-simulacoes-recentes">
+          <CartaoTitulo id="titulo-simulacoes-recentes">Simulações recentes</CartaoTitulo>
+          <DataTable rotulo="Simulações recentes" colunas={COLUNAS_SIMULACOES} dados={painel.data?.simulacoesRecentes} carregando={painel.isPending}
+                     vazio={<EstadoVazio icone={Inbox} titulo="Nenhuma simulação salva" descricao="Salve uma simulação na aba Simulações de um cliente." />} />
+        </Cartao>
+        <Cartao aria-labelledby="titulo-ultimos">
+          <CartaoTitulo id="titulo-ultimos">Últimas importações</CartaoTitulo>
+          {ultimos.isPending
+            ? <div className="grid gap-2">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-8" />)}</div>
+            : !ultimos.data?.content.length
+              ? <EstadoVazio icone={Inbox} titulo="Nenhuma importação ainda" descricao="Abra um cliente e envie os arquivos dele na aba Importações." />
+              : (
+                <Stagger as="ul" className="divide-y">
+                  {ultimos.data.content.map((d) => (
+                    <StaggerItem as="li" key={d.id} className="flex items-center gap-3 py-2">
+                      <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <TextoTruncado texto={d.nomeOriginalArquivo} />
+                        <Link viewTransition to={`/clientes/${d.clienteId}/importacoes`} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+                          {d.clienteRazaoSocial}
+                        </Link>
+                      </div>
+                      <span className="num whitespace-nowrap text-muted-foreground">{fmt.dataHora(d.dataImportacao)}</span>
+                      <StatusDocumento status={d.status} />
+                    </StaggerItem>
+                  ))}
+                </Stagger>
+              )}
+        </Cartao>
+      </Reveal>
+    </div>
+  );
+}

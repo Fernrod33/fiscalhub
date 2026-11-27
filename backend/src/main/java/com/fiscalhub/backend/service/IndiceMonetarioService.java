@@ -2,104 +2,78 @@ package com.fiscalhub.backend.service;
 
 import com.fiscalhub.backend.entity.IndiceMonetario;
 import com.fiscalhub.backend.entity.enums.TipoIndice;
-import com.fiscalhub.backend.exception.ResourceNotFoundException;
+import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.repository.IndiceMonetarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.List;
 
 /**
  * Serviço responsável por consultar e calcular índices monetários
- * (SELIC, UFPR, IPCA) utilizados nos cálculos de parcelamento.
+ * (SELIC) utilizados nos acréscimos e na correção das parcelas.
  */
 @Service
-@Transactional(readOnly = true)
+// noRollbackFor: "falta SELIC" é resposta, não falha; quem chama (conciliação, capacidade) captura e segue na mesma transação
+@Transactional(readOnly = true, noRollbackFor = com.fiscalhub.backend.exception.BusinessRuleException.class)
 public class IndiceMonetarioService {
 
-    @Autowired
-    private IndiceMonetarioRepository indiceMonetarioRepository;
+    private final IndiceMonetarioRepository indiceMonetarioRepository;
 
-    /**
-     * Retorna a taxa percentual mensal de um índice para um mês específico.
-     */
-    public BigDecimal getTaxaMensal(TipoIndice tipo, YearMonth mesAno) {
-        return indiceMonetarioRepository
-                .findByTipoAndAnoAndMes(tipo, mesAno.getYear(), mesAno.getMonthValue())
-                .map(IndiceMonetario::getValor)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("Índice %s não encontrado para %s. Verifique a base de índices.",
-                                tipo, mesAno)));
+    public IndiceMonetarioService(IndiceMonetarioRepository indiceMonetarioRepository) {
+        this.indiceMonetarioRepository = indiceMonetarioRepository;
     }
 
     /**
-     * Calcula o fator acumulado de um índice de taxa mensal (ex: SELIC)
-     * entre dois meses (inclusive), usando composição composta.
-     *
-     * Regra Receita Federal: juros SELIC incidem a partir do mês seguinte ao
-     * vencimento até o mês do pagamento/cálculo.
-     *
-     * @param tipo       tipo do índice
-     * @param mesInicio  primeiro mês a ser acumulado (inclusive)
-     * @param mesFim     último mês a ser acumulado (inclusive)
-     * @return percentual acumulado (ex: 15.34 para 15,34%)
+     * Soma simples das taxas mensais (ex.: SELIC) entre dois meses, inclusive, em percentual: a regra dos juros de mora
+     * federais (Lei 9.430/96, art. 61, §3º). mesInicio depois de mesFim: zero. Mês sem índice: erro (sem estimativa).
      */
-    public BigDecimal calcularJurosAcumulados(TipoIndice tipo, YearMonth mesInicio, YearMonth mesFim) {
+    public BigDecimal somarTaxas(TipoIndice tipo, YearMonth mesInicio, YearMonth mesFim) {
         if (mesInicio.isAfter(mesFim)) {
             return BigDecimal.ZERO;
         }
+        return indicesCompletos(tipo, mesInicio, mesFim).stream().map(IndiceMonetario::getValor)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
+    /** Os índices de todos os meses do intervalo; sem fallback: mês ausente gera erro de negócio, nunca juros zerados. */
+    private List<IndiceMonetario> indicesCompletos(TipoIndice tipo, YearMonth mesInicio, YearMonth mesFim) {
         List<IndiceMonetario> indices = indiceMonetarioRepository.findByTipoAndPeriodo(
                 tipo,
                 mesInicio.getYear(), mesInicio.getMonthValue(),
                 mesFim.getYear(), mesFim.getMonthValue()
         );
-
-        if (indices.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-
-        // Produto de (1 + taxa_i/100) para cada mês
-        BigDecimal fatorAcumulado = BigDecimal.ONE;
+        YearMonth esperado = mesInicio;
         for (IndiceMonetario indice : indices) {
-            BigDecimal taxaMensal = indice.getValor().divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
-            fatorAcumulado = fatorAcumulado.multiply(BigDecimal.ONE.add(taxaMensal));
+            if (!YearMonth.of(indice.getAno(), indice.getMes()).equals(esperado)) {
+                break;
+            }
+            esperado = esperado.plusMonths(1);
         }
-
-        // Percentual = (fatorAcumulado - 1) * 100
-        return fatorAcumulado.subtract(BigDecimal.ONE)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(4, RoundingMode.HALF_UP);
+        if (!esperado.isAfter(mesFim)) {
+            throw indiceAusente(tipo, esperado);
+        }
+        return indices;
     }
 
-    /**
-     * Retorna o valor da UFPR para um mês específico.
-     * Usado na atualização monetária do parcelamento estadual PR.
-     */
-    public BigDecimal getValorUFPR(YearMonth mesAno) {
-        return indiceMonetarioRepository
-                .findByTipoAndAnoAndMes(TipoIndice.UFPR, mesAno.getYear(), mesAno.getMonthValue())
-                .map(IndiceMonetario::getValor)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("UFPR não encontrada para %s. Verifique a base de índices.", mesAno)));
+    /** Taxas carregadas no intervalo (inclusive), por mês, sem exigir todos: base da projeção e do "real × projetado". */
+    public java.util.Map<YearMonth, BigDecimal> taxasCarregadas(TipoIndice tipo, YearMonth mesInicio, YearMonth mesFim) {
+        java.util.Map<YearMonth, BigDecimal> taxas = new java.util.TreeMap<>();
+        if (!mesInicio.isAfter(mesFim)) {
+            indiceMonetarioRepository.findByTipoAndPeriodo(tipo, mesInicio.getYear(), mesInicio.getMonthValue(),
+                    mesFim.getYear(), mesFim.getMonthValue()).forEach(i -> taxas.put(YearMonth.of(i.getAno(), i.getMes()), i.getValor()));
+        }
+        return taxas;
     }
 
-    /**
-     * Calcula o fator de atualização monetária pela UFPR entre dois meses.
-     *
-     * @return fator (ex: 1.0523 representa atualização de 5,23%)
-     */
-    public BigDecimal calcularFatorAtualizacaoUFPR(YearMonth mesVencimento, YearMonth mesCalculo) {
-        if (!mesCalculo.isAfter(mesVencimento)) {
-            return BigDecimal.ONE;
-        }
-        BigDecimal ufprVencimento = getValorUFPR(mesVencimento);
-        BigDecimal ufprCalculo = getValorUFPR(mesCalculo);
-        return ufprCalculo.divide(ufprVencimento, 8, RoundingMode.HALF_UP);
+    /** Valor do índice no mês, se importado (ex.: UPF/PR do mês do pedido). */
+    public java.util.Optional<BigDecimal> valor(TipoIndice tipo, YearMonth mes) {
+        return indiceMonetarioRepository.findByTipoAndAnoAndMes(tipo, mes.getYear(), mes.getMonthValue()).map(IndiceMonetario::getValor);
+    }
+
+    public static BusinessRuleException indiceAusente(TipoIndice tipo, YearMonth mes) {
+        return new BusinessRuleException("Índice " + tipo + " ausente para " + mes + ".");
     }
 }

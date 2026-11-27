@@ -1,0 +1,60 @@
+package com.fiscalhub.backend.auditoria;
+
+/** Ações auditadas e o tipo de recurso de cada uma. */
+public enum AcaoAuditoria {
+    LOGIN("USUARIO"),
+    LOGIN_SEGUNDO_FATOR("USUARIO"),
+    SESSAO_ENCERRAR("USUARIO"),
+    SEGUNDO_FATOR_ATIVAR("USUARIO"),
+    SEGUNDO_FATOR_DESATIVAR("USUARIO"),
+    SEGUNDO_FATOR_CODIGOS("USUARIO"),
+    ESCRITORIO_SEGURANCA("ESCRITORIO"),
+    TERMOS_ACEITAR("USUARIO"),
+    REAUTENTICAR("USUARIO"),
+    DOCUMENTO_IMPORTAR("DOCUMENTO"),
+    DOCUMENTO_BAIXAR("DOCUMENTO"),
+    DOCUMENTO_EXCLUIR("DOCUMENTO"),
+    DOCUMENTO_REPROCESSAR("DOCUMENTO"),
+    DOCUMENTO_CONFIRMAR_CLIENTE("DOCUMENTO"),
+    PLANILHA_MAPEAR_COLUNAS("DOCUMENTO"),
+    PLANILHA_SALVAR_DEPARA("DOCUMENTO"),
+    CLIENTE_CRIAR("CLIENTE"),
+    CLIENTE_EDITAR("CLIENTE"),
+    /** Exclusão concluída pelo job, depois do prazo de arrependimento. */
+    CLIENTE_EXCLUIR("CLIENTE"),
+    CLIENTE_EXCLUSAO_SOLICITAR("CLIENTE"),
+    CLIENTE_EXCLUSAO_CANCELAR("CLIENTE"),
+    CLIENTE_EXPORTAR("CLIENTE"),
+    SIMULACAO_CRIAR("SIMULACAO"),
+    SIMULACAO_RECALCULAR("SIMULACAO"),
+    SIMULACAO_EXCLUIR("SIMULACAO"),
+    USUARIO_CRIAR("USUARIO"),
+    USUARIO_ALTERAR_PAPEL("USUARIO"),
+    USUARIO_DESATIVAR("USUARIO"),
+    IDENTIDADE_ALTERAR("ESCRITORIO"),
+    IDENTIDADE_LOGO("ESCRITORIO"),
+    RELATORIO_EMITIR("RELATORIO"),
+    RELATORIO_BAIXAR("RELATORIO"),
+    PARAMETROS_CAPACIDADE_ALTERAR("ESCRITORIO"),
+    DFC_DEPARA_ALTERAR("ESCRITORIO"),
+    PONTO_ATENCAO_ESTADO("PONTO_ATENCAO"),
+    PARAMETROS_PONTOS_ALTERAR("ESCRITORIO"),
+    /** Expurgo dos eventos fora do prazo de retenção, pelo job (sem escritório nem usuário). */
+    AUDITORIA_EXPURGAR("AUDITORIA"),
+    /** Envio de e-mail da conta pelo job (recurso = destinatário); só modelo, resultado e tentativas, nunca o conteúdo. */
+    EMAIL_ENVIAR("USUARIO"),
+    CONVITE_REENVIAR("USUARIO"),
+    CONVITE_ACEITAR("USUARIO"),
+    SENHA_RECUPERACAO_SOLICITAR("USUARIO"),
+    SENHA_REDEFINIR("USUARIO");
+
+    private final String recurso;
+
+    AcaoAuditoria(String recurso) {
+        this.recurso = recurso;
+    }
+
+    public String recurso() {
+        return recurso;
+    }
+}

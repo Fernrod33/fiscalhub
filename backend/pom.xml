@@ -19,12 +19,12 @@
     <description>REST API for Fiscal Hub using Spring Boot</description>
 
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>25</java.version>
+        <openhtmltopdf.version>1.1.94</openhtmltopdf.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lombok.version>1.18.42</lombok.version>
-        <scope>provided</scope>
+        <awssdk.version>2.46.7</awssdk.version>
+        <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
     <dependencies>
@@ -46,10 +46,87 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
+        <!-- springdoc: contrato OpenAPI em /v3/api-docs (so no perfil dev) para gerar os tipos do frontend.
+             Modulo -api: sem a interface Swagger UI. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+            <version>2.8.13</version>
+        </dependency>
+
+        <!-- Spring AOP: aspecto unico de auditoria (@Auditavel) -->
+        <!-- Balancete em .xlsx: leitura em stream (XSSFReader + SAX), valor em cache das fórmulas, nunca avaliadas -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.5.1</version>
+        </dependency>
+        <!-- PDFs dos órgãos (situação fiscal, DCTF, DARF, GR-PR...): texto por página e linha, com posição. Uma
+             dependência só; sem OCR. Arquivo não confiável: limites de tamanho e páginas no LeitorPdf. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+        <!-- Relatórios: um template Thymeleaf por relatório (prévia em HTML e PDF) e HTML -> PDF pelo openhtmltopdf
+             (fork mantido, sobre o mesmo PDFBox 3), com SVG dos gráficos gerados no backend. Sem acesso externo. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <!-- E-mail transacional por SMTP (Amazon SES em produção, Mailpit no desenvolvimento): sem SDK da AWS -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-pdfbox</artifactId>
+            <version>${openhtmltopdf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openhtmltopdf</groupId>
+            <artifactId>openhtmltopdf-svg-support</artifactId>
+            <version>${openhtmltopdf.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- Actuator: health, liveness e readiness (banco e storage) na porta de gerência, só na rede interna -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Spring Boot Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Flyway: migracoes versionadas do schema (substitui ddl-auto=update) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
+        <!-- AWS SDK v2 (S3): storage S3/MinIO de producao (fiscalhub.storage.tipo=s3).
+             Sem o cliente HTTP async (netty): so o cliente sync e usado. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>netty-nio-client</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- PostgreSQL Driver -->
@@ -59,11 +136,35 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- H2 Database (for testing) -->
+        <!-- Testcontainers: testes de integracao contra PostgreSQL real (versoes do BOM do Spring Boot) -->
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- MinIO para testar o ArmazenamentoS3 contra uma API S3 real -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>minio</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- QR code do segundo fator (otpauth://), gerado no servidor: uma classe só, sem dependências (MIT, ~50 KB);
+             o ZXing faria o mesmo com ~550 KB e leitura de imagem que não usamos -->
+        <dependency>
+            <groupId>io.nayuki</groupId>
+            <artifactId>qrcodegen</artifactId>
+            <version>1.8.0</version>
         </dependency>
 
         <!-- JWT -->
@@ -108,6 +209,18 @@
         </dependency>
     </dependencies>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
         <plugins>
             <plugin>
@@ -127,8 +240,6 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>17</source>
-                    <target>17</target>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>

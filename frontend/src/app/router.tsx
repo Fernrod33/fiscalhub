@@ -1,0 +1,86 @@
+import type { ComponentType } from 'react';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import AppShell from '@/components/layout/app-shell';
+import type { HandleRota } from '@/components/layout/trilha';
+import { NomeCliente } from '@/features/clientes/components/nome-cliente';
+import { ABAS_CLIENTE } from '@/features/clientes/rota';
+import { CarregandoPagina, ErroRota, NaoEncontrado } from './erros';
+import { RotaProtegida, SoAdmin } from './guardas';
+
+/** Rota com código dividido (lazy) e ErrorBoundary próprio. */
+const pagina = (importar: () => Promise<ComponentType>, trilha?: HandleRota['trilha']) => ({
+  lazy: async () => ({ Component: await importar() }),
+  ErrorBoundary: ErroRota,
+  HydrateFallback: CarregandoPagina,
+  handle: trilha ? { trilha } : undefined,
+});
+
+const padrao = <T extends { default: ComponentType }>(p: Promise<T>) => p.then((m) => m.default);
+
+const ABAS: Record<(typeof ABAS_CLIENTE)[number][0], () => Promise<ComponentType>> = {
+  'visao-geral': () => padrao(import('@/features/clientes/pages/visao-geral-page')),
+  importacoes: () => padrao(import('@/features/documentos/pages/importacoes-cliente-page')),
+  demonstracoes: () => padrao(import('@/features/demonstracoes/pages/demonstracoes-page')),
+  tributos: () => padrao(import('@/features/tributos/pages/tributos-page')),
+  'situacao-fiscal': () => padrao(import('@/features/situacao-fiscal/pages/situacao-fiscal-page')),
+  capacidade: () => padrao(import('@/features/capacidade/pages/capacidade-page')),
+  simulacoes: () => padrao(import('@/features/simulacoes/pages/simulacoes-page')),
+  'pontos-de-atencao': () => padrao(import('@/features/pontos-atencao/pages/pontos-atencao-page')),
+  relatorios: () => padrao(import('@/features/relatorios/pages/relatorios-page')),
+};
+
+export const router = createBrowserRouter([
+  { path: '/login', ...pagina(() => padrao(import('@/features/auth/pages/login-page'))) },
+  { path: '/cadastro', ...pagina(() => padrao(import('@/features/auth/pages/cadastro-page'))) },
+  { path: '/convite', ...pagina(() => padrao(import('@/features/auth/pages/convite-page'))) },
+  { path: '/esqueci-senha', ...pagina(() => padrao(import('@/features/auth/pages/esqueci-senha-page'))) },
+  { path: '/redefinir-senha', ...pagina(() => padrao(import('@/features/auth/pages/redefinir-senha-page'))) },
+  {
+    element: <RotaProtegida />,
+    ErrorBoundary: ErroRota,
+    HydrateFallback: CarregandoPagina,
+    children: [
+      { path: '/trocar-senha', ...pagina(() => padrao(import('@/features/auth/pages/trocar-senha-page'))) },
+      { path: '/aceitar-termos', ...pagina(() => padrao(import('@/features/termos/aceitar-termos-page'))) },
+      { path: '/ativar-segundo-fator', ...pagina(() => padrao(import('@/features/seguranca/pages/ativar-segundo-fator-page'))) },
+      {
+        element: <AppShell />,
+        ErrorBoundary: ErroRota,
+        children: [
+          { index: true, ...pagina(() => padrao(import('@/features/painel/pages/painel-page')), 'Painel') },
+          {
+            path: 'clientes',
+            handle: { trilha: 'Clientes' },
+            children: [
+              { index: true, ...pagina(() => padrao(import('@/features/clientes/pages/clientes-page'))) },
+              {
+                path: ':clienteId',
+                ...pagina(() => padrao(import('@/features/clientes/pages/cliente-layout')), (p) => <NomeCliente id={Number(p.clienteId)} />),
+                children: [
+                  { index: true, element: <Navigate to="visao-geral" replace /> },
+                  ...ABAS_CLIENTE.map(([caminho, rotulo]) => ({ path: caminho, ...pagina(ABAS[caminho], rotulo) })),
+                ],
+              },
+            ],
+          },
+          { path: 'importacoes', ...pagina(() => padrao(import('@/features/documentos/pages/importacoes-page')), 'Importações') },
+          { path: 'seguranca', ...pagina(() => padrao(import('@/features/seguranca/pages/seguranca-page')), 'Segurança') },
+          { path: 'importacoes/:documentoId/planilha', ...pagina(() => padrao(import('@/features/planilha/pages/assistente-planilha-page')), 'Mapear balancete') },
+          {
+            path: 'configuracoes',
+            element: <SoAdmin />,
+            handle: { trilha: 'Configurações' },
+            children: [
+              { index: true, element: <Navigate to="usuarios" replace /> },
+              { path: 'usuarios', ...pagina(() => padrao(import('@/features/usuarios/pages/usuarios-page')), 'Usuários') },
+              { path: 'auditoria', ...pagina(() => padrao(import('@/features/auditoria/pages/auditoria-page')), 'Auditoria') },
+              { path: 'escritorio', ...pagina(() => padrao(import('@/features/escritorio/pages/identidade-page')), 'Escritório') },
+              { path: 'regras', ...pagina(() => padrao(import('@/features/pontos-atencao/pages/regras-page')), 'Regras') },
+            ],
+          },
+          { path: '*', element: <NaoEncontrado /> },
+        ],
+      },
+    ],
+  },
+]);

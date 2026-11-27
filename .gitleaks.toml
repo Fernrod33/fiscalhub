@@ -1,0 +1,12 @@
+# gitleaks: regras padrão + o segredo do JWT fixo em properties (o histórico tem um, já trocado: ver .gitleaksignore).
+title = "FiscalHub"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "fiscalhub-jwt-secret-literal"
+description = "app.jwt.secret com valor fixo (deve vir da variável JWT_SECRET)"
+regex = '''app\.jwt\.secret\s*=\s*([^$\s]\S{15,})'''
+secretGroup = 1
+keywords = ["app.jwt.secret"]

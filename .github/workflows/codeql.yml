@@ -1,0 +1,45 @@
+# CodeQL (Java e TypeScript): em PR, push e semanalmente. Resultados em Security > Code scanning.
+name: CodeQL
+
+on:
+  push:
+    branches: [main, v2]
+  pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - linguagem: java-kotlin
+            build: manual
+          - linguagem: javascript-typescript
+            build: none
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: matrix.linguagem == 'java-kotlin'
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.linguagem }}
+          build-mode: ${{ matrix.build }}
+          queries: security-extended
+      - if: matrix.linguagem == 'java-kotlin'
+        run: mvn -B -ntp -q compile -DskipTests
+        working-directory: backend
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.linguagem }}"

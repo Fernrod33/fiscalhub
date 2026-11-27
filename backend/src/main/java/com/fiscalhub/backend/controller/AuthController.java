@@ -1,63 +1,166 @@
 package com.fiscalhub.backend.controller;
 
-import com.fiscalhub.backend.dto.JwtResponse;
+import com.fiscalhub.backend.dto.ContaPorEmailDTO;
+import com.fiscalhub.backend.service.ContaPorEmailService;
 import com.fiscalhub.backend.dto.LoginRequest;
+import com.fiscalhub.backend.dto.RespostaLogin;
+import com.fiscalhub.backend.dto.SegundoFatorLogin;
+import com.fiscalhub.backend.auditoria.DetalheAuditoria;
+import com.fiscalhub.backend.security.BloqueioLogin;
+import com.fiscalhub.backend.security.SegurancaContaService;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import com.fiscalhub.backend.dto.MessageResponse;
 import com.fiscalhub.backend.dto.SignupRequest;
+import com.fiscalhub.backend.dto.UsuarioResponseDTO;
 import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.security.CookieSessao;
 import com.fiscalhub.backend.security.JwtUtils;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.service.UsuarioService;
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class AuthController {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final AuthenticationManager authenticationManager;
+    private final UsuarioService usuarioService;
+    private final JwtUtils jwtUtils;
+    private final CookieSessao cookieSessao;
+    private final BloqueioLogin bloqueio;
+    private final SegurancaContaService seguranca;
+    private final ContaPorEmailService contaPorEmail;
 
-    @Autowired
-    private UsuarioService usuarioService;
+    AuthController(AuthenticationManager authenticationManager, UsuarioService usuarioService, JwtUtils jwtUtils,
+                   CookieSessao cookieSessao, BloqueioLogin bloqueio, SegurancaContaService seguranca,
+                   ContaPorEmailService contaPorEmail) {
+        this.contaPorEmail = contaPorEmail;
+        this.authenticationManager = authenticationManager;
+        this.usuarioService = usuarioService;
+        this.jwtUtils = jwtUtils;
+        this.cookieSessao = cookieSessao;
+        this.bloqueio = bloqueio;
+        this.seguranca = seguranca;
+    }
 
-    @Autowired
-    private JwtUtils jwtUtils;
-
+    /**
+     * Senha conferida (com o bloqueio progressivo por conta e IP). Sem o 2º fator: abre a sessão. Com ele: devolve só o
+     * desafio, e a conta só sai da contagem de falhas quando o código também for aceito.
+     */
     @PostMapping("/login")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getSenha()));
+    @Auditavel(value = AcaoAuditoria.LOGIN, registrarFalha = true)
+    public RespostaLogin authenticateUser(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request,
+                                          HttpServletResponse response) {
+        bloqueio.verificar(loginRequest.getEmail(), request.getRemoteAddr());
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getSenha()));
+        } catch (AuthenticationException e) {
+            bloqueio.registrarFalha(loginRequest.getEmail(), request.getRemoteAddr());
+            throw e;
+        }
+        Usuario usuario = usuarioService.findByEmail(authentication.getName());
+        if (usuario.getTotpAtivo()) {
+            return new RespostaLogin(null, jwtUtils.gerarDesafio(usuario));
+        }
+        bloqueio.registrarSucesso(usuario.getEmail());
+        cookieSessao.emitir(response, seguranca.abrirSessao(usuario, request));
+        return new RespostaLogin(UsuarioResponseDTO.fromEntity(usuario), null);
+    }
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
+    @PostMapping("/login/segundo-fator")
+    @Auditavel(value = AcaoAuditoria.LOGIN_SEGUNDO_FATOR, registrarFalha = true)
+    public RespostaLogin segundoFator(@Valid @RequestBody SegundoFatorLogin corpo, HttpServletRequest request,
+                                      HttpServletResponse response) {
+        long[] desafio = jwtUtils.lerDesafio(corpo.desafio())
+                .orElseThrow(() -> new BadCredentialsException("Desafio expirado: entre com a senha de novo."));
+        Usuario usuario = usuarioService.findById(desafio[0]);
+        if (!usuario.getAtivo() || usuario.getVersaoToken() != desafio[1]) {
+            throw new BadCredentialsException("Desafio expirado: entre com a senha de novo.");
+        }
+        bloqueio.verificar(usuario.getEmail(), request.getRemoteAddr());
+        if (!seguranca.conferirSegundoFator(usuario, corpo.codigo())) {
+            bloqueio.registrarFalha(usuario.getEmail(), request.getRemoteAddr());
+            throw new CodigoInvalido(usuario.getId());
+        }
+        bloqueio.registrarSucesso(usuario.getEmail());
+        cookieSessao.emitir(response, seguranca.abrirSessao(usuario, request));
+        return new RespostaLogin(UsuarioResponseDTO.fromEntity(usuario), null);
+    }
 
-        Usuario usuario = usuarioService.findByEmail(loginRequest.getEmail());
+    /** Código errado no 2º fator: 401 e, na auditoria, de quem era o desafio. */
+    static final class CodigoInvalido extends BadCredentialsException implements DetalheAuditoria {
+        private final long usuarioId;
 
-        return ResponseEntity.ok(new JwtResponse(jwt, usuario.getId(), usuario.getEmail(), usuario.getNome()));
+        CodigoInvalido(long usuarioId) {
+            super("Código inválido.");
+            this.usuarioId = usuarioId;
+        }
+
+        @Override
+        public java.util.Map<String, Object> detalhesAuditoria() {
+            return java.util.Map.of("usuarioId", usuarioId, "motivo", "CODIGO_INVALIDO");
+        }
+    }
+
+    /** Encerra só a sessão deste dispositivo e apaga o cookie (as outras sessões, na tela Segurança). */
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal UsuarioAutenticado ua, HttpServletResponse response) {
+        if (ua != null) {
+            seguranca.encerrarAtual(ua);
+        }
+        cookieSessao.limpar(response);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Emite o cookie XSRF-TOKEN (o frontend chama antes da primeira alteração, se ainda não tiver o cookie). */
+    @GetMapping("/csrf")
+    public ResponseEntity<Void> csrf(CsrfToken token) {
+        token.getToken(); // o token é diferido: carregá-lo grava o cookie
+        return ResponseEntity.noContent().build();
+    }
+
+    // ---- convite e recuperação de senha (link de uso único enviado por e-mail)
+
+    @PostMapping("/convite")
+    public ResponseEntity<Void> aceitarConvite(@Valid @RequestBody ContaPorEmailDTO.AceiteConvite corpo, HttpServletRequest request) {
+        contaPorEmail.aceitarConvite(corpo.token(), corpo.senha(), request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Mesma resposta exista ou não a conta (o e-mail só sai se ela existir e estiver ativa). */
+    @PostMapping("/senha/recuperar")
+    public ResponseEntity<MessageResponse> solicitarRecuperacao(@Valid @RequestBody ContaPorEmailDTO.PedidoRecuperacao corpo,
+                                                                HttpServletRequest request) {
+        contaPorEmail.solicitarRecuperacao(corpo.email(), request.getRemoteAddr());
+        return ResponseEntity.accepted().body(new MessageResponse(RESPOSTA_RECUPERACAO));
+    }
+
+    public static final String RESPOSTA_RECUPERACAO =
+            "Se houver uma conta ativa com este e-mail, enviaremos um link para redefinir a senha. Ele vale por 30 minutos.";
+
+    @PostMapping("/senha/redefinir")
+    public ResponseEntity<Void> redefinirSenha(@Valid @RequestBody ContaPorEmailDTO.Redefinicao corpo, HttpServletRequest request) {
+        contaPorEmail.redefinirSenha(corpo.token(), corpo.novaSenha(), corpo.codigo(), request.getRemoteAddr());
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        if (usuarioService.existsByEmail(signUpRequest.getEmail())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Email is already in use!"));
-        }
-
-        Usuario usuario = new Usuario();
-        usuario.setNome(signUpRequest.getNome());
-        usuario.setEmail(signUpRequest.getEmail());
-        usuario.setSenha(signUpRequest.getSenha());
-        usuario.setCpf(signUpRequest.getCpf());
-        usuario.setTelefone(signUpRequest.getTelefone());
-        usuario.setAtivo(true);
-
-        usuarioService.create(usuario);
+    public ResponseEntity<MessageResponse> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+        usuarioService.registrarEscritorio(signUpRequest);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }

@@ -1,10 +1,19 @@
 package com.fiscalhub.backend.service;
 
+import com.fiscalhub.backend.email.EmailsConta;
+import com.fiscalhub.backend.dto.NovoUsuarioDTO;
+import com.fiscalhub.backend.dto.SignupRequest;
+import com.fiscalhub.backend.dto.TrocaSenhaDTO;
+import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
+import com.fiscalhub.backend.entity.Escritorio;
 import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.entity.enums.Papel;
 import com.fiscalhub.backend.exception.BusinessRuleException;
 import com.fiscalhub.backend.exception.ResourceNotFoundException;
+import com.fiscalhub.backend.repository.EscritorioRepository;
 import com.fiscalhub.backend.repository.UsuarioRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
+import com.fiscalhub.backend.util.CnpjValidationUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,52 +24,147 @@ import java.util.List;
 @Transactional
 public class UsuarioService {
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final EscritorioRepository escritorioRepository;
+    private final AcessoRecursoService acessoRecursoService;
+    private final PasswordEncoder passwordEncoder;
+    private final ContaPorEmailService contaPorEmail;
+    private final EmailsConta emails;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    public List<Usuario> findAll() {
-        return usuarioRepository.findAll();
-    }
-
-    public Usuario findById(Long id) {
-        return usuarioRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não localizado com a ID: " + id));
+    public UsuarioService(UsuarioRepository usuarioRepository, EscritorioRepository escritorioRepository,
+                          AcessoRecursoService acessoRecursoService, PasswordEncoder passwordEncoder,
+                          ContaPorEmailService contaPorEmail, EmailsConta emails) {
+        this.usuarioRepository = usuarioRepository;
+        this.escritorioRepository = escritorioRepository;
+        this.acessoRecursoService = acessoRecursoService;
+        this.passwordEncoder = passwordEncoder;
+        this.contaPorEmail = contaPorEmail;
+        this.emails = emails;
     }
 
     public Usuario findByEmail(String email) {
         return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuário não localizado com o email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não localizado."));
     }
 
-    public Usuario create(Usuario usuario) {
-        if (usuarioRepository.existsByEmail(usuario.getEmail())) {
+    public Usuario findById(Long id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não localizado."));
+    }
+
+    /** Signup: cria o escritório e o primeiro usuário como ADMIN, na mesma transação. */
+    public Usuario registrarEscritorio(SignupRequest req) {
+        Escritorio escritorio = new Escritorio();
+        escritorio.setNome(req.getNomeEscritorio());
+        escritorio.setDocumento(validarDocumento(req.getDocumentoEscritorio()));
+        escritorioRepository.save(escritorio);
+
+        Usuario admin = novoUsuario(req.getNome(), req.getEmail(), req.getSenha(), Papel.ADMIN, escritorio);
+        admin.setCpf(req.getCpf());
+        admin.setTelefone(req.getTelefone());
+        return usuarioRepository.save(admin);
+    }
+
+    public List<Usuario> listarDoEscritorio(UsuarioAutenticado ua) {
+        return usuarioRepository.findByEscritorioIdOrderByNome(ua.escritorioId());
+    }
+
+    /** Senha aleatória (ninguém a conhece) até o convidado definir a dele pelo link do e-mail. */
+    public Usuario criarNoEscritorio(UsuarioAutenticado ua, NovoUsuarioDTO dto) {
+        Usuario usuario = novoUsuario(dto.nome(), dto.email(), java.util.UUID.randomUUID().toString(),
+                dto.papel(), escritorioRepository.findById(ua.escritorioId()).orElseThrow());
+        usuario.setConvitePendente(true);
+        usuarioRepository.save(usuario);
+        contaPorEmail.convidar(usuario);
+        return usuario;
+    }
+
+    public void reenviarConvite(UsuarioAutenticado ua, Long usuarioId) {
+        contaPorEmail.reenviarConvite(acessoRecursoService.usuario(usuarioId, ua));
+    }
+
+    public Usuario alterarPapel(UsuarioAutenticado ua, Long usuarioId, Papel papel) {
+        Usuario usuario = acessoRecursoService.usuario(usuarioId, ua);
+        if (papel != Papel.ADMIN) {
+            garantirOutroAdminAtivo(usuario);
+        }
+        if (usuario.getPapel() != papel) {
+            usuario.setPapel(papel);
+            invalidarTokens(usuario);
+            emails.aviso(usuario, EmailsConta.Aviso.PAPEL_ALTERADO);
+        }
+        return usuario;
+    }
+
+    /** Saída de usuário é desativação (soft delete): login bloqueado, nada fica órfão. */
+    public Usuario desativar(UsuarioAutenticado ua, Long usuarioId) {
+        Usuario usuario = acessoRecursoService.usuario(usuarioId, ua);
+        garantirOutroAdminAtivo(usuario);
+        usuario.setAtivo(false);
+        invalidarTokens(usuario);
+        return usuario;
+    }
+
+    public Usuario update(UsuarioAutenticado ua, UsuarioUpdateDTO dto) {
+        Usuario usuario = findById(ua.id());
+        usuario.setNome(dto.nome());
+        usuario.setCpf(dto.cpf());
+        usuario.setTelefone(dto.telefone());
+        return usuario;
+    }
+
+    public Usuario aceitarTermos(UsuarioAutenticado ua) {
+        Usuario usuario = findById(ua.id());
+        usuario.setTermosVersao(com.fiscalhub.backend.lgpd.Termos.VERSAO);
+        usuario.setTermosAceitosEm(java.time.LocalDateTime.now());
+        return usuario;
+    }
+
+    /** Troca a senha e invalida os tokens anteriores; quem chama emite um token novo. */
+    public Usuario trocarSenha(UsuarioAutenticado ua, TrocaSenhaDTO dto) {
+        Usuario usuario = findById(ua.id());
+        if (!passwordEncoder.matches(dto.senhaAtual(), usuario.getSenha())) {
+            throw new BusinessRuleException("Senha atual incorreta.");
+        }
+        usuario.setSenha(passwordEncoder.encode(dto.novaSenha()));
+        invalidarTokens(usuario);
+        emails.aviso(usuario, EmailsConta.Aviso.SENHA_ALTERADA);
+        return usuarioRepository.saveAndFlush(usuario);
+    }
+
+    private static void invalidarTokens(Usuario usuario) {
+        usuario.setVersaoToken(usuario.getVersaoToken() + 1);
+    }
+
+    private Usuario novoUsuario(String nome, String email, String senha, Papel papel, Escritorio escritorio) {
+        if (usuarioRepository.existsByEmail(email)) {
             throw new BusinessRuleException("E-mail já cadastrado");
         }
-        usuario.setSenha(passwordEncoder.encode(usuario.getSenha()));
-        return usuarioRepository.save(usuario);
+        Usuario usuario = new Usuario();
+        usuario.setNome(nome);
+        usuario.setEmail(email);
+        usuario.setSenha(passwordEncoder.encode(senha));
+        usuario.setPapel(papel);
+        usuario.setEscritorio(escritorio);
+        return usuario;
     }
 
-    public Usuario update(Long id, Usuario usuarioDetails) {
-        Usuario usuario = findById(id);
-        
-        usuario.setNome(usuarioDetails.getNome());
-        usuario.setEmail(usuarioDetails.getEmail());
-        usuario.setCpf(usuarioDetails.getCpf());
-        usuario.setTelefone(usuarioDetails.getTelefone());
-        usuario.setAtivo(usuarioDetails.getAtivo());
-        
-        return usuarioRepository.save(usuario);
+    private void garantirOutroAdminAtivo(Usuario usuario) {
+        if (usuario.getPapel() == Papel.ADMIN && usuario.getAtivo()
+                && usuarioRepository.countByEscritorioIdAndPapelAndAtivoTrue(usuario.getEscritorio().getId(), Papel.ADMIN) <= 1) {
+            throw new BusinessRuleException("O escritório precisa de pelo menos um ADMIN ativo.");
+        }
     }
 
-    public void delete(Long id) {
-        Usuario usuario = findById(id);
-        usuarioRepository.delete(usuario);
-    }
-
-    public boolean existsByEmail(String email) {
-        return usuarioRepository.existsByEmail(email);
+    private static String validarDocumento(String documento) {
+        if (documento == null || documento.isBlank()) {
+            return null;
+        }
+        String digitos = CnpjValidationUtils.normalize(documento);
+        boolean valido = digitos.length() == 14 ? CnpjValidationUtils.isValid(digitos) : CnpjValidationUtils.isValidCpf(digitos);
+        if (!valido) {
+            throw new BusinessRuleException("CNPJ ou CPF do escritório inválido.");
+        }
+        return digitos;
     }
 }

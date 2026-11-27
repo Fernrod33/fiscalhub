@@ -1,0 +1,309 @@
+{
+  "ecd_resultado_por_ano": {
+    "2022": "428854.24",
+    "2023": "490459.10",
+    "2024": "-78771.68",
+    "2025": "-150156.17"
+  },
+  "ecf_lucro_real_2025": {
+    "ll": "-150156.17",
+    "adic": "18450.00",
+    "pf": "131706.17",
+    "receita": "12485017.79"
+  },
+  "prejuizo_fiscal_saldo_inicial_2025": "231071.68",
+  "efd_icms": {
+    "deb": "307500.00",
+    "cred": "192750.00",
+    "saldo_ant": "480000.00",
+    "transp": "365250.00",
+    "a_recolher": "0.00",
+    "st": "44850.00",
+    "venc_st": "2026-09-10",
+    "ipi_deb": "100000.00",
+    "ipi_cred": "72500.00",
+    "ipi_rec": "27500.00"
+  },
+  "efd_contribuicoes": {
+    "PIS": {
+      "debito": "27926.25",
+      "credito": "20744.63",
+      "devido": "7181.62",
+      "bc_deb": "1692500.00",
+      "bc_cred": "1257250.00"
+    },
+    "COFINS": {
+      "debito": "128630.00",
+      "credito": "95551.00",
+      "devido": "33079.00",
+      "bc_deb": "1692500.00",
+      "bc_cred": "1257250.00"
+    }
+  },
+  "dctfweb_082026_total": "148806.02",
+  "situacao_fiscal": {
+    "multa_cof": "318.45",
+    "juros_cof": "50.79",
+    "multa_ipi": "6526.08",
+    "juros_ipi": "828.12"
+  },
+  "pgfn_passivo_total": "512791.83",
+  "carga_tributaria_2025": {
+    "tributos": "969210.71",
+    "receita_bruta": "12485017.79",
+    "carga": "7.76"
+  },
+  "dfc_direta": {
+    "2024": {
+      "categorias": {
+        "OUTROS_OPERACIONAIS": "-956914.25",
+        "PAGAMENTO_FORNECEDORES": "-10328535.65",
+        "PARCELAMENTOS_TRIBUTARIOS": "-96000.00",
+        "RECEBIMENTO_CLIENTES": "14416708.85",
+        "SALARIOS_ENCARGOS": "-1958815.68",
+        "TRIBUTOS": "-1197291.66"
+      },
+      "atividades": {
+        "FINANCIAMENTO": "-96000.00",
+        "OPERACIONAL": "-24848.39"
+      },
+      "variacao_caixa": "-120848.39"
+    },
+    "2025": {
+      "categorias": {
+        "OUTROS_OPERACIONAIS": "-968624.90",
+        "PAGAMENTO_FORNECEDORES": "-9159812.97",
+        "PARCELAMENTOS_TRIBUTARIOS": "-96000.00",
+        "RECEBIMENTO_CLIENTES": "13206037.82",
+        "SALARIOS_ENCARGOS": "-2028022.13",
+        "TRIBUTOS": "-968781.84"
+      },
+      "atividades": {
+        "FINANCIAMENTO": "-96000.00",
+        "OPERACIONAL": "80795.98"
+      },
+      "variacao_caixa": "-15204.02"
+    }
+  },
+  "classificacao_pr": {
+    "faturamento_12m": "24495471.11",
+    "divida_exigivel": "497400.00",
+    "endividamento": "2.03",
+    "dias_ultimo_pagamento": 61,
+    "pontos": {
+      "situacao": 4,
+      "inatividade": 4,
+      "endividamento": 4,
+      "pagamento": 2,
+      "cdas": 3
+    },
+    "soma": 17,
+    "classe": "B",
+    "cdas": {
+      "2024.0012345-8": {
+        "indice": "2.130952",
+        "classe": "B"
+      },
+      "2025.0087654-1": {
+        "indice": "2.421736",
+        "classe": "B"
+      },
+      "2023.0045678-2": {
+        "indice": "1.658437",
+        "classe": "C"
+      }
+    },
+    "simulacao_quitar_2023_0045678_2": {
+      "soma": 18,
+      "classe": "A"
+    }
+  },
+  "capag_oficial": {
+    "classe": "C",
+    "capacidade": "400000.00"
+  },
+  "irrecuperaveis_pgfn": [],
+  "simulacoes": {
+    "data_base": "2026-10-14",
+    "selic_projetada": "1.01",
+    "rfb_ordinario_cofins": {
+      "total": "5448.24",
+      "parcelas": 10,
+      "valor_parcela": "544.82",
+      "custo_nominal": "5448.24",
+      "custo_projetado": "5695.37",
+      "primeira": "544.82",
+      "ultima": "594.33",
+      "dias": "19"
+    },
+    "pgfn_ordinario_ipi": {
+      "total": "64176.14",
+      "parcelas": 60,
+      "valor_parcela": "1069.60",
+      "custo_nominal": "64176.14",
+      "custo_projetado": "83291.15",
+      "primeira": "1069.60",
+      "ultima": "1707.09",
+      "encargo": "10696.02"
+    },
+    "pgfn_transacao_ipi_c": {
+      "total": "64176.14",
+      "parcelas": 120,
+      "valor_parcela": "306.14",
+      "custo_nominal": "38750.00",
+      "custo_projetado": "60873.36",
+      "primeira": "641.76",
+      "ultima": "672.89",
+      "desconto": "25426.14",
+      "entrada": "3850.57"
+    },
+    "sefa_pr_icms_st": {
+      "total": "49783.50",
+      "parcelas": 24,
+      "valor_parcela": "2074.31",
+      "custo_nominal": "49783.50",
+      "custo_projetado": "55513.77",
+      "primeira": "2074.31",
+      "ultima": "2551.90",
+      "dias": "34"
+    },
+    "sefa_pr_reparcelamento": {
+      "total": "98884.20",
+      "parcelas": 55,
+      "valor_parcela": "1648.07",
+      "custo_nominal": "98884.20",
+      "custo_projetado": "123602.79",
+      "primeira": "9888.42",
+      "ultima": "2546.93",
+      "entrada": "9888.42"
+    }
+  },
+  "pontos_atencao": [
+    {
+      "item": 1,
+      "regra": "R01",
+      "severidade": "ALTA",
+      "titulo": "Pago a menor: COFINS 08/2026",
+      "motivo": "COFINS declarada 33.079,00 e paga 28.000,00"
+    },
+    {
+      "item": 1,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: RFB COFINS 08/2026",
+      "motivo": "a diferença está em aberto no relatório de situação fiscal"
+    },
+    {
+      "item": 2,
+      "regra": "R02",
+      "severidade": "ALTA",
+      "titulo": "Pago em atraso sem acréscimos: IPI 11/2024",
+      "motivo": "pago 48 dias depois só com o principal"
+    },
+    {
+      "item": 2,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: RFB IPI 11/2024",
+      "motivo": "multa e juros em aberto no SIEF"
+    },
+    {
+      "item": 3,
+      "regra": "R04",
+      "severidade": "ALTA",
+      "titulo": "ICMS-ST não recolhido com saldo credor de ICMS próprio: ICMS_ST · PR 08/2026",
+      "motivo": "o saldo credor não quita o ST"
+    },
+    {
+      "item": 3,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: SEFA_PR ICMS_ST 08/2026",
+      "motivo": "ICMS-ST em aberto na conta corrente do PR"
+    },
+    {
+      "item": 4,
+      "regra": "R05",
+      "severidade": "MEDIA",
+      "titulo": "Saldo credor de ICMS acumulado (PR)",
+      "motivo": "saldo credor de 03/2026 a 08/2026"
+    },
+    {
+      "item": 5,
+      "regra": "R06",
+      "severidade": "ALTA",
+      "titulo": "Omissão de declaração: Omissão de EFD-Contribuições de 06/2026",
+      "motivo": "não é previdenciária: não impede a certidão"
+    },
+    {
+      "item": 6,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: PGFN IPI 90 3 24 002201-55",
+      "motivo": "inscrição não negociada"
+    },
+    {
+      "item": 6,
+      "regra": "R09",
+      "severidade": "ALTA",
+      "titulo": "Transação com desconto disponível: Transação por adesão — Edital PGDAU 6/2026, reaberto pelo Edital 10/2026 (capacidade de pagamento)",
+      "motivo": "a mesma inscrição cabe na transação com desconto (CAPAG oficial C)"
+    },
+    {
+      "item": 7,
+      "regra": "R08",
+      "severidade": "ALTA",
+      "titulo": "Revisão da CAPAG potencialmente vantajosa",
+      "motivo": "CAPAG oficial C × estimada D"
+    },
+    {
+      "item": 8,
+      "regra": "R16",
+      "severidade": "INFO",
+      "titulo": "Escrituração substituta: ECD 2024",
+      "motivo": "a substituta prevalece"
+    },
+    {
+      "item": 9,
+      "regra": "R11",
+      "severidade": "MEDIA",
+      "titulo": "Adição indedutível no e-Lalur: Multas por infracoes fiscais nao dedutiveis",
+      "motivo": "multa de ofício de 18.450,00 adicionada (IRPJ e CSLL)"
+    },
+    {
+      "item": 10,
+      "regra": "R10",
+      "severidade": "ALTA",
+      "titulo": "Parcelas acima da parcela sustentável",
+      "motivo": "parcelamento do PR (12/36) e transação da PGFN somam mais que a parcela sustentável"
+    },
+    {
+      "item": null,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: PGE_PR ICMS 2023.0045678-2",
+      "motivo": "CDA ajuizada sem parcelamento"
+    },
+    {
+      "item": null,
+      "regra": "R07",
+      "severidade": "CRITICA",
+      "titulo": "Débito que impede a certidão: PGE_PR ICMS 2025.0087654-1",
+      "motivo": "CDA em cobrança sem parcelamento"
+    },
+    {
+      "item": null,
+      "regra": "R12",
+      "severidade": "INFO",
+      "titulo": "Prejuízo fiscal (IRPJ) acumulado",
+      "motivo": "saldo da Parte B do e-Lalur (ECF 2025)"
+    },
+    {
+      "item": null,
+      "regra": "R12",
+      "severidade": "INFO",
+      "titulo": "Base negativa da CSLL acumulado",
+      "motivo": "saldo da Parte B do e-Lacs (ECF 2025)"
+    }
+  ]
+}

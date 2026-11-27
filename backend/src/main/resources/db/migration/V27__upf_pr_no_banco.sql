@@ -1,0 +1,29 @@
+-- UPF/PR no banco, como a SELIC: até abril/2025 uma resolução da SEFA-PR por mês (antes em parcelamento/upf-pr.csv);
+-- desde 1º/05/2025 (Resolução SEFA 360/2025, art. 1º, I) só na página de Indicadores Econômicos da SEFA-PR, lida pela
+-- ImportacaoUpfPrService. Carga inicial: valores coletados nessa página em 11/11/2026 (o importador mantém os seguintes).
+ALTER TABLE indice_monetario ADD COLUMN fonte VARCHAR(500);
+
+INSERT INTO indice_monetario (tipo, ano, mes, valor, origem, data_coleta, fonte) VALUES
+    ('UPF_PR', 2025, 1, 140.89, 'SEFA_PR_RESOLUCAO', TIMESTAMP '2026-10-29 00:00:00', 'Resolução SEFA 1.556/2024; https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202401556.pdf; SHA-256 0c376eb8eedb366ec3ddc14582c85d45e019c1e136c337268024161b359fd9aa'),
+    ('UPF_PR', 2025, 2, 141.62, 'SEFA_PR_RESOLUCAO', TIMESTAMP '2026-10-29 00:00:00', 'Resolução SEFA 57/2025; https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500057.pdf; SHA-256 8e4ef6c9391176ac9f33187c6d045886c898b8bcbac6e4676c5d4da6350650e6'),
+    ('UPF_PR', 2025, 3, 141.85, 'SEFA_PR_RESOLUCAO', TIMESTAMP '2026-10-29 00:00:00', 'Resolução SEFA 187/2025; https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500187.pdf; SHA-256 bfefc7cc5edc3d4f55ea5452909455e8116a804dd63a57b881d5e8d806ce7fc3'),
+    ('UPF_PR', 2025, 4, 143.71, 'SEFA_PR_RESOLUCAO', TIMESTAMP '2026-10-29 00:00:00', 'Resolução SEFA 291/2025; https://www.sefanet.pr.gov.br/dados/SEFADOCUMENTOS/101202500291.pdf; SHA-256 f69d3e0817c44242dc0a267a4ff0bff23fb327236ec721e5afe17ef7786d87f2'),
+    ('UPF_PR', 2025, 5, 144.51, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 6, 145.13, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 7, 145.51, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 8, 145.86, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 9, 146.24, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 10, 146.08, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 11, 146.78, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2025, 12, 146.91, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 1, 147.17, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 2, 147.66, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 3, 148.15, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 4, 149.19, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 5, 150.50, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 6, 151.51, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 7, 152.39, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 8, 152.63, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 9, 152.74, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR'),
+    ('UPF_PR', 2026, 10, 152.25, 'SEFA_PR_INDICADORES', TIMESTAMP '2026-11-11 22:24:24', 'Resolução SEFA 360/2025, art. 1º, I; Indicadores Econômicos da SEFA-PR: https://www.arinternet.pr.gov.br/outros/_c_indice2.asp?eDetalhe=UPF/PR')
+ON CONFLICT (tipo, ano, mes) DO NOTHING;

@@ -1,56 +1,115 @@
 package com.fiscalhub.backend.controller;
 
+import com.fiscalhub.backend.dto.AlteracaoPapelDTO;
+import com.fiscalhub.backend.dto.NovoUsuarioDTO;
+import com.fiscalhub.backend.dto.TrocaSenhaDTO;
+import com.fiscalhub.backend.dto.UsuarioResponseDTO;
+import com.fiscalhub.backend.dto.UsuarioUpdateDTO;
 import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.security.CookieSessao;
+import com.fiscalhub.backend.security.SegurancaContaService;
+import jakarta.servlet.http.HttpServletRequest;
+import com.fiscalhub.backend.security.UsuarioAutenticado;
 import com.fiscalhub.backend.service.UsuarioService;
+import com.fiscalhub.backend.auditoria.AcaoAuditoria;
+import com.fiscalhub.backend.auditoria.Auditavel;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/** /me: o próprio cadastro. Demais rotas: gestão dos usuários do escritório, só ADMIN. */
 @RestController
 @RequestMapping("/api/usuarios")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService usuarioService;
+    private final UsuarioService usuarioService;
+    private final SegurancaContaService seguranca;
+    private final CookieSessao cookieSessao;
+
+    UsuarioController(UsuarioService usuarioService, SegurancaContaService seguranca, CookieSessao cookieSessao) {
+        this.usuarioService = usuarioService;
+        this.seguranca = seguranca;
+        this.cookieSessao = cookieSessao;
+    }
+
+    @GetMapping("/me")
+    public UsuarioResponseDTO getMe(@AuthenticationPrincipal UsuarioAutenticado ua) {
+        return UsuarioResponseDTO.fromEntity(usuarioService.findById(ua.id()));
+    }
+
+    @PutMapping("/me")
+    public UsuarioResponseDTO updateMe(@Valid @RequestBody UsuarioUpdateDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return UsuarioResponseDTO.fromEntity(usuarioService.update(ua, dto));
+    }
+
+    /** A troca invalida o token atual: a resposta traz um token novo. */
+    @PutMapping("/me/senha")
+    public UsuarioResponseDTO trocarSenha(@Valid @RequestBody TrocaSenhaDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua,
+                                          HttpServletRequest request, HttpServletResponse response) {
+        Usuario usuario = usuarioService.trocarSenha(ua, dto);
+        seguranca.encerrarAtual(ua); // a troca invalidou todos os tokens; este dispositivo ganha uma sessão nova
+        cookieSessao.emitir(response, seguranca.abrirSessao(usuario, request));
+        return UsuarioResponseDTO.fromEntity(usuario);
+    }
+
+    /** Aceite dos Termos de Uso e da Política de Privacidade na versão vigente (primeiro acesso ou versão nova). */
+    @PostMapping("/me/termos")
+    @Auditavel(AcaoAuditoria.TERMOS_ACEITAR)
+    public UsuarioResponseDTO aceitarTermos(@AuthenticationPrincipal UsuarioAutenticado ua) {
+        return UsuarioResponseDTO.fromEntity(usuarioService.aceitarTermos(ua));
+    }
+
+    /** Saída do próprio usuário: desativação (o último ADMIN ativo não pode sair). */
+    @DeleteMapping("/me")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
+    @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)
+    public ResponseEntity<Void> deleteMe(@AuthenticationPrincipal UsuarioAutenticado ua) {
+        usuarioService.desativar(ua, ua.id());
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping
-    public ResponseEntity<List<Usuario>> getAllUsuarios() {
-        List<Usuario> usuarios = usuarioService.findAll();
-        return ResponseEntity.ok(usuarios);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Usuario> getUsuarioById(@PathVariable Long id) {
-        Usuario usuario = usuarioService.findById(id);
-        return ResponseEntity.ok(usuario);
-    }
-
-    @GetMapping("/email/{email}")
-    public ResponseEntity<Usuario> getUsuarioByEmail(@PathVariable String email) {
-        Usuario usuario = usuarioService.findByEmail(email);
-        return ResponseEntity.ok(usuario);
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UsuarioResponseDTO> listar(@AuthenticationPrincipal UsuarioAutenticado ua) {
+        return usuarioService.listarDoEscritorio(ua).stream().map(UsuarioResponseDTO::fromEntity).toList();
     }
 
     @PostMapping
-    public ResponseEntity<Usuario> createUsuario(@Valid @RequestBody Usuario usuario) {
-        Usuario createdUsuario = usuarioService.create(usuario);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUsuario);
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(AcaoAuditoria.USUARIO_CRIAR)
+    public ResponseEntity<UsuarioResponseDTO> criar(@Valid @RequestBody NovoUsuarioDTO dto, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(UsuarioResponseDTO.fromEntity(usuarioService.criarNoEscritorio(ua, dto)));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Usuario> updateUsuario(@PathVariable Long id, @Valid @RequestBody Usuario usuario) {
-        Usuario updatedUsuario = usuarioService.update(id, usuario);
-        return ResponseEntity.ok(updatedUsuario);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUsuario(@PathVariable Long id) {
-        usuarioService.delete(id);
+    /** Novo link de convite (o anterior deixa de valer), enquanto o usuário não definiu a senha. */
+    @PostMapping("/{id}/convite")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(value = AcaoAuditoria.CONVITE_REENVIAR, idParam = "id")
+    public ResponseEntity<Void> reenviarConvite(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        usuarioService.reenviarConvite(ua, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/papel")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(AcaoAuditoria.USUARIO_ALTERAR_PAPEL)
+    public UsuarioResponseDTO alterarPapel(@PathVariable Long id, @Valid @RequestBody AlteracaoPapelDTO dto,
+                                           @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return UsuarioResponseDTO.fromEntity(usuarioService.alterarPapel(ua, id, dto.papel()));
+    }
+
+    @PatchMapping("/{id}/desativar")
+    @com.fiscalhub.backend.security.ExigeReautenticacao
+    @PreAuthorize("hasRole('ADMIN')")
+    @Auditavel(AcaoAuditoria.USUARIO_DESATIVAR)
+    public UsuarioResponseDTO desativar(@PathVariable Long id, @AuthenticationPrincipal UsuarioAutenticado ua) {
+        return UsuarioResponseDTO.fromEntity(usuarioService.desativar(ua, id));
     }
 }

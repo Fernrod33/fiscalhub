@@ -1,0 +1,14 @@
+# Feriados estaduais e municipais, como dado versionado: só com a lei que institui o feriado (coluna fonte).
+# data: MM-dd (todo ano) ou yyyy-MM-dd (só aquele ano); municipio vazio = o estado inteiro.
+# Os nacionais (fixos e móveis) estão no CalendarioDiasUteis.
+uf;municipio;data;nome;fonte
+# PR (conferido em 11/11/2026): não há feriado estadual civil. O 19/12 (Emancipação Política, Lei 4.658/1962) foi
+# revogado pela Lei 18.384/2014, que mantém a data comemorativa "não se constituindo em feriado civil" (ponto facultativo).
+# Cascavel/PR (conferido em 18/11/2026): só o aniversário da cidade. Fonte oficial: TJPR, Decreto Judiciário 621/2025
+# (calendário de 2026), art. 4º, que consolida os feriados locais das sedes de comarca e lista para Cascavel só o 14/11
+# (https://posse.tjpr.jus.br/documents/d/comunicacao/sei_12428873_decreto, SHA-256 6d9f1b4a3811d8aed092ab680e7cf81e25c4d7b8285c00f5e6a021d86565ea6d,
+# cópia em docs/normativas/fontes/tjpr-decreto-judiciario-621-2025.pdf). Fora daqui, por não terem fonte oficial que os
+# confirme: 15/08 (padroeira), atribuído por sites de calendário à Lei 5.250/2009, que no índice da Câmara trata de cesta
+# básica dos servidores; e o Corpus Christi por Decreto Municipal 20.042/2025 (só no calendário do TRF4; o decreto não foi
+# lido) — o Corpus Christi já está no CalendarioDiasUteis. Ponto facultativo e suspensão do expediente forense não entram.
+PR;Cascavel;11-14;Aniversário de Cascavel;Lei Municipal 5.689/2010 (Cascavel), "define a data de 14 de novembro como aniversário da cidade" (https://www.camaracascavel.pr.gov.br/artigo/9953/site/). Feriado municipal confirmado pelo TJPR, Decreto Judiciário 621/2025, art. 4º. Data da lei não conferida no texto oficial

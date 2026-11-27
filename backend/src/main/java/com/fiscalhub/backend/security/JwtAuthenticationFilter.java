@@ -1,62 +1,78 @@
 package com.fiscalhub.backend.security;
 
+import com.fiscalhub.backend.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-    @Autowired
-    private JwtUtils jwtUtils;
+    private final JwtUtils jwtUtils;
+    private final UsuarioRepository usuarioRepository;
+    private final CookieSessao cookieSessao;
+    private final SegurancaContaService seguranca;
+    private final int inatividadeMinutos;
 
-    @Autowired
-    private UserDetailsService userDetailsService;
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, UsuarioRepository usuarioRepository, CookieSessao cookieSessao,
+                                   @Lazy SegurancaContaService seguranca,
+                                   @org.springframework.beans.factory.annotation.Value("${fiscalhub.sessao.inatividade-minutos:30}") int inatividadeMinutos) {
+        this.inatividadeMinutos = inatividadeMinutos;
+        this.jwtUtils = jwtUtils;
+        this.usuarioRepository = usuarioRepository;
+        this.cookieSessao = cookieSessao;
+        this.seguranca = seguranca;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        try {
-            String jwt = parseJwt(request);
-            if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                String username = jwtUtils.getUserNameFromJwtToken(jwt);
-
-                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+        Optional<UsuarioAutenticado> autenticado = cookieSessao.ler(request).flatMap(jwtUtils::autenticar);
+        if (autenticado.isPresent()) {
+            UsuarioAutenticado u = autenticado.get();
+            // ponytail: uma leitura por PK a cada requisição; cache curto quando a latência do filtro JWT for relevante
+            Optional<UsuarioRepository.EstadoToken> estado = usuarioRepository.estadoToken(u.id(), u.sessaoId(), inatividadeMinutos)
+                    .filter(e -> e.getAtivo() && e.getVersaoToken() == u.versaoToken() && e.getSessaoAberta());
+            if (estado.isPresent()) {
+                // uma pendência por vez, nesta ordem (a mesma do guarda do frontend): só a rota dela fica liberada
+                UsuarioRepository.EstadoToken e = estado.get();
+                String[] pendencia = e.getSegundoFatorPendente()
+                        ? new String[]{"/api/usuarios/me/segundo-fator", RespostaProblema.SEGUNDO_FATOR_OBRIGATORIO, "Segundo fator obrigatório",
+                                "O escritório exige o segundo fator: ative-o antes de continuar."}
+                        : !com.fiscalhub.backend.lgpd.Termos.VERSAO.equals(e.getTermosVersao())
+                        ? new String[]{"/api/usuarios/me/termos", RespostaProblema.TERMOS_PENDENTES, "Aceite dos termos pendente",
+                                "Leia e aceite os Termos de Uso e a Política de Privacidade para continuar."}
+                        : null;
+                if (pendencia != null && !liberada(request, pendencia[0])) {
+                    RespostaProblema.escrever(response, HttpServletResponse.SC_FORBIDDEN, pendencia[1], pendencia[2], pendencia[3]);
+                    return;
+                }
+                seguranca.registrarUso(u.sessaoId());
+                SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+                        u, null, List.of(new SimpleGrantedAuthority("ROLE_" + u.papel()))));
             }
-        } catch (Exception e) {
-            logger.error("Não foi possível autenticar o usuário: {}", e.getMessage());
         }
-
         filterChain.doFilter(request, response);
     }
 
-    private String parseJwt(HttpServletRequest request) {
-        String headerAuth = request.getHeader("Authorization");
-
-        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
-            return headerAuth.substring(7);
-        }
-
-        return null;
+    /**
+     * Com o 2º fator ou o aceite dos termos pendente, só dá para ver o próprio cadastro, sair e resolver a pendência
+     * (a rota dela e as abaixo dela).
+     */
+    private static boolean liberada(HttpServletRequest request, String pendencia) {
+        String rota = request.getRequestURI().substring(request.getContextPath().length());
+        return ("GET".equals(request.getMethod()) && rota.equals("/api/usuarios/me"))
+                || rota.equals("/api/auth/logout") || rota.equals(pendencia) || rota.startsWith(pendencia + "/");
     }
 }

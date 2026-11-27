@@ -1,83 +1,115 @@
 package com.fiscalhub.backend.security;
 
-import io.jsonwebtoken.*;
+import com.fiscalhub.backend.entity.Usuario;
+import com.fiscalhub.backend.entity.enums.Papel;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-
-import com.fiscalhub.backend.exception.UnauthorizedException;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Optional;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
     private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-    @Value("${app.jwt.secret}")
-    private String jwtSecret;
+    private final SecretKey signingKey;
+    private static final String FASE = "fase";
+    private final int jwtExpirationMs;
 
-    @Value("${app.jwt.expiration-ms}")
-    private int jwtExpirationMs;
+    // Keys.hmacShaKeyFor lanca WeakKeyException se o segredo tiver menos de 256 bits: o app nao sobe.
+    public JwtUtils(@Value("${app.jwt.secret}") String jwtSecret,
+                    @Value("${app.jwt.expiration-ms}") int jwtExpirationMs) {
+        this.signingKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        this.jwtExpirationMs = jwtExpirationMs;
+    }
 
-    public String generateJwtToken(Authentication authentication) {
-        UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
-
+    /** Token da sessão (cookie): usuário, escritório, papel, versão do token e o id da sessão no servidor. */
+    public String gerarToken(Usuario usuario, UUID sessaoId) {
+        Date agora = new Date();
         return Jwts.builder()
-                .setSubject(userPrincipal.getUsername())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .setSubject(usuario.getEmail())
+                .claim("uid", usuario.getId())
+                .claim("escritorioId", usuario.getEscritorio().getId())
+                .claim("papel", usuario.getPapel().name())
+                .claim("tv", usuario.getVersaoToken())
+                .claim("sid", sessaoId.toString())
+                .setIssuedAt(agora)
+                .setExpiration(new Date(agora.getTime() + jwtExpirationMs))
+                .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public String generateTokenFromUsername(String username) {
-        return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+    /** Validade do token de sessão (a do registro da sessão no banco é a mesma). */
+    public long validadeMs() {
+        return jwtExpirationMs;
     }
 
-    public String getUserNameFromJwtToken(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
-    }
-
-    public boolean validateJwtToken(String authToken) {
+    /** Token válido => usuário das claims; inválido, expirado, sem as claims ou desafio do 2º fator => vazio. */
+    public Optional<UsuarioAutenticado> autenticar(String token) {
         try {
-            Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parseClaimsJws(authToken);
-            return true;
-        } catch (MalformedJwtException e) {
-            logger.error("Invalid JWT token: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT inválido.");
-        } catch (ExpiredJwtException e) {
-            logger.error("JWT token is expired: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT expirado.");
-        } catch (UnsupportedJwtException e) {
-            logger.error("JWT token is unsupported: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT não suportado.");
-        } catch (IllegalArgumentException e) {
-            logger.error("JWT claims string is empty: {}", e.getMessage());
-            throw new UnauthorizedException("Token JWT vazio ou malformado.");
-        } catch (Exception e) {
-            logger.error("Erro inesperado ao validar token: {}", e.getMessage());
-            throw new UnauthorizedException("Erro ao validar o token JWT.");
+            Claims c = Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
+            if (c.get(FASE) != null) {
+                return Optional.empty(); // o desafio do 2º fator não é sessão
+            }
+            return Optional.of(new UsuarioAutenticado(c.get("uid", Long.class), c.getSubject(),
+                    c.get("escritorioId", Long.class), Papel.valueOf(c.get("papel", String.class)),
+                    c.get("tv", Integer.class), UUID.fromString(c.get("sid", String.class))));
+        } catch (JwtException | IllegalArgumentException | NullPointerException e) {
+            logger.warn("Token JWT rejeitado: {}", e.getMessage());
+            return Optional.empty();
         }
     }
 
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+    /** Desafio do 2º fator: senha conferida, falta o código. Vale 5 minutos e não abre sessão. */
+    public String gerarDesafio(Usuario usuario) {
+        Date agora = new Date();
+        return Jwts.builder().setSubject(usuario.getEmail()).claim("uid", usuario.getId()).claim("tv", usuario.getVersaoToken())
+                .claim(FASE, "2fa").setIssuedAt(agora).setExpiration(new Date(agora.getTime() + 5 * 60_000))
+                .signWith(signingKey, SignatureAlgorithm.HS256).compact();
+    }
+
+    /** O id do usuário do desafio válido (e a versão do token, para a troca de senha no meio invalidar). */
+    public Optional<long[]> lerDesafio(String desafio) {
+        try {
+            Claims c = Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(desafio).getBody();
+            return "2fa".equals(c.get(FASE)) ? Optional.of(new long[]{c.get("uid", Long.class), c.get("tv", Integer.class)}) : Optional.empty();
+        } catch (JwtException | IllegalArgumentException | NullPointerException e) {
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Reautenticação recente (senha e código conferidos de novo) para ações destrutivas: presa ao usuário e à sessão
+     * (um token copiado de outra sessão não serve) e de curta duração. Não abre sessão (autenticar recusa a fase).
+     */
+    public String gerarReautenticacao(UsuarioAutenticado ua, long validadeMs) {
+        Date agora = new Date();
+        return Jwts.builder().claim("uid", ua.id()).claim("sid", ua.sessaoId().toString()).claim(FASE, "reauth")
+                .setIssuedAt(agora).setExpiration(new Date(agora.getTime() + validadeMs))
+                .signWith(signingKey, SignatureAlgorithm.HS256).compact();
+    }
+
+    /** O token vale para este usuário nesta sessão e ainda não expirou. */
+    public boolean reautenticacaoValida(String token, UsuarioAutenticado ua) {
+        if (token == null || ua == null || ua.sessaoId() == null) {
+            return false;
+        }
+        try {
+            Claims c = Jwts.parserBuilder().setSigningKey(signingKey).build().parseClaimsJws(token).getBody();
+            return "reauth".equals(c.get(FASE)) && ua.id().equals(c.get("uid", Long.class))
+                    && ua.sessaoId().toString().equals(c.get("sid", String.class));
+        } catch (JwtException | IllegalArgumentException | NullPointerException e) {
+            return false;
+        }
     }
 }

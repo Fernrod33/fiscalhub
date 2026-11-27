@@ -1,5 +1,7 @@
 package com.fiscalhub.backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fiscalhub.backend.entity.enums.Papel;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,8 +13,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "usuario")
@@ -36,6 +36,7 @@ public class Usuario {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @JsonIgnore
     @NotBlank
     @Size(max = 120)
     @Column(nullable = false, length = 120)
@@ -52,6 +53,52 @@ public class Usuario {
     @Column(nullable = false)
     private Boolean ativo = true;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "escritorio_id", nullable = false)
+    private Escritorio escritorio;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Papel papel;
+
+    /** Convidado que ainda não definiu a senha pelo link do e-mail (a senha gravada é aleatória). */
+    @Column(name = "convite_pendente", nullable = false)
+    private Boolean convitePendente = false;
+
+    /** Muda na troca de senha, desativação e mudança de papel: invalida os tokens emitidos antes. */
+    @JsonIgnore
+    @Column(name = "versao_token", nullable = false)
+    private Integer versaoToken = 0;
+
+    /** Segredo do TOTP cifrado (CifraDados); preenchido na ativação, vale só com totpAtivo. */
+    @JsonIgnore
+    @Column(name = "totp_segredo", length = 200)
+    private String totpSegredo;
+
+    @Column(name = "totp_ativo", nullable = false)
+    private Boolean totpAtivo = false;
+
+    @JsonIgnore
+    @Column(name = "totp_ultimo_passo")
+    private Long totpUltimoPasso;
+
+    /** Versão dos termos aceita (nula até o primeiro aceite). */
+    @Column(name = "termos_versao", length = 30)
+    private String termosVersao;
+
+    @Column(name = "termos_aceitos_em")
+    private LocalDateTime termosAceitosEm;
+
+    /** Todo ADMIN precisa do segundo fator; os demais, se o escritório exigir. A consulta do filtro JWT tem a mesma regra. */
+    public boolean exigeSegundoFator() {
+        return papel == Papel.ADMIN || Boolean.TRUE.equals(escritorio.getExigirSegundoFator());
+    }
+
+    public boolean segundoFatorPendente() {
+        return exigeSegundoFator() && !Boolean.TRUE.equals(totpAtivo);
+    }
+
     @CreationTimestamp
     @Column(name = "data_criacao", nullable = false, updatable = false)
     private LocalDateTime dataCriacao;
@@ -60,9 +107,5 @@ public class Usuario {
     @Column(name = "data_atualizacao")
     private LocalDateTime dataAtualizacao;
 
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Empresa> empresas = new HashSet<>();
 
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Declaracao> declaracoes = new HashSet<>();
 }

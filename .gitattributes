@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+# Arquivos SPED e tabelas oficiais: bytes exatos (fim de linha CRLF e ISO-8859-1 preservados)
+backend/src/test/resources/amostras/** -text
+backend/src/main/resources/plano-referencial/** -text
+backend/src/test/resources/massa-ficticia/** -text
+backend/src/test/resources/indicadores/** -text
+backend/src/main/resources/seguranca/senhas-vazadas.txt -diff linguist-generated

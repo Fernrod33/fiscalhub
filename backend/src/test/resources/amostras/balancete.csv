@@ -1,0 +1,13 @@
+Conta,Descrição,Saldo anterior,Débitos,Créditos,Saldo atual
+1,"ATIVO",1000.00,8000.00,3000.00,6000.00
+1.1,"ATIVO CIRCULANTE",1000.00,8000.00,3000.00,6000.00
+1.1.01,"Caixa",1000.00,6000.00,3000.00,4000.00
+1.1.02,"Bancos conta movimento",0.00,2000.00,0.00,2000.00
+2,"PASSIVO",-500.00,1000.00,1500.00,-1000.00
+2.1,"Fornecedores, nacionais",-500.00,1000.00,1500.00,-1000.00
+3,"PATRIMÔNIO LÍQUIDO",-500.00,0.00,0.00,-500.00
+3.1,"Capital social",-500.00,0.00,0.00,-500.00
+3.2,"Lucros acumulados",0.00,0.00,0.00,0.00
+4,"RESULTADO",0.00,3500.00,8000.00,-4500.00
+4.1,"Receita de vendas de mercadorias",0.00,0.00,8000.00,-8000.00
+4.2,"Custo das mercadorias vendidas",0.00,3500.00,0.00,3500.00

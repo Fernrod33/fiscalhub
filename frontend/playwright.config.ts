@@ -1,0 +1,34 @@
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * Testes de ponta a ponta. Sem E2E_URL: contra o backend local (perfil dev em http://localhost:8080) com o Vite, que
+ * sobe sozinho (ou é reaproveitado). Com E2E_URL (CI): contra o proxy do compose de desenvolvimento, já no ar, com as
+ * imagens, a CSP e os cabeçalhos de produção.
+ */
+const URL_EXTERNA = process.env.E2E_URL;
+
+export default defineConfig({
+  testDir: 'e2e',
+  timeout: 60_000,
+  fullyParallel: false,
+  // Os testes dividem um backend só, cuja fila de processamento de documentos tem 2 threads (spring.task.execution.pool):
+  // o padrão do Playwright (metade dos núcleos: 6 nesta máquina, 2 no runner do CI) punha 6 testes importando a massa ao
+  // mesmo tempo, e a espera de cada um passava a depender do acúmulo dos outros (timeouts e respostas não processadas a
+  // tempo pelo navegador sem CPU). 2 workers = a capacidade do backend, igual em qualquer máquina.
+  workers: 2,
+  // no CI um retry: o flaky aparece no relatório (não some), e uma falha de verdade falha duas vezes
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
+  use: {
+    baseURL: URL_EXTERNA ?? 'http://localhost:5173',
+    trace: process.env.CI ? 'on-first-retry' : 'retain-on-failure',
+    // telas sem animação: o axe avalia o estado final (o contraste de um elemento ainda entrando dava falso positivo)
+    contextOptions: { reducedMotion: 'reduce' },
+  },
+  webServer: URL_EXTERNA ? undefined : {
+    command: 'npm run dev -- --port 5173 --strictPort',
+    url: 'http://localhost:5173',
+    reuseExistingServer: true,
+  },
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } } }],
+});

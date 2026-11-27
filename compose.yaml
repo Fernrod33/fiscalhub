@@ -1,0 +1,158 @@
+# Produção: um servidor com Docker Compose. Só o proxy (Caddy, TLS automático) publica portas (80 e 443).
+# Segredos e o que muda por servidor ficam no .env (copie do .env.example); nada de segredo neste arquivo nem nas imagens.
+# Subir: docker compose up -d --build   |   Runbook: docs/operacao/ e docs/deploy/hostinger.md
+# Memória (VPS de 8 GB): os limites somam 4,4 GB (backend 2g com o heap a 75%, PostgreSQL 1g, MinIO 1g, proxy 256m,
+# frontend 128m); o resto fica para o sistema, o cache de disco e o backup. Pico medido: docs/deploy/hostinger.md.
+name: fiscalhub
+
+x-padrao: &padrao
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+x-minio: &imagem-minio
+  # as imagens oficiais minio/minio saíram dos registros públicos; a da Chainguard é o mesmo binário (com o mc), fixada por digest
+  image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
+
+services:
+  postgres:
+    <<: *padrao
+    image: postgres:18-alpine
+    # 1/4 do limite em shared_buffers; o planejador conta com o cache de disco do sistema
+    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "effective_cache_size=1GB", "-c", "work_mem=8MB",
+              "-c", "maintenance_work_mem=64MB"]
+    environment:
+      POSTGRES_DB: fiscalhub
+      POSTGRES_USER: fiscalhub
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+    volumes:
+      - postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "fiscalhub", "-d", "fiscalhub"]
+      interval: 10s
+      retries: 10
+    mem_limit: 1g
+
+  minio:
+    <<: [*padrao, *imagem-minio]
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env}
+      # chave da criptografia no lado do servidor (SSE-S3): nome:base64 de 32 bytes
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:?defina MINIO_KMS_SECRET_KEY no .env}
+      MC_HOST_local: http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@127.0.0.1:9000
+      # teto do runtime Go abaixo do mem_limit: o coletor aperta antes do OOM do contêiner
+      GOMEMLIMIT: 768MiB
+    volumes:
+      - minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      retries: 10
+    mem_limit: 1g
+
+  # uma vez por subida (idempotente): bucket com versionamento e SSE, usuário da aplicação só com acesso ao bucket
+  minio-init:
+    <<: *imagem-minio
+    restart: "no"
+    depends_on:
+      minio: { condition: service_healthy }
+    environment:
+      MC_HOST_local: http://${MINIO_ROOT_USER}:${MINIO_ROOT_PASSWORD}@minio:9000
+      S3_BUCKET: ${S3_BUCKET:-fiscalhub-documentos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?defina S3_ACCESS_KEY no .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?defina S3_SECRET_KEY no .env}
+    entrypoint: ["sh", "/init/minio-init.sh"]
+    volumes:
+      - ./deploy/minio-init.sh:/init/minio-init.sh:ro
+
+  # uma vez por subida, antes do backend: o Flyway como dono do schema (fiscalhub), com o afterMigrate.sql que recria
+  # papéis e permissões; termina. Mesma imagem do backend, outro ponto de entrada (com.fiscalhub.backend.operacao.Migracao).
+  # Se a migração falhar, o backend não sobe (docs/deploy/hostinger.md, "Quando a migração falha").
+  migracao:
+    <<: *padrao
+    image: fiscalhub-backend:${VERSAO:-local}
+    pull_policy: never # a imagem é a do backend, construída por ele
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/fiscalhub
+      FLYWAY_USER: fiscalhub
+      FLYWAY_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD no .env}
+      FLYWAY_PLACEHOLDERS_APP_SENHA: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD no .env}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+    entrypoint: ["java", "-cp", "/app/BOOT-INF/classes:/app/BOOT-INF/lib/*", "com.fiscalhub.backend.operacao.Migracao"]
+    healthcheck:
+      disable: true
+    mem_limit: 512m
+
+  backend:
+    <<: *padrao
+    build: ./backend
+    image: fiscalhub-backend:${VERSAO:-local}
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
+      migracao: { condition: service_completed_successfully }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/fiscalhub
+      # só o papel da aplicação (fiscalhub_app: sem DDL, sem DELETE na auditoria); a senha do dono fica com a migracao
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?defina DB_APP_PASSWORD no .env}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
+      CHAVE_DADOS: ${CHAVE_DADOS:?defina CHAVE_DADOS no .env}
+      SESSAO_INATIVIDADE_MINUTOS: ${SESSAO_INATIVIDADE_MINUTOS:-30}
+      AUDITORIA_RETENCAO_ANOS: ${AUDITORIA_RETENCAO_ANOS:-5}
+      ORIGEM_PUBLICA: https://${DOMINIO:?defina DOMINIO no .env}
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET:-fiscalhub-documentos}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      UPLOAD_MAX_SIZE: ${UPLOAD_MAX_SIZE_MB:-500}MB
+      MANAGEMENT_SERVER_PORT: "8081"
+      ADMIN_SISTEMA: ${ADMIN_SISTEMA:-}
+      # E-mail transacional pelo SMTP do Amazon SES (docs/deploy/email-ses.md); credenciais só no .env
+      SMTP_HOST: ${SMTP_HOST:-email-smtp.sa-east-1.amazonaws.com}
+      SMTP_USUARIO: ${SMTP_USUARIO:-}
+      SMTP_SENHA: ${SMTP_SENHA:-}
+      EMAIL_REMETENTE: ${EMAIL_REMETENTE:-FiscalHub <nao-responda@${DOMINIO}>}
+    mem_limit: ${BACKEND_MEMORIA:-2g}
+
+  frontend:
+    <<: *padrao
+    build:
+      context: ./frontend
+      args:
+        UPLOAD_MAX_SIZE_MB: ${UPLOAD_MAX_SIZE_MB:-500}
+    image: fiscalhub-frontend:${VERSAO:-local}
+    mem_limit: 128m
+
+  proxy:
+    <<: *padrao
+    image: caddy:2-alpine
+    # só abre as portas com o backend pronto (readiness) e o frontend servindo
+    depends_on:
+      backend: { condition: service_healthy }
+      frontend: { condition: service_healthy }
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMINIO: ${DOMINIO}
+      ACME_EMAIL: ${ACME_EMAIL:?defina ACME_EMAIL no .env (avisos do Let's Encrypt)}
+      UPLOAD_MAX_SIZE_MB: ${UPLOAD_MAX_SIZE_MB:-500}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 256m
+
+volumes:
+  postgres:
+  minio:
+  caddy_data:
+  caddy_config:
